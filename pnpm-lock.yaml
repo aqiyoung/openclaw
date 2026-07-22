@@ -1380,6 +1380,22 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/buzz:
+    dependencies:
+      nostr-tools:
+        specifier: 2.23.9
+        version: 2.23.9(typescript@6.0.3)
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@openclaw/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/novita:
     devDependencies:
       '@openclaw/plugin-sdk':

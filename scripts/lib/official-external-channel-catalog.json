@@ -553,6 +553,29 @@
       }
     },
     {
+      "name": "@openclaw/buzz",
+      "description": "OpenClaw Buzz channel plugin for NIP-29 group chat",
+      "source": "official",
+      "kind": "channel",
+      "openclaw": {
+        "channel": {
+          "id": "buzz",
+          "label": "Buzz",
+          "selectionLabel": "Buzz (NIP-29)",
+          "docsPath": "/channels/buzz",
+          "docsLabel": "buzz",
+          "blurb": "Self-hosted human and agent team rooms over NIP-29.",
+          "envVars": ["BUZZ_RELAY_URL", "BUZZ_PRIVATE_KEY", "BUZZ_AUTH_TAG"],
+          "order": 56
+        },
+        "install": {
+          "npmSpec": "@openclaw/buzz",
+          "defaultChoice": "npm",
+          "minHostVersion": ">=2026.7.2"
+        }
+      }
+    },
+    {
       "name": "@openclaw/nostr",
       "description": "OpenClaw Nostr channel plugin for NIP-04 encrypted DMs",
       "source": "official",

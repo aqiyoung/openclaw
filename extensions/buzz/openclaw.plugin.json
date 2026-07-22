@@ -1,0 +1,14 @@
+{
+  "id": "buzz",
+  "name": "Buzz",
+  "description": "OpenClaw Buzz channel plugin for NIP-29 group chat.",
+  "activation": {
+    "onStartup": false
+  },
+  "channels": ["buzz"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
