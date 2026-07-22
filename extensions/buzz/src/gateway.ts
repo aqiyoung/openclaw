@@ -50,7 +50,7 @@ export async function startBuzzGatewayAccount(ctx: ChannelGatewayContext<Resolve
   }
   const configuredChannelIds = new Set(channelIds);
 
-  let hasConnected = false;
+  let hasAttemptedSession = false;
   let reconnectAttempt = 0;
   while (!ctx.abortSignal.aborted) {
     let bus: BuzzBus | undefined;
@@ -62,7 +62,8 @@ export async function startBuzzGatewayAccount(ctx: ChannelGatewayContext<Resolve
     });
     try {
       const sessionSince =
-        Math.floor(Date.now() / 1000) - (hasConnected ? RECONNECT_LOOKBACK_SECONDS : 0);
+        Math.floor(Date.now() / 1000) - (hasAttemptedSession ? RECONNECT_LOOKBACK_SECONDS : 0);
+      hasAttemptedSession = true;
       bus = await startBuzzBus({
         accountId: account.accountId,
         relayUrl: account.relayUrl,
@@ -89,7 +90,6 @@ export async function startBuzzGatewayAccount(ctx: ChannelGatewayContext<Resolve
           ctx.log?.error?.(`[${account.accountId}] Buzz replay state failed: ${error.message}`);
         },
       });
-      hasConnected = true;
       connectedAt = Date.now();
       activeBuses.set(account.accountId, bus);
       ctx.setStatus({

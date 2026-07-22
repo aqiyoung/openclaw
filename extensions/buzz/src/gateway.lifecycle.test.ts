@@ -98,6 +98,42 @@ describe("Buzz gateway lifecycle", () => {
     expect(gatewayMocks.close).toHaveBeenCalledTimes(2);
   });
 
+  it("uses the rolling lookback after a failed initial session", async () => {
+    gatewayMocks.startBuzzBus.mockRejectedValueOnce(new Error("connect failed"));
+    const abortController = new AbortController();
+    const cfg = {
+      channels: {
+        buzz: {
+          relayUrl: "wss://buzz.example.com",
+          privateKey: PRIVATE_KEY,
+          groups: { [CHANNEL_ID]: {} },
+        },
+      },
+    } as OpenClawConfig;
+    const account = resolveBuzzAccount({ cfg });
+    const ctx = {
+      cfg,
+      accountId: account.accountId,
+      account,
+      runtime: {},
+      abortSignal: abortController.signal,
+      log: { info: vi.fn(), error: vi.fn() },
+      getStatus: vi.fn(),
+      setStatus: vi.fn(),
+    } as unknown as ChannelGatewayContext<ResolvedBuzzAccount>;
+    const lifecycle = startBuzzGatewayAccount(ctx);
+
+    await vi.waitFor(() => expect(gatewayMocks.startBuzzBus).toHaveBeenCalledTimes(2), {
+      timeout: 3_000,
+    });
+    const firstSince = gatewayMocks.startBuzzBus.mock.calls[0]?.[0].since as number;
+    const secondSince = gatewayMocks.startBuzzBus.mock.calls[1]?.[0].since as number;
+    expect(secondSince).toBeLessThanOrEqual(firstSince - 24 * 60 * 60 + 2);
+
+    abortController.abort();
+    await expect(lifecycle).resolves.toBeUndefined();
+  });
+
   it("keeps the account running when one message fails", async () => {
     const abortController = new AbortController();
     const cfg = {
