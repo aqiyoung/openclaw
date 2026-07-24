@@ -3002,6 +3002,7 @@ class ChatController internal constructor(
         // The transport gap is global, so telemetry for any advertised run may be incomplete.
         // Keep concurrent local ownership until the authoritative history snapshot reconciles it.
         invalidateIncompleteRunTelemetry()
+        publishRunPresentation()
         pendingToolCallsById.clear()
         publishPendingToolCalls()
         _streamingAssistantText.value = null
