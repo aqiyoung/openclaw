@@ -9,7 +9,6 @@ import {
   createComputedAccountStatusAdapter,
   createDefaultChannelRuntimeState,
 } from "openclaw/plugin-sdk/status-helpers";
-import type { ChannelPlugin } from "../runtime-api.js";
 import { BuzzConfigSchema } from "./config-schema.js";
 import { buzzOutboundAdapter, startBuzzGatewayAccount } from "./gateway.js";
 import { discoverBuzzRooms } from "./room-discovery.js";
@@ -32,7 +31,14 @@ const buzzMessageAdapter = createChannelMessageAdapterFromOutbound({
   outbound: buzzOutboundAdapter,
 });
 
-export const buzzPlugin: ChannelPlugin<ResolvedBuzzAccount> = createChatChannelPlugin({
+type BuzzProbeResult = {
+  ok: true;
+  publicKey: string;
+  roomCount: number;
+  rooms: Array<{ id: string; name: string }>;
+};
+
+export const buzzPlugin = createChatChannelPlugin<ResolvedBuzzAccount, BuzzProbeResult>({
   base: {
     id: "buzz",
     meta: {

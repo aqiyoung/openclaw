@@ -78,7 +78,7 @@ describe("Buzz guided setup", () => {
     const prompter = createPrompter();
     const runtime = createRuntime();
     const hooks: Array<{
-      run: (ctx: { cfg: OpenClawConfig; runtime: RuntimeEnv }) => Promise<void>;
+      run: (ctx: { cfg: OpenClawConfig; runtime: RuntimeEnv }) => void | Promise<void>;
     }> = [];
 
     const result = await wizard.configure({

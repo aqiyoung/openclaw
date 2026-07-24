@@ -166,7 +166,6 @@ async function promptRooms(params: {
         hint: room.about ?? room.id,
       })),
       initialValues: params.rooms.map((room) => room.id),
-      required: false,
     });
     if (selected.length > 0) {
       return selected;

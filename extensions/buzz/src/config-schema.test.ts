@@ -2,6 +2,11 @@ import { validateJsonSchemaValue } from "openclaw/plugin-sdk/json-schema-runtime
 import { describe, expect, it } from "vitest";
 import { BuzzConfigSchema } from "./config-schema.js";
 
+const BuzzRuntimeConfigSchema = BuzzConfigSchema.runtime;
+if (!BuzzRuntimeConfigSchema) {
+  throw new Error("expected Buzz runtime config schema");
+}
+
 function expectRelayUrlValidity(relayUrl: string, valid: boolean) {
   const config = { relayUrl, groupPolicy: "allowlist" };
   const jsonSchemaResult = validateJsonSchemaValue({
@@ -10,7 +15,7 @@ function expectRelayUrlValidity(relayUrl: string, valid: boolean) {
     value: config,
   });
 
-  expect(BuzzConfigSchema.runtime.safeParse(config).success).toBe(valid);
+  expect(BuzzRuntimeConfigSchema.safeParse(config).success).toBe(valid);
   expect(jsonSchemaResult.ok).toBe(valid);
 }
 
@@ -45,7 +50,7 @@ describe("BuzzConfigSchema", () => {
         value: config,
       });
 
-      expect(BuzzConfigSchema.runtime.safeParse(config).success).toBe(valid);
+      expect(BuzzRuntimeConfigSchema.safeParse(config).success).toBe(valid);
       expect(jsonSchemaResult.ok).toBe(valid);
     }
   });
