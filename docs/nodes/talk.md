@@ -95,6 +95,32 @@ Supported keys: `voice` / `voice_id` / `voiceId`, `model` / `model_id` / `modelI
 }
 ```
 
+To use the Gateway's logged-in ChatGPT/Codex subscription for OpenAI browser
+or iOS WebRTC Talk, select the experimental Codex OAuth route explicitly:
+
+```json5
+{
+  talk: {
+    realtime: {
+      provider: "openai",
+      transport: "webrtc",
+      providers: {
+        openai: {
+          authMode: "codex-oauth",
+        },
+      },
+    },
+  },
+}
+```
+
+This route requires the bundled Codex plugin and a Gateway restart after
+enabling or changing it. It supports client-owned WebRTC only; Gateway relay
+and backend voice bridges still require OpenAI Platform credentials. OpenClaw
+does not read or copy the Codex OAuth token. The Codex app-server owns the
+subscription-authenticated realtime connection and starts an ephemeral,
+read-only thread seeded with bounded context from the active agent session.
+
 | Key                                      | Default                                    | Notes                                                                                                                                                                                                                                                                      |
 | ---------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `provider`                               | -                                          | Active Talk TTS provider. Use `elevenlabs`, `mlx`, or `system` for macOS-local playback paths.                                                                                                                                                                             |
@@ -110,6 +136,7 @@ Supported keys: `voice` / `voice_id` / `voiceId`, `model` / `model_id` / `modelI
 | `consultFastMode`                        | unset                                      | Fast-mode override for realtime `openclaw_agent_consult` calls.                                                                                                                                                                                                            |
 | `realtime.provider`                      | -                                          | `openai` for WebRTC, `google` for provider WebSocket, or a bridge-only provider through Gateway relay.                                                                                                                                                                     |
 | `realtime.providers.<id>`                | -                                          | Provider-owned realtime config. Browsers receive only ephemeral/constrained session credentials, never a standard API key.                                                                                                                                                 |
+| `realtime.providers.openai.authMode`     | Platform API-key resolution                | Set to experimental `codex-oauth` to use the Codex app-server's logged-in subscription for client-owned OpenAI WebRTC Talk.                                                                                                                                                |
 | `realtime.providers.openai.speakerVoice` | `alloy`                                    | Built-in OpenAI Realtime voice id (the older `voice` key still works but is deprecated). Current `gpt-realtime-2.1` voices: `alloy`, `ash`, `ballad`, `cedar`, `coral`, `echo`, `marin`, `sage`, `shimmer`, `verse`; `marin` and `cedar` are recommended for best quality. |
 | `realtime.transport`                     | -                                          | `webrtc`: client-owned OpenAI WebRTC on iOS and in the browser. `provider-websocket`: browser-owned, stays on Gateway relay on iOS. `gateway-relay`: keeps provider audio on the Gateway; Android uses realtime only with this transport.                                  |
 | `realtime.brain`                         | -                                          | `agent-consult` routes realtime tool calls through Gateway policy; `direct-tools` is legacy direct-tool compatibility; `none` is for transcription/external orchestration.                                                                                                 |

@@ -119,8 +119,14 @@ export type RealtimeVoiceBridgeCreateRequest = RealtimeVoiceBridgeCallbacks & {
 
 export type RealtimeVoiceBrowserSessionCreateRequest = {
   cfg?: OpenClawConfig;
+  agentId?: string;
+  workspaceDir?: string;
   providerConfig: RealtimeVoiceProviderConfig;
   instructions?: string;
+  initialItems?: Array<{
+    role: RealtimeVoiceRole;
+    text: string;
+  }>;
   tools?: RealtimeVoiceTool[];
   model?: string;
   voice?: string;
@@ -186,6 +192,16 @@ export type RealtimeVoiceBrowserSession =
   | RealtimeVoiceBrowserJsonPcmWebSocketSession
   | RealtimeVoiceBrowserGatewayRelaySession
   | RealtimeVoiceBrowserManagedRoomSession;
+
+/** Provider-owned alternate browser-session route selected by provider config. */
+export type RealtimeVoiceBrowserSessionBroker = {
+  providerId: RealtimeVoiceProviderId;
+  authMode: string;
+  isConfigured: (ctx: RealtimeVoiceProviderConfiguredContext) => boolean;
+  createBrowserSession: (
+    req: RealtimeVoiceBrowserSessionCreateRequest,
+  ) => Promise<RealtimeVoiceBrowserSession>;
+};
 
 export type RealtimeVoiceBridge = {
   supportsToolResultContinuation?: boolean;

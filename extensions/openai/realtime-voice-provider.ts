@@ -26,6 +26,7 @@ import type {
 import {
   REALTIME_VOICE_AUDIO_FORMAT_G711_ULAW_8KHZ,
   REALTIME_VOICE_AUDIO_FORMAT_PCM16_24KHZ,
+  getRealtimeVoiceBrowserSessionBroker,
 } from "openclaw/plugin-sdk/realtime-voice";
 import { sleepWithAbort, warn } from "openclaw/plugin-sdk/runtime-env";
 import {
@@ -60,6 +61,7 @@ type OpenAIRealtimeVoice =
   | "verse";
 
 type OpenAIRealtimeVoiceProviderConfig = {
+  authMode?: "codex-oauth";
   apiKey?: string;
   model?: string;
   voice?: OpenAIRealtimeVoice;
@@ -217,6 +219,8 @@ function normalizeProviderConfig(
 ): OpenAIRealtimeVoiceProviderConfig {
   const raw = resolveOpenAIProviderConfigRecord(config);
   return {
+    authMode:
+      trimToUndefined(raw?.authMode)?.toLowerCase() === "codex-oauth" ? "codex-oauth" : undefined,
     apiKey: normalizeResolvedSecretInputString({
       value: raw?.apiKey,
       path: "plugins.entries.voice-call.config.realtime.providers.openai.apiKey",
@@ -402,6 +406,7 @@ async function resolveOpenAIRealtimePlatformAuth(params: {
     provider: "openai",
     cfg: params.cfg,
     profileTypes: ["api_key"],
+    includeExternalCliAuth: false,
   });
   if (profileApiKey) {
     return { status: "available", value: profileApiKey };
@@ -410,6 +415,7 @@ async function resolveOpenAIRealtimePlatformAuth(params: {
     provider: "openai",
     cfg: params.cfg,
     profileTypes: ["api_key"],
+    includeExternalCliAuth: false,
   });
 
   const envApiKey = resolveOpenAIRealtimeEnvApiKey();
@@ -446,6 +452,7 @@ function hasOpenAIRealtimePlatformAuthInput(params: {
       provider: "openai",
       cfg: params.cfg,
       profileTypes: ["api_key"],
+      includeExternalCliAuth: false,
     })
   ) {
     return true;
@@ -1478,6 +1485,15 @@ async function createOpenAIRealtimeBrowserSession(
   req: RealtimeVoiceBrowserSessionCreateRequest,
 ): Promise<RealtimeVoiceBrowserSession> {
   const config = normalizeProviderConfig(req.providerConfig);
+  if (config.authMode === "codex-oauth") {
+    const broker = getRealtimeVoiceBrowserSessionBroker("openai", config.authMode);
+    if (!broker) {
+      throw new Error(
+        "Codex OAuth realtime voice is unavailable; enable the bundled Codex plugin and restart the gateway",
+      );
+    }
+    return await broker.createBrowserSession(req);
+  }
   if (config.azureEndpoint || config.azureDeployment) {
     throw new Error("OpenAI Realtime browser sessions do not support Azure endpoints yet");
   }
@@ -1571,6 +1587,14 @@ export function buildOpenAIRealtimeVoiceProvider(): RealtimeVoiceProviderPlugin 
     resolveConfig: ({ rawConfig }) => normalizeProviderConfig(rawConfig),
     isConfigured: ({ cfg, providerConfig }) => {
       const config = normalizeProviderConfig(providerConfig);
+      if (config.authMode === "codex-oauth") {
+        return (
+          getRealtimeVoiceBrowserSessionBroker("openai", config.authMode)?.isConfigured({
+            cfg,
+            providerConfig,
+          }) === true
+        );
+      }
       if (config.azureEndpoint || config.azureDeployment) {
         return hasOpenAIRealtimeApiKeyInput(config.apiKey);
       }
@@ -1581,6 +1605,9 @@ export function buildOpenAIRealtimeVoiceProvider(): RealtimeVoiceProviderPlugin 
     },
     createBridge: (req) => {
       const config = normalizeProviderConfig(req.providerConfig);
+      if (config.authMode === "codex-oauth") {
+        throw new Error("Codex OAuth realtime voice supports browser WebRTC sessions only");
+      }
       if (isOpenAIGptLiveModel(config.model)) {
         throw new Error(OPENAI_GPT_LIVE_BRIDGE_UNSUPPORTED_MESSAGE);
       }

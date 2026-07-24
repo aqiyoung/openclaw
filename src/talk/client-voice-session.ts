@@ -220,7 +220,7 @@ export function createOrResumeClientVoiceSession(params: {
 export async function ensureClientVoiceAgentSessionEntry(params: {
   agentId: string;
   sessionKey: string;
-}): Promise<void> {
+}): Promise<string> {
   const created = await patchSessionEntry(
     params,
     (_entry, context) => {
@@ -237,6 +237,7 @@ export async function ensureClientVoiceAgentSessionEntry(params: {
   if (!created?.sessionId) {
     throw new Error(`agent session could not be initialized (${params.sessionKey})`);
   }
+  return created.sessionId;
 }
 
 /** Correlate a consult run with its open call for confirmation and mutation evidence. */

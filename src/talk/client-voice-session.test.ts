@@ -154,9 +154,10 @@ describe("client voice session", () => {
 
   it("stamps the agent session row when Talk creates it", async () => {
     const sessionKey = "agent:main:talk:new";
-    await ensureClientVoiceAgentSessionEntry({ agentId: "main", sessionKey });
+    const sessionId = await ensureClientVoiceAgentSessionEntry({ agentId: "main", sessionKey });
 
     expect(loadSessionEntry({ agentId: "main", sessionKey })).toMatchObject({
+      sessionId,
       createdVia: "talk",
       createdActor: { type: "human" },
       createdAt: expect.any(Number),

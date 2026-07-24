@@ -11,6 +11,7 @@ import {
 } from "openclaw/plugin-sdk/plugin-config-runtime";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type { PluginStateSyncKeyedStore } from "openclaw/plugin-sdk/plugin-state-runtime";
+import { registerRealtimeVoiceBrowserSessionBroker } from "openclaw/plugin-sdk/realtime-voice";
 import { registerCodexCliMetadata } from "./cli-metadata.js";
 import { createCodexAppServerAgentHarness } from "./harness.js";
 import { buildCodexMediaUnderstandingProvider } from "./media-understanding-provider.js";
@@ -33,6 +34,10 @@ import {
   resumeCodexCliSessionOnNode,
   resolveCodexCliSessionForBindingOnNode,
 } from "./src/node-cli-sessions.js";
+import {
+  CODEX_REALTIME_OFFER_PATH,
+  createCodexRealtimeBrowserSessionBroker,
+} from "./src/realtime-browser-session.js";
 import {
   createCodexSessionCatalogControl,
   createCodexSessionCatalogNodeHostCommands,
@@ -85,6 +90,34 @@ export default definePluginEntry({
       return livePluginConfig;
     };
     const resolveCurrentPluginConfig = () => resolvePluginConfig(resolveCurrentConfig);
+    if (api.registrationMode === "full") {
+      const realtimeBrowserSession = createCodexRealtimeBrowserSessionBroker({
+        getPluginConfig: resolveCurrentPluginConfig,
+      });
+      const unregisterRealtimeBrowserSession = registerRealtimeVoiceBrowserSessionBroker(
+        realtimeBrowserSession.broker,
+      );
+      api.registerHttpRoute({
+        path: CODEX_REALTIME_OFFER_PATH,
+        auth: "plugin",
+        match: "exact",
+        handler: realtimeBrowserSession.handler,
+      });
+      api.lifecycle.registerRuntimeLifecycle({
+        id: "codex-oauth-realtime-browser-session",
+        description: "Release Codex OAuth realtime browser sessions when the plugin stops",
+        cleanup: async ({ reason }) => {
+          // Runtime lifecycle cleanup also runs for session resets/deletes and
+          // registry refresh. This broker is process-scoped; process exit owns
+          // shutdown, so only an explicit plugin disable tears it down in-place.
+          if (reason !== "disable") {
+            return;
+          }
+          unregisterRealtimeBrowserSession();
+          await realtimeBrowserSession.cleanup();
+        },
+      });
+    }
     let bindingStateStore: PluginStateSyncKeyedStore<StoredCodexAppServerBinding> | undefined;
     const openBindingStateStore = () =>
       (bindingStateStore ??= api.runtime.state.openSyncKeyedStore<StoredCodexAppServerBinding>({

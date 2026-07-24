@@ -14,6 +14,7 @@ import {
   validateTalkClientToolCallParams,
   validateTalkClientTranscriptParams,
 } from "../../../packages/gateway-protocol/src/index.js";
+import { resolveAgentWorkspaceDir } from "../../agents/agent-scope.js";
 import {
   buildAgentMainSessionKey,
   resolveAgentIdFromSessionKey,
@@ -43,6 +44,7 @@ import {
 } from "../../talk/client-voice-session.js";
 import { REALTIME_VOICE_DESCRIBE_VIEW_TOOL } from "../../talk/describe-view-tool.js";
 import { resolveConfiguredRealtimeVoiceProvider } from "../../talk/provider-resolver.js";
+import { readSessionPreviewItemsFromTranscript } from "../session-transcript-readers.js";
 import { startTalkRealtimeAgentConsult } from "../talk-agent-consult.js";
 import {
   ensureTalkRealtimeRelayVoiceSession,
@@ -59,7 +61,37 @@ import {
 import type { GatewayRequestHandlers } from "./types.js";
 
 const LEGACY_VOICE_BINDING_TTL_MS = 6 * 60 * 60_000;
+const REALTIME_VOICE_CONTEXT_MAX_ITEMS = 16;
+const REALTIME_VOICE_CONTEXT_MAX_ITEM_CHARS = 800;
+const REALTIME_VOICE_CONTEXT_MAX_UTF8_BYTES = 8_000;
 const legacyVoiceSessionByClient = new Map<string, { voiceSessionId: string; expiresAt: number }>();
+
+type RealtimeVoiceInitialItem = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+export function boundRealtimeVoiceInitialItems(
+  items: readonly RealtimeVoiceInitialItem[],
+): RealtimeVoiceInitialItem[] {
+  // Codex app-server rejects oversized startup context. A UTF-8 byte ceiling is
+  // conservative across tokenizers while preserving the newest conversation turns.
+  let remainingBytes = REALTIME_VOICE_CONTEXT_MAX_UTF8_BYTES;
+  const newestFirst: RealtimeVoiceInitialItem[] = [];
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (!item) {
+      continue;
+    }
+    const itemBytes = Buffer.byteLength(item.text, "utf8");
+    if (itemBytes > remainingBytes) {
+      break;
+    }
+    newestFirst.push(item);
+    remainingBytes -= itemBytes;
+  }
+  return newestFirst.toReversed();
+}
 
 function legacyVoiceBindingKey(connId: string, sessionKey: string): string {
   return `${connId}\0${sessionKey}`;
@@ -200,14 +232,36 @@ export const talkClientHandlers: GatewayRequestHandlers = {
       const { agentId, requestedSessionKey } = realtimeContext;
       const sessionKey = requestedSessionKey ?? buildAgentMainSessionKey({ agentId });
       if (resolution.provider.createBrowserSession && transport !== "gateway-relay") {
+        const agentSessionId = await ensureClientVoiceAgentSessionEntry({ agentId, sessionKey });
+        const initialItems = boundRealtimeVoiceInitialItems(
+          readSessionPreviewItemsFromTranscript(
+            {
+              agentId,
+              sessionId: agentSessionId,
+              sessionKey,
+            },
+            REALTIME_VOICE_CONTEXT_MAX_ITEMS,
+            REALTIME_VOICE_CONTEXT_MAX_ITEM_CHARS,
+          ).filter(
+            (
+              item,
+            ): item is {
+              role: "user" | "assistant";
+              text: string;
+            } => item.role === "user" || item.role === "assistant",
+          ),
+        );
         const tools = [REALTIME_VOICE_AGENT_CONSULT_TOOL, REALTIME_VOICE_AGENT_CONTROL_TOOL];
         if (wantsCameraFrames) {
           tools.push(REALTIME_VOICE_DESCRIBE_VIEW_TOOL);
         }
         const session = await resolution.provider.createBrowserSession({
           cfg: runtimeConfig,
+          agentId,
+          workspaceDir: resolveAgentWorkspaceDir(runtimeConfig, agentId),
           providerConfig: resolution.providerConfig,
           instructions: buildRealtimeInstructions(realtimeContext.instructions),
+          initialItems,
           tools,
           ...launchOptions,
         });
@@ -230,7 +284,6 @@ export const talkClientHandlers: GatewayRequestHandlers = {
           }).catch((error: unknown) =>
             context.logGateway.warn(`talk voice session recovery failed: ${formatForLog(error)}`),
           );
-          await ensureClientVoiceAgentSessionEntry({ agentId, sessionKey });
           const voiceSessionId = createOrResumeClientVoiceSession({
             agentId,
             sessionKey,

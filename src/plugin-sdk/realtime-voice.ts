@@ -9,6 +9,7 @@ export type {
   RealtimeVoiceBridgeCallbacks,
   RealtimeVoiceBridgeEvent,
   RealtimeVoiceBrowserSession,
+  RealtimeVoiceBrowserSessionBroker,
   RealtimeVoiceBrowserSessionCreateRequest,
   RealtimeVoiceBridgeCreateRequest,
   RealtimeVoiceProviderCapabilities,
@@ -159,6 +160,10 @@ export {
   listRealtimeVoiceProviders,
   normalizeRealtimeVoiceProviderId,
 } from "../talk/provider-registry.js";
+export {
+  getRealtimeVoiceBrowserSessionBroker,
+  registerRealtimeVoiceBrowserSessionBroker,
+} from "../talk/browser-session-broker-registry.js";
 export {
   resolveConfiguredRealtimeVoiceProvider,
   type ResolvedRealtimeVoiceProvider,

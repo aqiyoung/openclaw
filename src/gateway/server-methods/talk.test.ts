@@ -8,6 +8,7 @@ import { ErrorCodes } from "../../../packages/gateway-protocol/src/index.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import { normalizeResolvedSecretInputString } from "../../config/types.secrets.js";
 import { REALTIME_VOICE_DESCRIBE_VIEW_TOOL_NAME } from "../../talk/describe-view-tool.js";
+import { boundRealtimeVoiceInitialItems } from "./talk-client.js";
 import { buildTalkRealtimeConfig } from "./talk-shared.js";
 import { talkHandlers } from "./talk.js";
 
@@ -50,9 +51,15 @@ const mocks = vi.hoisted(() => ({
   resolveRealtimeBootstrapContextInstructions: vi.fn(
     async (): Promise<string | undefined> => undefined,
   ),
+  resolveAgentWorkspaceDir: vi.fn(() => "/tmp/openclaw-agent-workspace"),
+  readSessionPreviewItemsFromTranscript: vi.fn(() => [
+    { role: "user", text: "Earlier question" },
+    { role: "assistant", text: "Earlier answer" },
+    { role: "tool", text: "internal tool output" },
+  ]),
   closeStaleClientVoiceSessions: vi.fn(async () => 0),
   createOrResumeClientVoiceSession: vi.fn(() => "voice-test"),
-  ensureClientVoiceAgentSessionEntry: vi.fn(async () => undefined),
+  ensureClientVoiceAgentSessionEntry: vi.fn(async () => "session-main"),
   assertClientVoiceSessionOpen: vi.fn(),
   registerClientVoiceConsultRun: vi.fn(),
   resolveOpenClientVoiceSessionId: vi.fn(),
@@ -96,6 +103,38 @@ vi.mock("../../talk/agent-run-control.js", () => ({
 vi.mock("../../agents/realtime-bootstrap-context.js", () => ({
   resolveRealtimeBootstrapContextInstructions: mocks.resolveRealtimeBootstrapContextInstructions,
 }));
+
+vi.mock("../../agents/agent-scope.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../agents/agent-scope.js")>();
+  return {
+    ...actual,
+    resolveAgentWorkspaceDir: mocks.resolveAgentWorkspaceDir,
+  };
+});
+
+vi.mock("../session-transcript-readers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../session-transcript-readers.js")>();
+  return {
+    ...actual,
+    readSessionPreviewItemsFromTranscript: mocks.readSessionPreviewItemsFromTranscript,
+  };
+});
+
+describe("boundRealtimeVoiceInitialItems", () => {
+  it("keeps the newest transcript items within the Codex startup byte budget", () => {
+    const items = Array.from({ length: 4 }, (_, index) => ({
+      role: index % 2 === 0 ? ("user" as const) : ("assistant" as const),
+      text: index === 0 ? "0:old small item" : `${index}:${"🙂".repeat(799)}`,
+    }));
+
+    const bounded = boundRealtimeVoiceInitialItems(items);
+
+    expect(bounded.map((item) => item.text.slice(0, 2))).toEqual(["2:", "3:"]);
+    expect(
+      bounded.reduce((total, item) => total + Buffer.byteLength(item.text, "utf8"), 0),
+    ).toBeLessThanOrEqual(8_000);
+  });
+});
 
 vi.mock("../../talk/client-voice-session.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../talk/client-voice-session.js")>();
@@ -2957,12 +2996,18 @@ describe("talk.client.create handler", () => {
     });
     const createInput = mockCallArg(createBrowserSession) as Record<string, unknown>;
     expectRecordFields(createInput, {
+      agentId: "main",
+      workspaceDir: "/tmp/openclaw-agent-workspace",
       model: "gpt-realtime",
       voice: "alloy",
       vadThreshold: 0.45,
       silenceDurationMs: 650,
       prefixPaddingMs: 250,
       reasoningEffort: "low",
+      initialItems: [
+        { role: "user", text: "Earlier question" },
+        { role: "assistant", text: "Earlier answer" },
+      ],
     });
     expect(createInput.instructions).toContain("Additional realtime instructions:\nSpeak warmly.");
     expect(createInput.instructions).toContain("Bounded profile context.");
@@ -2978,6 +3023,15 @@ describe("talk.client.create handler", () => {
       agentId: "main",
       sessionKey: "main",
     });
+    expect(mocks.readSessionPreviewItemsFromTranscript).toHaveBeenCalledWith(
+      {
+        agentId: "main",
+        sessionId: "session-main",
+        sessionKey: "main",
+      },
+      16,
+      800,
+    );
     expect(mocks.createOrResumeClientVoiceSession).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "openai" }),
     );
