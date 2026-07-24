@@ -12,6 +12,7 @@ import {
 import type { ChannelPlugin } from "../runtime-api.js";
 import { BuzzConfigSchema } from "./config-schema.js";
 import { buzzOutboundAdapter, startBuzzGatewayAccount } from "./gateway.js";
+import { discoverBuzzRooms } from "./room-discovery.js";
 import { collectRuntimeConfigAssignments, secretTargetRegistryEntries } from "./secret-contract.js";
 import {
   buildBuzzTarget,
@@ -118,22 +119,38 @@ export const buzzPlugin: ChannelPlugin<ResolvedBuzzAccount> = createChatChannelP
         };
       },
     },
-    status: createComputedAccountStatusAdapter<ResolvedBuzzAccount>({
-      defaultRuntime: createDefaultChannelRuntimeState("default"),
-      buildChannelSummary: ({ snapshot }) => ({
-        ok: snapshot.configured,
-        label: snapshot.configured ? "configured" : "missing config",
-        detail: snapshot.baseUrl ?? "",
+    status: {
+      ...createComputedAccountStatusAdapter<ResolvedBuzzAccount>({
+        defaultRuntime: createDefaultChannelRuntimeState("default"),
+        buildChannelSummary: ({ snapshot }) => ({
+          ok: snapshot.configured,
+          label: snapshot.configured ? "configured" : "missing config",
+          detail: snapshot.baseUrl ?? "",
+        }),
+        resolveAccountSnapshot: ({ account }) => ({
+          accountId: account.accountId,
+          name: account.name,
+          enabled: account.enabled,
+          configured: account.configured,
+          baseUrl: account.relayUrl,
+          publicKey: account.publicKey,
+        }),
       }),
-      resolveAccountSnapshot: ({ account }) => ({
-        accountId: account.accountId,
-        name: account.name,
-        enabled: account.enabled,
-        configured: account.configured,
-        baseUrl: account.relayUrl,
-        publicKey: account.publicKey,
-      }),
-    }),
+      probeAccount: async ({ account, timeoutMs }) => {
+        const rooms = await discoverBuzzRooms({
+          relayUrl: account.relayUrl,
+          privateKey: account.privateKey,
+          authTag: account.authTag,
+          timeoutMs,
+        });
+        return {
+          ok: true,
+          publicKey: account.publicKey,
+          roomCount: rooms.length,
+          rooms: rooms.map((room) => ({ id: room.id, name: room.name })),
+        };
+      },
+    },
     gateway: {
       startAccount: startBuzzGatewayAccount,
     },

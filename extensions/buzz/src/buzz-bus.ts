@@ -1,16 +1,9 @@
-import {
-  Relay,
-  finalizeEvent,
-  type Event,
-  type EventTemplate,
-  type VerifiedEvent,
-} from "nostr-tools";
+import { Relay, finalizeEvent, type Event } from "nostr-tools";
 import { createChannelReplayGuard } from "openclaw/plugin-sdk/persistent-dedupe";
+import { authenticateBuzzRelay, createBuzzAuthSigner, parseBuzzAuthTag } from "./relay-auth.js";
 import { decodeBuzzPrivateKey, resolveBuzzPublicKey } from "./types.js";
 
 const MESSAGE_KIND = 9;
-const AUTH_CHALLENGE_TIMEOUT_MS = 20_000;
-const AUTH_CHALLENGE_POLL_MS = 25;
 const REPLAY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const REPLAY_MAX_ENTRIES = 10_000;
 const REPLAY_STATE_MAX_ENTRIES = 50_000;
@@ -70,21 +63,7 @@ export function parseBuzzMessageEvent(event: Event): BuzzInboundMessage | null {
   };
 }
 
-export function parseBuzzAuthTag(raw: string): string[] | undefined {
-  if (!raw.trim()) {
-    return undefined;
-  }
-  const parsed: unknown = JSON.parse(raw);
-  if (
-    !Array.isArray(parsed) ||
-    parsed.length !== 4 ||
-    parsed[0] !== "auth" ||
-    parsed.some((value) => typeof value !== "string")
-  ) {
-    throw new Error('Buzz authTag must be ["auth","<pubkey>","<conditions>","<signature>"]');
-  }
-  return parsed;
-}
+export { parseBuzzAuthTag };
 
 export function buildBuzzMessageTags(params: {
   channelId: string;
@@ -100,35 +79,6 @@ export function buildBuzzMessageTags(params: {
     tags.push(["e", parentId, "", "reply"]);
   }
   return tags;
-}
-
-async function authenticateBuzzRelay(params: {
-  relay: Relay;
-  signAuth: (template: EventTemplate) => Promise<VerifiedEvent>;
-  signal?: AbortSignal;
-}): Promise<void> {
-  const deadline = Date.now() + AUTH_CHALLENGE_TIMEOUT_MS;
-  while (true) {
-    params.signal?.throwIfAborted();
-    try {
-      await params.relay.auth(params.signAuth);
-      return;
-    } catch (error) {
-      const awaitingChallenge =
-        error instanceof Error && error.message === "can't perform auth, no challenge was received";
-      if (!awaitingChallenge) {
-        throw error;
-      }
-      if (Date.now() >= deadline) {
-        throw new Error("Timed out waiting for Buzz NIP-42 authentication challenge", {
-          cause: error,
-        });
-      }
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, AUTH_CHALLENGE_POLL_MS);
-      });
-    }
-  }
 }
 
 export async function startBuzzBus(options: {
@@ -163,14 +113,7 @@ export async function startBuzzBus(options: {
     buildReplayKey: (event) => event.id,
     namespace: () => options.accountId,
   });
-  const signAuth = async (template: EventTemplate) =>
-    finalizeEvent(
-      {
-        ...template,
-        tags: authTag ? [...template.tags, authTag] : template.tags,
-      },
-      secretKey,
-    );
+  const signAuth = createBuzzAuthSigner({ secretKey, authTag });
   let subscriptions: Array<ReturnType<Relay["subscribe"]>> = [];
   const bus: BuzzBus = {
     publicKey,
