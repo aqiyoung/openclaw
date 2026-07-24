@@ -1927,7 +1927,7 @@ export async function runMessageAction(
         input.conversationReadOrigin,
       ),
     });
-  if (!delegatesActionToGateway) {
+  if (!delegatesActionToGateway || dryRun) {
     const authorization = input.messageActionAuthorization;
     params = prepareExternalMessageActionTargetForResolution({
       channel,
