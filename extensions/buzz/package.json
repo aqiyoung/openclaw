@@ -25,6 +25,7 @@
   },
   "openclaw": {
     "extensions": ["./index.ts"],
+    "setupEntry": "./setup-entry.ts",
     "channel": {
       "id": "buzz",
       "configuredState": {
@@ -37,7 +38,14 @@
       "docsPath": "/channels/buzz",
       "docsLabel": "buzz",
       "blurb": "Self-hosted human and agent team rooms over NIP-29.",
-      "order": 56
+      "order": 56,
+      "setup": {
+        "fields": [
+          { "key": "relayUrl", "kind": "string", "cli": { "flags": "--relay-url <url>", "description": "Buzz relay WebSocket URL" } },
+          { "key": "privateKey", "kind": "string", "sensitive": true, "cli": { "flags": "--private-key <key>", "description": "Buzz bot Nostr private key" } },
+          { "key": "useEnv", "kind": "boolean", "cli": { "flags": "--use-env", "description": "Use BUZZ_PRIVATE_KEY with the supplied relay URL" } }
+        ]
+      }
     },
     "install": {
       "npmSpec": "@openclaw/buzz",
