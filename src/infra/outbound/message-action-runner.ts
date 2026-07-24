@@ -27,7 +27,11 @@ import {
   type ConversationReadInvocationOrigin,
 } from "../../channels/plugins/conversation-read-origin.js";
 import { getChannelPlugin } from "../../channels/plugins/index.js";
-import { dispatchChannelMessageAction } from "../../channels/plugins/message-action-dispatch.js";
+import {
+  dispatchChannelMessageAction,
+  prepareExternalMessageActionTargetForResolution,
+  shouldDeferExternalMessageActionTargetResolution,
+} from "../../channels/plugins/message-action-dispatch.js";
 import type {
   ChannelId,
   ChannelMessageActionName,
@@ -1908,6 +1912,39 @@ export async function runMessageAction(
     params.accountId = accountId;
   }
   const dryRun = Boolean(input.dryRun ?? readBooleanParam(params, "dryRun"));
+  const delegatesActionToGateway =
+    Boolean(input.gateway) &&
+    channelPlugin?.actions?.resolveExecutionMode?.({ action }) === "gateway";
+  const defersExternalTargetResolution =
+    delegatesActionToGateway &&
+    shouldDeferExternalMessageActionTargetResolution({
+      channel,
+      action,
+      cfg,
+      params,
+      accountId: accountId ?? undefined,
+      conversationReadOrigin: normalizeConversationReadInvocationOrigin(
+        input.conversationReadOrigin,
+      ),
+    });
+  if (!delegatesActionToGateway) {
+    const authorization = input.messageActionAuthorization;
+    params = prepareExternalMessageActionTargetForResolution({
+      channel,
+      action,
+      cfg,
+      params,
+      accountId: accountId ?? undefined,
+      requesterAccountId:
+        authorization !== undefined
+          ? authorization.requesterAccountId
+          : (input.requesterAccountId ?? undefined),
+      conversationReadOrigin: normalizeConversationReadInvocationOrigin(
+        input.conversationReadOrigin,
+      ),
+      toolContext: authorization !== undefined ? authorization.toolContext : input.toolContext,
+    });
+  }
   const normalizationPolicy = resolveAttachmentMediaPolicy({
     sandboxRoot: input.sandboxRoot,
     mediaLocalRoots: getAgentScopedMediaLocalRoots(cfg, resolvedAgentId),
@@ -1977,13 +2014,15 @@ export async function runMessageAction(
     await hydrateActionAttachmentParams();
   }
 
-  const resolvedTarget = await resolveActionTarget({
-    cfg,
-    channel,
-    action,
-    args: params,
-    accountId,
-  });
+  const resolvedTarget = defersExternalTargetResolution
+    ? undefined
+    : await resolveActionTarget({
+        cfg,
+        channel,
+        action,
+        args: params,
+        accountId,
+      });
 
   enforceCrossContextPolicy({
     channel,
