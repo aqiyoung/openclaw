@@ -44,10 +44,10 @@ export const buzzPlugin = createChatChannelPlugin<ResolvedBuzzAccount, BuzzProbe
     meta: {
       id: "buzz",
       label: "Buzz",
-      selectionLabel: "Buzz (NIP-29)",
+      selectionLabel: "Buzz",
       docsPath: "/channels/buzz",
       docsLabel: "buzz",
-      blurb: "Self-hosted human and agent team rooms over NIP-29.",
+      blurb: "Connect OpenClaw agents to Buzz team rooms.",
       order: 56,
     },
     capabilities: {

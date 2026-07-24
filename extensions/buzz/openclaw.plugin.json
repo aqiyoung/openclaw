@@ -1,7 +1,7 @@
 {
   "id": "buzz",
   "name": "Buzz",
-  "description": "OpenClaw Buzz channel plugin for NIP-29 group chat.",
+  "description": "Connect OpenClaw agents to Buzz rooms.",
   "activation": {
     "onStartup": false
   },

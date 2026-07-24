@@ -1,29 +1,55 @@
 ---
-summary: "Buzz group rooms over NIP-29"
+summary: "Connect OpenClaw agents to Buzz rooms"
 read_when:
-  - You want OpenClaw in a hosted Buzz workspace
-  - You want OpenClaw in a self-hosted Buzz workspace
-  - You are configuring NIP-29 group messaging
+  - You want people to reach an OpenClaw agent from Buzz
+  - You are setting up a Buzz bot identity and room access
+  - You are troubleshooting a Buzz connection
 title: "Buzz"
 ---
 
-Buzz is an official channel plugin (`@openclaw/buzz`) for NIP-29 group rooms. OpenClaw signs in to one Buzz relay with a dedicated bot identity, listens only to configured room UUIDs, and replies in NIP-10 threads.
+Buzz is an official channel plugin that connects OpenClaw agents to team rooms
+in a hosted or self-hosted Buzz workspace.
 
-## Support status
+## What it does
 
-| Supported                                                         | Not supported yet                                           |
-| ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| NIP-42 relay authentication                                       | Direct messages                                             |
-| NIP-29 `kind:9` text messages in configured rooms                 | Media and file upload or download                           |
-| NIP-10 replies and threads                                        | Native NIP-25 `kind:7` reactions, including emoji reactions |
-| Pubkey and text mention detection                                 | Creating or administering rooms                             |
-| Sender allowlists and per-room mention gating                     | Automatic membership or role enrollment                     |
-| Guided setup with authenticated room discovery                    | Guided key rotation                                         |
-| Reconnect with a 24-hour lookback and durable event deduplication |                                                             |
+- Receives text messages from approved Buzz rooms
+- Replies in the same room and thread
+- Sends text messages through OpenClaw's built-in `message` tool
+- Supports mention requirements and sender allowlists
+- Discovers rooms after the bot has been approved
+- Reconnects and avoids processing the same message twice
 
-Buzz itself supports more features than this OpenClaw plugin. The table describes the current plugin, not the Buzz platform.
+The current plugin supports group rooms and text messages. Direct messages,
+media and files, native reactions, room creation, and automatic admin approval
+are not supported yet.
 
-A plain emoji sent as `kind:9` message text remains ordinary text. It is not a native reaction.
+## Buzz identity and room model
+
+Buzz uses Nostr keypairs for identity:
+
+- The **private key** lets OpenClaw authenticate and sign messages. It stays with
+  the Gateway.
+- The **public key** identifies the bot. Buzz owners use it for relay approval,
+  room admins use it to grant the **Bot** role, and OpenClaw can use public keys
+  in sender allowlists.
+
+The relay URL points to one Buzz workspace. Each room has a UUID, and OpenClaw
+treats each configured UUID as a separate group conversation. One Gateway and
+bot identity can serve many rooms; you do not need a Gateway per agent or room.
+
+## Before you start
+
+You need:
+
+1. The `wss://` relay URL for your Buzz workspace.
+2. A Buzz owner or admin who can approve a bot identity.
+3. At least one room where the bot can be added with the **Bot** role.
+
+<Warning>
+Never give OpenClaw a human Buzz owner's private key. OpenClaw creates or uses a
+dedicated bot identity and displays the public key that an admin needs for
+approval.
+</Warning>
 
 ## Install
 
@@ -31,67 +57,50 @@ A plain emoji sent as `kind:9` message text remains ordinary text. It is not a n
 openclaw plugins install @openclaw/buzz
 ```
 
-Restart the Gateway after installing or enabling the plugin.
-
-## Choose a relay
-
-OpenClaw can connect to hosted or self-hosted Buzz deployments:
-
-| Deployment  | What you need                                                                                                                                                                                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hosted      | Ask the operator for the workspace's `wss://` relay URL and whether relay membership or a NIP-OA authorization tag is required. A relay owner or admin performs enrollment through the hosted membership or invitation path; hosted users generally do not have `buzz-admin` access.  |
-| Self-hosted | Deploy Buzz from the [upstream Buzz repository](https://github.com/block/buzz), expose its WebSocket relay, and use `wss://` in production. `ws://` is appropriate only for a trusted local development relay. The relay owner or admin can use the deployment's `buzz-admin` binary. |
-
-A relay URL identifies one Buzz community. Connecting to the relay does not make the bot a member of any room.
+Restart the Gateway after installing or updating the plugin.
 
 ## Guided setup
 
-Run the channel setup flow:
+Run:
 
 ```bash
 openclaw channels add --channel buzz
 ```
 
-The flow collects the hosted or self-hosted relay URL and offers two bot-key paths:
+The setup flow walks through the following steps:
 
-- Generate a dedicated Buzz identity (the default). OpenClaw writes the generated key as plaintext at `channels.buzz.privateKey`, following the current OpenClaw credential convention.
-- Use an existing dedicated bot key as plaintext or an existing `env`, `file`, or `exec` SecretRef.
+1. Enter the Buzz relay URL.
+2. Generate a dedicated bot identity, or choose an existing bot identity.
+3. Give the displayed public key to a Buzz admin.
+4. Ask the admin to approve the bot for the relay and add it to each room with
+   the **Bot** role.
+5. Rerun setup after approval if the first run paused.
+6. Select discovered rooms, or enter a room UUID manually.
+7. Choose who can activate the agent and whether a mention is required.
+8. Choose a default room and optionally send a test message.
 
-This does not introduce a new credential store or SecretRef provider. See [Secrets management](/gateway/secrets) if you want to configure a non-plaintext provider before setup.
+If admin approval is not ready, OpenClaw saves the relay and bot identity with
+Buzz disabled. The next setup run offers to reuse that identity, so you do not
+need to create another bot.
 
-After the bot has the external approvals described below, setup authenticates with NIP-42, discovers rooms where the bot is a member, and prompts for rooms, access policy, a default outbound target, and an optional post-write test message. You can enter a room UUID manually when discovery is unavailable.
+### Bot approval
 
-Buzz identities are Nostr keypairs. Always use a dedicated identity for OpenClaw.
+Buzz has two approval steps:
 
-<Warning>
-Never put a human Buzz owner's private key in OpenClaw. Give the bot's public key to operators for approval; keep both the human and bot private keys out of messages and tickets.
-</Warning>
+- The bot must be allowed to connect to the workspace relay when the workspace
+  restricts relay membership.
+- The bot must be added to every target room with the **Bot** role.
 
-`buzz-admin generate-key` remains a manual bootstrap or recovery option for self-hosted operators:
+OpenClaw cannot grant either permission. It gives the admin only the bot's public
+key and never asks for the admin's private key.
 
-```bash
-buzz-admin generate-key
-```
-
-Record the printed public key for enrollment, then choose the existing-key path in guided setup or configure the key manually. Hosted users generally do not have this command; ask the hosted operator about its identity workflow instead.
-
-## Enroll the bot
-
-Buzz has two separate membership layers.
-
-### Add relay membership when required
-
-Relay membership requires a relay owner or admin action. Hosted deployments use their operator-provided invitation flow. On a self-hosted relay with membership enforcement enabled, the operator can use `buzz-admin`:
+For self-hosted Buzz, an operator can add relay membership from the relay host:
 
 ```bash
 buzz-admin add-member --pubkey <BOT_PUBLIC_KEY> --role member
 ```
 
-The relay operator runs this command on the relay host. Separately, the current Buzz relay accepts a privileged owner/admin-signed NIP-43 `kind:9030` add-member command from an authorized protocol client. Hosted users should ask their operator to use the hosted membership or invitation path instead. None of these paths requires, or should ever request, the human owner's private key from OpenClaw.
-
-### Add the bot to each room
-
-An authorized existing room member must add the bot public key with the Buzz-specific `bot` role. Buzz's current role model and CLI both include `bot`; this publishes a NIP-29 `kind:9000` add-user event with `role=bot`. A private room requires the actor to already be a member:
+An authorized room member can then add the bot to a room:
 
 ```bash
 buzz channels add-member \
@@ -100,23 +109,85 @@ buzz channels add-member \
   --role bot
 ```
 
-Run this through an already authorized Buzz identity. Do not copy that human identity's private key into the OpenClaw configuration.
+Hosted Buzz workspaces may provide their own invitation or approval flow. Ask
+the workspace operator which path to use.
 
-Relay membership alone is insufficient for authorized OpenClaw participation. OpenClaw creates subscriptions for configured UUIDs without prevalidating room membership, but you should enroll the bot in every configured room before relying on received messages or sending a test message.
+## Agent tools and messaging
 
-## Find room UUIDs
+The Buzz plugin does not add a separate Buzz-only agent tool. It registers Buzz
+as a destination for OpenClaw's built-in `message` tool and normal reply
+delivery.
 
-The current Buzz relay supports bot-centric room discovery in two steps: query relay-signed `kind:39002` membership events filtered by the bot's `#p`, then fetch matching relay-signed `kind:39000` room metadata by `#d`. After enrolling the bot, run the current Buzz CLI with the bot identity and copy the `channel_id` value:
+Agents can:
+
+- Reply to an incoming Buzz message in its room or thread
+- Send text to an approved Buzz room
+- Use the configured default room when a workflow does not specify a target
+- Use the routed agent's normal skills, memory, and allowed tools
+
+Humans and automations can test the same outbound path from the CLI:
 
 ```bash
-buzz channels list --member
+openclaw message send \
+  --channel buzz \
+  --target buzz:<ROOM_UUID> \
+  --message "Hello from OpenClaw"
 ```
 
-This proves that the bot is a room member; it does not prove the membership has the `bot` role. Confirm that role with the room administrator. Guided setup and the channel probe perform the same authenticated discovery. If discovery is unavailable, ask a room administrator for the UUID and enter it manually. Do not substitute the human-readable room name; OpenClaw targets require a UUID.
+### Route rooms to different agents
 
-## Configure
+Standard OpenClaw bindings can send each Buzz room to a different agent,
+workspace, or model while one Gateway and Buzz bot serve all of them:
 
-Configure the relay, dedicated bot key, and every approved room UUID:
+```json5
+{
+  agents: {
+    list: [
+      { id: "support", workspace: "~/.openclaw/workspace-support" },
+      { id: "engineering", workspace: "~/.openclaw/workspace-engineering" },
+    ],
+  },
+  bindings: [
+    {
+      agentId: "support",
+      match: {
+        channel: "buzz",
+        peer: { kind: "group", id: "buzz:<SUPPORT_ROOM_UUID>" },
+      },
+    },
+    {
+      agentId: "engineering",
+      match: {
+        channel: "buzz",
+        peer: { kind: "group", id: "buzz:<ENGINEERING_ROOM_UUID>" },
+      },
+    },
+  ],
+}
+```
+
+Without a room-specific binding, normal OpenClaw routing selects the default
+agent. See [Channel routing](/channels/channel-routing) for matching precedence.
+
+## Access control
+
+Guided setup configures two independent controls:
+
+- **Require mentions**: the agent responds only when the bot is mentioned.
+- **Sender access**: allow every member of an approved room, disable the room,
+  or allow only selected Buzz public keys.
+
+The recommended default is to require a mention and use a sender allowlist.
+Buzz room membership still applies in addition to these OpenClaw controls.
+
+These controls decide who can start an agent run; they do not limit what the
+routed agent can do after a message is accepted. Treat room messages as
+untrusted input, and configure that agent's [sandbox and tool policy](/gateway/sandbox-vs-tool-policy-vs-elevated)
+for the room's trust level.
+
+## Manual configuration
+
+Guided setup is recommended. The equivalent configuration looks like:
 
 ```json5
 {
@@ -125,84 +196,65 @@ Configure the relay, dedicated bot key, and every approved room UUID:
       relayUrl: "wss://buzz.example.com",
       privateKey: "nsec1...",
       groupPolicy: "allowlist",
-      groupAllowFrom: ["<64-character-hex-pubkey>"],
+      groupAllowFrom: ["<64_CHARACTER_HEX_SENDER_PUBLIC_KEY>"],
       groups: {
         "7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c": {
           requireMention: true,
         },
       },
+      defaultTo: "7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c",
     },
   },
 }
 ```
 
-`privateKey` accepts an `nsec` or 64-character hex private key. The generated-key setup path writes this field as plaintext, following the current OpenClaw convention; that leaves the key readable on disk. The existing-key path also accepts plaintext or existing `env`, `file`, and `exec` SecretRefs:
+Room targets are UUIDs. Use the room UUID shown during discovery or ask a room
+admin for it; a display name such as `general` is not a valid target.
 
-```json5
-{
-  channels: {
-    buzz: {
-      privateKey: { source: "env", provider: "default", id: "BUZZ_PRIVATE_KEY" },
-      // Or a configured file provider:
-      // privateKey: { source: "file", provider: "filemain", id: "/channels/buzz/privateKey" },
-      // Or a configured exec provider:
-      // privateKey: { source: "exec", provider: "vault", id: "channels/buzz/privateKey" },
-    },
-  },
-}
-```
+Guided setup accepts sender keys as `npub` or 64-character hexadecimal values
+and stores normalized hexadecimal keys. For manual configuration,
+`groupAllowFrom` entries must use the 64-character hexadecimal form.
 
-Define file and exec providers under `secrets.providers`; see [Secrets management](/gateway/secrets). The default account can also read raw values directly from the Gateway environment:
+### Bot key storage
+
+The default guided path generates a bot private key and stores it in
+`channels.buzz.privateKey`, following OpenClaw's current plaintext config
+convention.
+
+For an existing key, setup can use plaintext or an existing `env`, `file`, or
+`exec` SecretRef. See [Secrets management](/gateway/secrets) for provider setup.
+The default account can also read:
 
 ```bash
 export BUZZ_RELAY_URL="wss://buzz.example.com"
 export BUZZ_PRIVATE_KEY="nsec1..."
 ```
 
-If the Buzz workspace uses NIP-OA delegated authorization, set `authTag` or `BUZZ_AUTH_TAG` to the JSON tag issued for this bot identity. `authTag` accepts the same plaintext and SecretRef forms as `privateKey`:
+If a hosted workspace operator gives you an identity authorization value, set
+`channels.buzz.authTag` or `BUZZ_AUTH_TAG`. It can use the same plaintext or
+SecretRef forms as the private key. This value is tied to the bot identity, so
+request a new one when rotating keys.
 
-```json
-["auth", "<owner-pubkey>", "kind=9", "<signature>"]
-```
-
-## Access control
-
-Buzz is group-only. Each enabled entry under `groups` subscribes OpenClaw to one channel UUID.
-
-- `requireMention` defaults to `true`.
-- `groupPolicy` defaults to `"allowlist"`.
-- `groupPolicy: "open"` allows any authenticated sender in a configured room.
-- `groupPolicy: "allowlist"` limits activation to pubkeys in `groupAllowFrom`.
-- Set a group's `enabled` field to `false` to keep it configured but unsubscribed.
-
-Mentions can be a Nostr `p` tag naming OpenClaw's pubkey or a configured text mention.
-
-`groupAllowFrom` is an OpenClaw ingress policy in addition to Buzz room membership. A sender must pass both layers before their message reaches the agent.
-
-## Targets and threads
-
-Outbound targets use a Buzz channel UUID, with an optional `buzz:` prefix:
+Self-hosted operators can generate a key manually for recovery or advanced
+setup:
 
 ```bash
-openclaw message send \
-  --channel buzz \
-  --target buzz:7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c \
-  --message "Hello from OpenClaw"
+buzz-admin generate-key
 ```
 
-Direct replies use one NIP-10 `reply` event tag. Nested replies include both the thread `root` and immediate `reply` parent.
+## Verify the connection
 
-## Test the connection
-
-Start with runtime status:
+Run the authenticated channel probe:
 
 ```bash
 openclaw channels status --channel buzz --probe
 ```
 
-The Buzz account probe opens an authenticated WebSocket/NIP-42 session and performs membership discovery. A successful probe proves relay authentication and reports the rooms whose membership events include the bot. It does not prove that the bot has the Buzz `bot` role; confirm that separately with a room administrator. An HTTP health response only proves that a service answered and is not an authorization check.
+A successful probe confirms that the bot can authenticate and that Buzz reports
+the selected room membership. It does not replace the admin's confirmation that
+the identity has the **Bot** role.
 
-Send a real room message for a live outbound check:
+Then send a real message:
 
 ```bash
 openclaw message send \
@@ -211,51 +263,47 @@ openclaw message send \
   --message "OpenClaw Buzz test"
 ```
 
-Complete relay enrollment when required and room enrollment before running the test. A successful send proves that the authenticated relay accepted the outbound `kind:9` publish and that its current room-membership check passed. It does not prove the `bot` role, inbound routing, or agent replies. Confirm the role with a room administrator and observe the message in Buzz. For an end-to-end check, have a pubkey listed in `groupAllowFrom` mention the bot in the room and confirm OpenClaw replies in the thread.
+For a full round trip, have an allowed Buzz user mention the bot and confirm that
+OpenClaw replies in the room.
 
-## Rotate the bot key
+## Rotate the bot identity
 
-Rotation is non-atomic and changes the Buzz identity, so the new public key must be enrolled again before cutover.
+Bot identity rotation requires admin approval for the new public key:
 
-1. Generate a new Gateway-owned keypair dedicated to OpenClaw.
-2. Add the new public key to the relay when relay membership is enforced.
-3. Add the new public key to every configured room with `--role bot`.
-4. Replace `privateKey` and any identity-bound `authTag`, then restart or reload the Gateway.
-5. Test an outbound message and an inbound mention.
-6. Remove the old public key from each room:
+1. Generate a new dedicated bot identity.
+2. Have an admin approve its public key for the relay and every configured room.
+3. Replace the configured private key and restart or reload the Gateway.
+4. Test outbound and inbound messages.
+5. Remove the old public key from the rooms and relay.
 
-   ```bash
-   buzz channels remove-member --channel <ROOM_UUID> --pubkey <OLD_PUBLIC_KEY>
-   ```
+Complete approval before switching keys to minimize downtime. Rotation is not
+automatic today.
 
-7. Have the relay operator remove the old relay membership:
+## Current limits and roadmap
 
-   ```bash
-   buzz-admin remove-member --pubkey <OLD_PUBLIC_KEY>
-   ```
+These follow-up areas are planned but are not part of the current plugin:
 
-8. Remove or archive the old identity through the Buzz operator workflow when required.
-
-Enroll the new key before switching OpenClaw to minimize downtime. There is no atomic handoff. Guided rotation and automatic re-enrollment are not implemented.
-
-## Protocol follow-ups
-
-The unsupported surfaces map to existing Buzz protocol families, but the OpenClaw plugin does not implement them yet:
-
-- DMs: Buzz lifecycle kinds `41010`, `41011`, `41012`, and `41001`
-- Media and files: Blossom storage plus NIP-92 `imeta` metadata
-- Reactions: NIP-25 `kind:7`
-
-Adding those surfaces requires explicit plugin work; configuring the current group-text channel does not enable them.
+- Direct messages
+- Media and file upload or download
+- Native emoji reactions
+- Creating or administering rooms from OpenClaw
+- Automatic relay membership and room-role approval
+- Guided bot identity rotation
 
 ## Troubleshooting
 
-| Symptom                                                  | Check                                                                                                                                                              |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Buzz requires at least one channels.buzz.groups entry`  | Add at least one room UUID under `channels.buzz.groups`. Names such as `general` are not accepted.                                                                 |
-| `Buzz bus not running`                                   | The account has not connected yet or is reconnecting. Run `openclaw channels status --channel buzz` and inspect Gateway logs.                                      |
-| NIP-42 authentication timeout                            | Confirm `relayUrl` is the Buzz WebSocket endpoint and that the host is reachable. Use `wss://` outside local development.                                          |
-| Authentication rejected                                  | Check the dedicated bot key, relay membership, and any identity-bound NIP-OA `authTag`.                                                                            |
-| Message publish rejected                                 | Confirm the bot has relay membership when required and room membership with the `bot` role.                                                                        |
-| Connected but inbound messages do not activate the agent | Confirm the UUID is under `groups`, the sender pubkey passes `groupPolicy` and `groupAllowFrom`, and the message mentions the bot when `requireMention` is `true`. |
-| Test message sends but no agent reply appears            | The outbound test does not exercise inbound routing. Send an allowed inbound mention from another Buzz identity.                                                   |
+| Symptom                                      | What to check                                                                                                           |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| No rooms are discovered                      | Confirm the admin approved this exact bot public key. Enter a room UUID manually if needed.                             |
+| Authentication fails                         | Check the relay URL, bot private key, relay membership, and any authorization value supplied by the workspace operator. |
+| A message cannot be sent                     | Confirm the bot is a room member with the **Bot** role and that the UUID is configured.                                 |
+| The bot receives messages but does not reply | Check the sender allowlist and whether the room requires a mention.                                                     |
+| Setup says the Gateway is not running        | Start it with `openclaw gateway`, then run the probe and test message again.                                            |
+| Setup was paused                             | Finish admin approval, then rerun `openclaw channels add --channel buzz`; choose the saved identity.                    |
+
+## Related
+
+- [Channel overview](/channels)
+- [Channel access controls](/channels/groups)
+- [Secrets management](/gateway/secrets)
+- [Channel troubleshooting](/channels/troubleshooting)

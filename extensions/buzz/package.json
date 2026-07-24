@@ -1,7 +1,7 @@
 {
   "name": "@openclaw/buzz",
   "version": "2026.7.2",
-  "description": "OpenClaw Buzz channel plugin",
+  "description": "Connect OpenClaw agents to Buzz rooms",
   "repository": {
     "type": "git",
     "url": "https://github.com/openclaw/openclaw"
@@ -34,10 +34,10 @@
         }
       },
       "label": "Buzz",
-      "selectionLabel": "Buzz (NIP-29)",
+      "selectionLabel": "Buzz",
       "docsPath": "/channels/buzz",
       "docsLabel": "buzz",
-      "blurb": "Self-hosted human and agent team rooms over NIP-29.",
+      "blurb": "Connect OpenClaw agents to Buzz team rooms.",
       "order": 56,
       "setup": {
         "fields": [
@@ -48,6 +48,7 @@
       }
     },
     "install": {
+      "clawhubSpec": "clawhub:@openclaw/buzz",
       "npmSpec": "@openclaw/buzz",
       "defaultChoice": "npm",
       "minHostVersion": ">=2026.7.2"

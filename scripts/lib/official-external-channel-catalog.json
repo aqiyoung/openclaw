@@ -554,21 +554,22 @@
     },
     {
       "name": "@openclaw/buzz",
-      "description": "OpenClaw Buzz channel plugin for NIP-29 group chat",
+      "description": "Connect OpenClaw agents to Buzz rooms",
       "source": "official",
       "kind": "channel",
       "openclaw": {
         "channel": {
           "id": "buzz",
           "label": "Buzz",
-          "selectionLabel": "Buzz (NIP-29)",
+          "selectionLabel": "Buzz",
           "docsPath": "/channels/buzz",
           "docsLabel": "buzz",
-          "blurb": "Self-hosted human and agent team rooms over NIP-29.",
+          "blurb": "Connect OpenClaw agents to Buzz team rooms.",
           "envVars": ["BUZZ_RELAY_URL", "BUZZ_PRIVATE_KEY", "BUZZ_AUTH_TAG"],
           "order": 56
         },
         "install": {
+          "clawhubSpec": "clawhub:@openclaw/buzz",
           "npmSpec": "@openclaw/buzz",
           "defaultChoice": "npm",
           "minHostVersion": ">=2026.7.2"
