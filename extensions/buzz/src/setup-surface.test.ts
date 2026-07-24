@@ -97,7 +97,6 @@ describe("Buzz guided setup", () => {
     expect(result.accountId).toBe("default");
     expect(result.cfg.channels?.buzz).toEqual({
       enabled: true,
-      authTag: AUTH_TAG,
       relayUrl: "wss://buzz.example.com",
       privateKey: expectedPrivateKey,
       groupPolicy: "allowlist",
@@ -111,8 +110,8 @@ describe("Buzz guided setup", () => {
     expect(discoverRooms).toHaveBeenCalledWith({
       relayUrl: "wss://buzz.example.com",
       privateKey: expectedPrivateKey,
-      authTag: AUTH_TAG,
     });
+    expect(result.cfg.channels?.buzz?.authTag).toBeUndefined();
     expect(
       vi
         .mocked(prompter.note)

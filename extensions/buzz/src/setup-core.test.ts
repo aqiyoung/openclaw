@@ -25,4 +25,25 @@ describe("buzzSetupAdapter", () => {
       relayUrl: "wss://buzz.example.com",
     });
   });
+
+  it("clears an identity-bound auth tag when changing the private key", () => {
+    const cfg = {
+      channels: {
+        buzz: {
+          relayUrl: "wss://buzz.example.com",
+          privateKey: "11".repeat(32),
+          authTag: '["auth","owner","kind=9","signature"]',
+        },
+      },
+    } as OpenClawConfig;
+
+    const result = buzzSetupAdapter.applyAccountConfig({
+      cfg,
+      accountId: "default",
+      input: { relayUrl: "wss://buzz.example.com", privateKey: "22".repeat(32) },
+    });
+
+    expect(result.channels?.buzz?.privateKey).toBe("22".repeat(32));
+    expect(result.channels?.buzz?.authTag).toBeUndefined();
+  });
 });

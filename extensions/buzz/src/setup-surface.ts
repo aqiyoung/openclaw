@@ -9,6 +9,7 @@ import {
   splitSetupEntries,
 } from "openclaw/plugin-sdk/setup";
 import { discoverBuzzRooms, type BuzzDiscoveredRoom } from "./room-discovery.js";
+import { isSameBuzzIdentity } from "./setup-core.js";
 import { verifyBuzzAfterSetup } from "./setup-verify.js";
 import { parseBuzzTarget } from "./target.js";
 import { decodeBuzzPrivateKey, resolveBuzzAccount, resolveBuzzPublicKey } from "./types.js";
@@ -96,7 +97,7 @@ async function promptPrivateKey(params: {
   if (identityMode === "generate") {
     const privateKey = nip19.nsecEncode(params.generate());
     return {
-      cfg: patchBuzzConfig(params.cfg, { enabled: true, privateKey }),
+      cfg: patchBuzzConfig(params.cfg, { enabled: true, privateKey, authTag: undefined }),
       resolvedPrivateKey: privateKey,
       generated: true,
     };
@@ -119,14 +120,27 @@ async function promptPrivateKey(params: {
     inputPrompt: "Buzz bot private key (nsec or 64-character hex)",
     preferredEnvVar: "BUZZ_PRIVATE_KEY",
     applyUseEnv: (cfg) => {
-      const { privateKey: _privateKey, ...buzz } = cfg.channels?.buzz ?? {};
+      const envPrivateKey = process.env.BUZZ_PRIVATE_KEY?.trim();
+      const keepAuthTag = isSameBuzzIdentity(current.privateKey, envPrivateKey);
+      const { privateKey: _privateKey, authTag, ...buzz } = cfg.channels?.buzz ?? {};
       return {
         ...cfg,
-        channels: { ...cfg.channels, buzz: { ...buzz, enabled: true } },
+        channels: {
+          ...cfg.channels,
+          buzz: {
+            ...buzz,
+            enabled: true,
+            ...(keepAuthTag && authTag !== undefined ? { authTag } : {}),
+          },
+        },
       } as OpenClawConfig;
     },
-    applySet: (cfg, value: SecretInput) =>
-      patchBuzzConfig(cfg, { enabled: true, privateKey: value }),
+    applySet: (cfg, value: SecretInput, resolvedValue) =>
+      patchBuzzConfig(cfg, {
+        enabled: true,
+        privateKey: value,
+        ...(isSameBuzzIdentity(current.privateKey, resolvedValue) ? {} : { authTag: undefined }),
+      }),
   });
   const resolvedPrivateKey =
     secretStep.resolvedValue ??
