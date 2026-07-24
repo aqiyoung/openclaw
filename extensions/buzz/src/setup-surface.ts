@@ -78,22 +78,45 @@ async function promptPrivateKey(params: {
   const hasExistingIdentity =
     hasConfiguredSecretInput(params.cfg.channels?.buzz?.privateKey, params.cfg.secrets?.defaults) ||
     Boolean(process.env.BUZZ_PRIVATE_KEY?.trim());
+  const current = resolveBuzzAccount({ cfg: params.cfg });
+  const identityOptions: Array<{
+    value: "reuse" | "generate" | "existing";
+    label: string;
+    hint: string;
+  }> = [
+    ...(hasExistingIdentity
+      ? [
+          {
+            value: "reuse" as const,
+            label: "Keep the current bot identity (recommended)",
+            hint: "Reuses the configured key without another credential prompt",
+          },
+        ]
+      : []),
+    {
+      value: "generate",
+      label: `Generate a new bot identity${hasExistingIdentity ? "" : " (recommended)"}`,
+      hint: "Stores a dedicated nsec in channels.buzz.privateKey",
+    },
+    {
+      value: "existing",
+      label: hasExistingIdentity ? "Use a different existing bot key" : "Use an existing bot key",
+      hint: "Advanced: plaintext or a standard env/file/exec SecretRef",
+    },
+  ];
   const identityMode = await params.prompter.select({
     message: "Choose the OpenClaw Buzz bot identity",
-    options: [
-      {
-        value: "generate",
-        label: "Generate a new bot identity (recommended)",
-        hint: "Stores a dedicated nsec in channels.buzz.privateKey",
-      },
-      {
-        value: "existing",
-        label: "Use an existing bot key",
-        hint: "Advanced: plaintext or a standard env/file/exec SecretRef",
-      },
-    ],
-    initialValue: hasExistingIdentity ? "existing" : "generate",
+    options: identityOptions,
+    initialValue: hasExistingIdentity ? "reuse" : "generate",
   });
+  if (identityMode === "reuse") {
+    const resolvedPrivateKey =
+      (resolvedConfiguredKey(params.cfg) ?? current.privateKey) || undefined;
+    if (resolvedPrivateKey) {
+      decodeBuzzPrivateKey(resolvedPrivateKey);
+    }
+    return { cfg: params.cfg, resolvedPrivateKey, generated: false };
+  }
   if (identityMode === "generate") {
     const privateKey = nip19.nsecEncode(params.generate());
     return {
@@ -103,16 +126,14 @@ async function promptPrivateKey(params: {
     };
   }
 
-  const current = resolveBuzzAccount({ cfg: params.cfg });
-  const currentConfigured = hasConfiguredSecretInput(params.cfg.channels?.buzz?.privateKey);
   const secretStep = await params.runSecretStep({
     cfg: params.cfg,
     prompter: params.prompter,
     providerHint: channel,
     credentialLabel: "Buzz bot private key",
     secretInputMode: params.secretInputMode,
-    accountConfigured: current.configured,
-    hasConfigToken: currentConfigured,
+    accountConfigured: false,
+    hasConfigToken: false,
     allowEnv: true,
     envValue: process.env.BUZZ_PRIVATE_KEY,
     envPrompt: "Use BUZZ_PRIVATE_KEY?",
@@ -202,11 +223,17 @@ export function createBuzzSetupWizard(
         (hasConfiguredSecretInput(buzzConfig?.privateKey, cfg.secrets?.defaults) ||
           process.env.BUZZ_PRIVATE_KEY?.trim()),
       );
+      const enabled = buzzConfig?.enabled !== false;
+      const status = !configured
+        ? "needs relay URL and bot identity"
+        : enabled
+          ? "configured"
+          : "configured but disabled";
       return {
         channel,
         configured,
-        statusLines: [`Buzz: ${configured ? "configured" : "needs relay URL and bot identity"}`],
-        selectionHint: configured ? "configured" : "needs relay + bot key",
+        statusLines: [`Buzz: ${status}`],
+        selectionHint: status,
       };
     },
     configure: async ({ cfg, prompter, options }) => {

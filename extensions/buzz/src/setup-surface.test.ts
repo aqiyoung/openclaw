@@ -178,6 +178,12 @@ describe("Buzz guided setup", () => {
   it("disables Buzz when setup pauses for external membership approval", async () => {
     const wizard = createBuzzSetupWizard({ generateSecretKey: () => GENERATED_KEY });
     const prompter = createPrompter();
+    vi.mocked(prompter.select).mockImplementation((async ({ message }) => {
+      if (message.includes("identity")) {
+        return "reuse";
+      }
+      throw new Error(`Unexpected select prompt: ${message}`);
+    }) as WizardPrompter["select"]);
     vi.mocked(prompter.confirm).mockImplementation(async ({ message }) => {
       if (message.includes("membership")) {
         return false;
@@ -205,11 +211,68 @@ describe("Buzz guided setup", () => {
     });
 
     expect(result.cfg.channels?.buzz?.enabled).toBe(false);
+    expect(result.cfg.channels?.buzz?.privateKey).toBe("11".repeat(32));
     expect(
       vi
         .mocked(prompter.select)
         .mock.calls.find(([prompt]) => prompt.message.includes("identity"))?.[0].initialValue,
-    ).toBe("existing");
+    ).toBe("reuse");
+  });
+
+  it("reports a paused identity as configured but disabled", async () => {
+    const wizard = createBuzzSetupWizard();
+
+    await expect(
+      wizard.getStatus({
+        cfg: {
+          channels: {
+            buzz: {
+              enabled: false,
+              relayUrl: "wss://buzz.example.com",
+              privateKey: "11".repeat(32),
+            },
+          },
+        } as OpenClawConfig,
+        accountOverrides: {},
+      }),
+    ).resolves.toEqual({
+      channel: "buzz",
+      configured: true,
+      statusLines: ["Buzz: configured but disabled"],
+      selectionHint: "configured but disabled",
+    });
+  });
+
+  it("reuses an existing identity without a second credential prompt", async () => {
+    const runSecretStep = vi.fn();
+    const wizard = createBuzzSetupWizard({ runSecretStep });
+    const prompter = createPrompter();
+    vi.mocked(prompter.select).mockImplementation((async ({ message }) => {
+      if (message.includes("identity")) {
+        return "reuse";
+      }
+      throw new Error(`Unexpected select prompt: ${message}`);
+    }) as WizardPrompter["select"]);
+    vi.mocked(prompter.confirm).mockResolvedValue(false);
+
+    const result = await wizard.configure({
+      cfg: {
+        channels: {
+          buzz: {
+            relayUrl: "wss://buzz.example.com",
+            privateKey: "11".repeat(32),
+          },
+        },
+      } as OpenClawConfig,
+      runtime: createRuntime(),
+      prompter,
+      accountOverrides: {},
+      shouldPromptAccountIds: false,
+      forceAllowFrom: false,
+    });
+
+    expect(runSecretStep).not.toHaveBeenCalled();
+    expect(result.cfg.channels?.buzz?.privateKey).toBe("11".repeat(32));
   });
 
   it("does not use the old key after switching to an unresolved SecretRef", async () => {

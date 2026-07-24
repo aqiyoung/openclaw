@@ -85,4 +85,52 @@ describe("verifyBuzzAfterSetup", () => {
       expect.stringContaining("did not confirm authenticated membership"),
     );
   });
+
+  it("prints the exact start command when the Gateway is stopped", async () => {
+    mocks.callGatewayFromCli.mockRejectedValue(
+      Object.assign(new Error("gateway closed (1006): no listener"), {
+        name: "GatewayTransportError",
+        kind: "closed",
+        code: 1006,
+      }),
+    );
+    const runtime = createRuntime();
+    const { verifyBuzzAfterSetup } = await import("./setup-verify.js");
+
+    await verifyBuzzAfterSetup({
+      cfg: {} as OpenClawConfig,
+      accountId: "default",
+      target: "7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c",
+      runtime,
+      sendTestMessage: true,
+    });
+
+    expect(runtime.log).toHaveBeenCalledWith(
+      "Buzz config was saved. Start OpenClaw to connect: openclaw gateway",
+    );
+  });
+
+  it("keeps the verification error for an unrelated abnormal Gateway closure", async () => {
+    mocks.callGatewayFromCli.mockRejectedValue(
+      Object.assign(new Error("gateway connection dropped during verification"), {
+        name: "GatewayTransportError",
+        kind: "closed",
+        code: 1006,
+      }),
+    );
+    const runtime = createRuntime();
+    const { verifyBuzzAfterSetup } = await import("./setup-verify.js");
+
+    await verifyBuzzAfterSetup({
+      cfg: {} as OpenClawConfig,
+      accountId: "default",
+      target: "7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c",
+      runtime,
+      sendTestMessage: true,
+    });
+
+    expect(runtime.log).toHaveBeenCalledWith(
+      expect.stringContaining("post-setup verification did not complete"),
+    );
+  });
 });

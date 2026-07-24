@@ -21,6 +21,29 @@ function hasSuccessfulBuzzProbe(payload: unknown, accountId: string, target: str
   );
 }
 
+function isGatewayNotRunningError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const identifiesMissingListener =
+    message.includes("econnrefused") ||
+    message.includes("connection refused") ||
+    message.includes("no listener");
+  if (
+    identifiesMissingListener &&
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    "kind" in error &&
+    "code" in error &&
+    (error as { name?: unknown }).name === "GatewayTransportError" &&
+    (error as { kind?: unknown }).kind === "closed" &&
+    (error as { code?: unknown }).code === 1006
+  ) {
+    return true;
+  }
+  return identifiesMissingListener;
+}
+
 export async function verifyBuzzAfterSetup(params: {
   cfg: OpenClawConfig;
   accountId: string;
@@ -62,6 +85,10 @@ export async function verifyBuzzAfterSetup(params: {
     );
     params.runtime.log(`Buzz test message sent to ${params.target}.`);
   } catch (error) {
+    if (isGatewayNotRunningError(error)) {
+      params.runtime.log("Buzz config was saved. Start OpenClaw to connect: openclaw gateway");
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     params.runtime.log(
       `Buzz config was saved, but post-setup verification did not complete: ${message}. Run \`openclaw channels status --probe\`, then send a test message after the Gateway reloads.`,
