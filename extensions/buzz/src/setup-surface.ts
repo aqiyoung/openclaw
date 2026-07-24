@@ -1,7 +1,9 @@
+import { isIP } from "node:net";
 import { generateSecretKey, nip19 } from "nostr-tools";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import {
   DEFAULT_ACCOUNT_ID,
+  formatDocsLink,
   hasConfiguredSecretInput,
   runSingleChannelSecretStep,
   type ChannelSetupWizardAdapter,
@@ -44,6 +46,53 @@ function validateRelayUrl(value: string): string | undefined {
       : "Use a ws:// or wss:// relay URL";
   } catch {
     return "Enter a valid Buzz relay WebSocket URL";
+  }
+}
+
+function isRemoteInsecureRelayUrl(value: string): boolean {
+  const url = new URL(value);
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
+  const isIpv4Loopback = isIP(hostname) === 4 && hostname.startsWith("127.");
+  const isLoopback =
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "::1" ||
+    isIpv4Loopback;
+  return url.protocol === "ws:" && !isLoopback;
+}
+
+function isBuzzSetupConfigured(cfg: OpenClawConfig): boolean {
+  const buzzConfig = cfg.channels?.buzz;
+  return Boolean(
+    (buzzConfig?.relayUrl?.trim() || process.env.BUZZ_RELAY_URL?.trim()) &&
+    (hasConfiguredSecretInput(buzzConfig?.privateKey, cfg.secrets?.defaults) ||
+      process.env.BUZZ_PRIVATE_KEY?.trim()),
+  );
+}
+
+async function promptRelayUrl(params: {
+  initialValue?: string;
+  prompter: Parameters<ChannelSetupWizardAdapter["configure"]>[0]["prompter"];
+}): Promise<string> {
+  while (true) {
+    const relayUrl = (
+      await params.prompter.text({
+        message: "Buzz relay WebSocket URL",
+        placeholder: "wss://buzz.example.com",
+        initialValue: params.initialValue,
+        validate: validateRelayUrl,
+      })
+    ).trim();
+    if (!isRemoteInsecureRelayUrl(relayUrl)) {
+      return relayUrl;
+    }
+    const continueInsecure = await params.prompter.confirm({
+      message: "This remote ws:// relay is unencrypted. Continue anyway?",
+      initialValue: false,
+    });
+    if (continueInsecure) {
+      return relayUrl;
+    }
   }
 }
 
@@ -223,11 +272,7 @@ export function createBuzzSetupWizard(
     channel,
     getStatus: async ({ cfg }) => {
       const buzzConfig = cfg.channels?.buzz;
-      const configured = Boolean(
-        (buzzConfig?.relayUrl?.trim() || process.env.BUZZ_RELAY_URL?.trim()) &&
-        (hasConfiguredSecretInput(buzzConfig?.privateKey, cfg.secrets?.defaults) ||
-          process.env.BUZZ_PRIVATE_KEY?.trim()),
-      );
+      const configured = isBuzzSetupConfigured(cfg);
       const enabled = buzzConfig?.enabled !== false;
       const status = !configured
         ? "needs relay URL and bot identity"
@@ -242,14 +287,20 @@ export function createBuzzSetupWizard(
       };
     },
     configure: async ({ cfg, prompter, options }) => {
-      const relayUrl = (
-        await prompter.text({
-          message: "Buzz relay WebSocket URL",
-          placeholder: "wss://buzz.example.com",
-          initialValue: cfg.channels?.buzz?.relayUrl,
-          validate: validateRelayUrl,
-        })
-      ).trim();
+      if (!isBuzzSetupConfigured(cfg)) {
+        await prompter.note(
+          [
+            "You need a Buzz relay URL, a Buzz admin, and at least one target room.",
+            "OpenClaw creates a dedicated bot identity and shares only its public key for approval.",
+            `Docs: ${formatDocsLink("/channels/buzz", "channels/buzz")}`,
+          ].join("\n"),
+          "Before you set up Buzz",
+        );
+      }
+      const relayUrl = await promptRelayUrl({
+        initialValue: cfg.channels?.buzz?.relayUrl,
+        prompter,
+      });
       let next = patchBuzzConfig(cfg, { enabled: true, relayUrl });
       const identity = await promptPrivateKey({
         cfg: next,
@@ -263,31 +314,27 @@ export function createBuzzSetupWizard(
       let publicKey: string | undefined;
       if (identity.resolvedPrivateKey) {
         publicKey = resolveBuzzPublicKey(identity.resolvedPrivateKey);
-        await prompter.note(
-          [
-            `npub: ${nip19.npubEncode(publicKey)}`,
-            `hex: ${publicKey}`,
-            identity.generated
-              ? "The dedicated private key was stored in channels.buzz.privateKey. It is not shown here."
-              : "Only the bot public key is needed for relay and room approval.",
-          ].join("\n"),
-          "OpenClaw Buzz bot identity",
-        );
-      } else {
-        await prompter.note(
-          "The private key is externally referenced. Use its corresponding bot public key for the owner/admin steps below.",
-          "OpenClaw Buzz bot identity",
-        );
       }
-
+      const publicKeyForApproval = publicKey ? nip19.npubEncode(publicKey) : "<BOT_PUBLIC_KEY>";
       await prompter.note(
         [
-          "A Buzz relay owner/admin must add this bot public key as a relay member.",
-          "An existing room member must then grant the bot role in each private room.",
+          `Relay: ${relayUrl}`,
+          ...(publicKey
+            ? [`Bot npub: ${publicKeyForApproval}`, `Bot hex public key: ${publicKey}`]
+            : [
+                "Bot public key: retrieve the public key for the configured external private-key reference.",
+              ]),
+          identity.generated
+            ? "The dedicated private key is stored in channels.buzz.privateKey and is not shown here."
+            : "Only the bot public key is needed for approval.",
+          "",
+          `Self-hosted relay: buzz-admin add-member --pubkey ${publicKeyForApproval} --role member`,
+          `Each room: buzz channels add-member --channel <ROOM_UUID> --pubkey ${publicKeyForApproval} --role bot`,
+          "Hosted workspace: ask the operator to approve this public key for the relay and each room.",
           "OpenClaw cannot perform either approval and never needs the human owner's private key.",
           "Room discovery below proves membership only; it does not verify the bot role.",
         ].join("\n"),
-        "Buzz membership and room approval",
+        "Send this to your Buzz admin",
       );
       const membershipReady = await prompter.confirm({
         message: "Are relay membership and room Bot-role approval complete?",

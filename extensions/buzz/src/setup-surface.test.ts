@@ -121,6 +121,10 @@ describe("Buzz guided setup", () => {
         .mocked(prompter.note)
         .mock.calls.some(([message]) => String(message).includes(expectedPrivateKey)),
     ).toBe(false);
+    expect(prompter.note).toHaveBeenCalledWith(
+      expect.stringContaining("buzz-admin add-member"),
+      "Send this to your Buzz admin",
+    );
 
     expect(hooks).toHaveLength(1);
     await hooks[0]!.run({ cfg: result.cfg, runtime });
@@ -244,6 +248,38 @@ describe("Buzz guided setup", () => {
       configured: true,
       statusLines: ["Buzz: configured but disabled"],
       selectionHint: "configured but disabled",
+    });
+  });
+
+  it("warns before using an unencrypted remote relay", async () => {
+    const wizard = createBuzzSetupWizard({ generateSecretKey: () => GENERATED_KEY });
+    const prompter = createPrompter();
+    vi.mocked(prompter.text)
+      .mockResolvedValueOnce("ws://127.attacker.example")
+      .mockResolvedValueOnce("wss://buzz.example.com");
+    vi.mocked(prompter.confirm).mockImplementation(async ({ message }) => {
+      if (message.includes("unencrypted")) {
+        return false;
+      }
+      if (message.includes("membership")) {
+        return false;
+      }
+      throw new Error(`Unexpected confirm prompt: ${message}`);
+    });
+
+    const result = await wizard.configure({
+      cfg: {} as OpenClawConfig,
+      runtime: createRuntime(),
+      prompter,
+      accountOverrides: {},
+      shouldPromptAccountIds: false,
+      forceAllowFrom: false,
+    });
+
+    expect(result.cfg.channels?.buzz?.relayUrl).toBe("wss://buzz.example.com");
+    expect(prompter.confirm).toHaveBeenCalledWith({
+      message: "This remote ws:// relay is unencrypted. Continue anyway?",
+      initialValue: false,
     });
   });
 
