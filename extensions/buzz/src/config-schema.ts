@@ -18,7 +18,11 @@ const RawBuzzConfigSchema = z
     name: z.string().optional(),
     enabled: z.boolean().optional(),
     markdown: MarkdownConfigSchema,
-    relayUrl: z.string().url().optional(),
+    relayUrl: z
+      .string()
+      .url()
+      .and(z.string().regex(/^[wW][sS][sS]?:\/\//, "Buzz relay URL must use ws:// or wss://"))
+      .optional(),
     privateKey: buildSecretInputSchema().optional(),
     authTag: buildSecretInputSchema().optional(),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
