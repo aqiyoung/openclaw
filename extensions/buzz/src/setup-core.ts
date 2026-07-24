@@ -42,7 +42,7 @@ export const buzzSetupAdapter: ChannelSetupAdapter<BuzzSetupInput> = {
       return "Buzz requires --relay-url with a ws:// or wss:// URL.";
     }
     if (input.useEnv) {
-      return null;
+      return process.env.BUZZ_PRIVATE_KEY?.trim() ? null : "BUZZ_PRIVATE_KEY is not set.";
     }
     if (!input.privateKey?.trim()) {
       return "Buzz requires --private-key or --use-env.";
