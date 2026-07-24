@@ -396,7 +396,7 @@ struct ChatGatewayPayloadCodecTests {
             Issue.record("expected lifecycle sessionsChanged")
             return
         }
-        #expect(lifecycle.reason == nil)
+        #expect(lifecycle.reason.isEmpty)
         #expect(lifecycle.phase == "end")
         #expect(lifecycle.runId == "run-1")
         #expect(lifecycle.session?.key == "agent:main:main")
