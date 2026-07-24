@@ -1,7 +1,10 @@
 import { getPublicKey, nip19 } from "nostr-tools";
 import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk/account-id";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
-import { normalizeSecretInputString } from "openclaw/plugin-sdk/secret-input";
+import {
+  hasConfiguredSecretInput,
+  normalizeSecretInputString,
+} from "openclaw/plugin-sdk/secret-input";
 import { normalizeOptionalString } from "openclaw/plugin-sdk/string-coerce-runtime";
 import type { BuzzConfig, BuzzConfigInput } from "./config-schema.js";
 import { parseBuzzTarget } from "./target.js";
@@ -50,9 +53,10 @@ export function resolveBuzzPublicKey(privateKey: string): string {
 export function listBuzzAccountIds(cfg: OpenClawConfig): string[] {
   const config = resolveChannelConfig(cfg);
   const relayUrl = config?.relayUrl?.trim() || process.env.BUZZ_RELAY_URL?.trim();
-  const privateKey =
-    normalizeSecretInputString(config?.privateKey) || process.env.BUZZ_PRIVATE_KEY?.trim();
-  return relayUrl || privateKey ? [DEFAULT_ACCOUNT_ID] : [];
+  const privateKeyConfigured =
+    hasConfiguredSecretInput(config?.privateKey, cfg.secrets?.defaults) ||
+    Boolean(process.env.BUZZ_PRIVATE_KEY?.trim());
+  return relayUrl || privateKeyConfigured ? [DEFAULT_ACCOUNT_ID] : [];
 }
 
 export function resolveDefaultBuzzAccountId(_cfg: OpenClawConfig): string {

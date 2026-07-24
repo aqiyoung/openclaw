@@ -12,6 +12,7 @@ import {
 import type { ChannelPlugin } from "../runtime-api.js";
 import { BuzzConfigSchema } from "./config-schema.js";
 import { buzzOutboundAdapter, startBuzzGatewayAccount } from "./gateway.js";
+import { collectRuntimeConfigAssignments, secretTargetRegistryEntries } from "./secret-contract.js";
 import {
   buildBuzzTarget,
   looksLikeBuzzTarget,
@@ -66,6 +67,10 @@ export const buzzPlugin: ChannelPlugin<ResolvedBuzzAccount> = createChatChannelP
         resolveBuzzAccount({ cfg, accountId }).config.groupAllowFrom,
       resolveDefaultTo: ({ cfg, accountId }) =>
         resolveBuzzAccount({ cfg, accountId }).config.defaultTo,
+    },
+    secrets: {
+      secretTargetRegistryEntries,
+      collectRuntimeConfigAssignments,
     },
     messaging: {
       targetPrefixes: ["buzz"],
