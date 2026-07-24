@@ -2,9 +2,12 @@ import { validateJsonSchemaValue } from "openclaw/plugin-sdk/json-schema-runtime
 import { describe, expect, it } from "vitest";
 import { BuzzConfigSchema } from "./config-schema.js";
 
-const BuzzRuntimeConfigSchema = BuzzConfigSchema.runtime;
-if (!BuzzRuntimeConfigSchema) {
-  throw new Error("expected Buzz runtime config schema");
+function parseBuzzConfig(value: unknown) {
+  const runtime = BuzzConfigSchema.runtime;
+  if (!runtime) {
+    throw new Error("expected Buzz runtime config schema");
+  }
+  return runtime.safeParse(value);
 }
 
 function expectRelayUrlValidity(relayUrl: string, valid: boolean) {
@@ -15,7 +18,7 @@ function expectRelayUrlValidity(relayUrl: string, valid: boolean) {
     value: config,
   });
 
-  expect(BuzzRuntimeConfigSchema.safeParse(config).success).toBe(valid);
+  expect(parseBuzzConfig(config).success).toBe(valid);
   expect(jsonSchemaResult.ok).toBe(valid);
 }
 
@@ -50,7 +53,7 @@ describe("BuzzConfigSchema", () => {
         value: config,
       });
 
-      expect(BuzzRuntimeConfigSchema.safeParse(config).success).toBe(valid);
+      expect(parseBuzzConfig(config).success).toBe(valid);
       expect(jsonSchemaResult.ok).toBe(valid);
     }
   });
