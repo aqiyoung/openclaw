@@ -68,6 +68,12 @@ function resolvedConfiguredKey(cfg: OpenClawConfig): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function resolvedCurrentKey(cfg: OpenClawConfig): string | undefined {
+  return cfg.channels?.buzz?.privateKey === undefined
+    ? process.env.BUZZ_PRIVATE_KEY?.trim() || undefined
+    : resolvedConfiguredKey(cfg);
+}
+
 async function promptPrivateKey(params: {
   cfg: OpenClawConfig;
   prompter: Parameters<ChannelSetupWizardAdapter["configure"]>[0]["prompter"];
@@ -78,7 +84,7 @@ async function promptPrivateKey(params: {
   const hasExistingIdentity =
     hasConfiguredSecretInput(params.cfg.channels?.buzz?.privateKey, params.cfg.secrets?.defaults) ||
     Boolean(process.env.BUZZ_PRIVATE_KEY?.trim());
-  const current = resolveBuzzAccount({ cfg: params.cfg });
+  const currentPrivateKey = resolvedCurrentKey(params.cfg);
   const identityOptions: Array<{
     value: "reuse" | "generate" | "existing";
     label: string;
@@ -110,8 +116,7 @@ async function promptPrivateKey(params: {
     initialValue: hasExistingIdentity ? "reuse" : "generate",
   });
   if (identityMode === "reuse") {
-    const resolvedPrivateKey =
-      (resolvedConfiguredKey(params.cfg) ?? current.privateKey) || undefined;
+    const resolvedPrivateKey = currentPrivateKey;
     if (resolvedPrivateKey) {
       decodeBuzzPrivateKey(resolvedPrivateKey);
     }
@@ -142,7 +147,7 @@ async function promptPrivateKey(params: {
     preferredEnvVar: "BUZZ_PRIVATE_KEY",
     applyUseEnv: (cfg) => {
       const envPrivateKey = process.env.BUZZ_PRIVATE_KEY?.trim();
-      const keepAuthTag = isSameBuzzIdentity(current.privateKey, envPrivateKey);
+      const keepAuthTag = isSameBuzzIdentity(currentPrivateKey, envPrivateKey);
       const { privateKey: _privateKey, authTag, ...buzz } = cfg.channels?.buzz ?? {};
       return {
         ...cfg,
@@ -160,13 +165,13 @@ async function promptPrivateKey(params: {
       patchBuzzConfig(cfg, {
         enabled: true,
         privateKey: value,
-        ...(isSameBuzzIdentity(current.privateKey, resolvedValue) ? {} : { authTag: undefined }),
+        ...(isSameBuzzIdentity(currentPrivateKey, resolvedValue) ? {} : { authTag: undefined }),
       }),
   });
   const resolvedPrivateKey =
     secretStep.resolvedValue ??
     (secretStep.action === "keep"
-      ? (resolvedConfiguredKey(secretStep.cfg) ?? current.privateKey)
+      ? (resolvedConfiguredKey(secretStep.cfg) ?? currentPrivateKey)
       : undefined);
   if (resolvedPrivateKey) {
     decodeBuzzPrivateKey(resolvedPrivateKey);

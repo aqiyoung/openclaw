@@ -5,7 +5,7 @@ import {
 } from "openclaw/plugin-sdk/channel-setup";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk/setup-runtime";
-import { decodeBuzzPrivateKey, resolveBuzzAccount, resolveBuzzPublicKey } from "./types.js";
+import { decodeBuzzPrivateKey, resolveBuzzPublicKey } from "./types.js";
 
 type BuzzSetupInput = ChannelSetupInput & {
   relayUrl?: string;
@@ -19,6 +19,14 @@ function validRelayUrl(value: string | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+function resolveComparableCurrentKey(cfg: OpenClawConfig): string | undefined {
+  const configured = cfg.channels?.buzz?.privateKey;
+  if (configured !== undefined) {
+    return typeof configured === "string" ? configured.trim() || undefined : undefined;
+  }
+  return process.env.BUZZ_PRIVATE_KEY?.trim() || undefined;
 }
 
 export function isSameBuzzIdentity(currentKey?: string, nextKey?: string): boolean {
@@ -55,7 +63,7 @@ export const buzzSetupAdapter: ChannelSetupAdapter<BuzzSetupInput> = {
     }
   },
   applyAccountConfig: ({ cfg, input }) => {
-    const currentPrivateKey = resolveBuzzAccount({ cfg }).privateKey;
+    const currentPrivateKey = resolveComparableCurrentKey(cfg);
     const nextPrivateKey = input.useEnv
       ? process.env.BUZZ_PRIVATE_KEY?.trim()
       : input.privateKey?.trim();

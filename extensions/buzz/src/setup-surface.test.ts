@@ -2,7 +2,7 @@ import { nip19 } from "nostr-tools";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import type { RuntimeEnv } from "openclaw/plugin-sdk/runtime-env";
 import type { WizardPrompter } from "openclaw/plugin-sdk/setup";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBuzzSetupWizard } from "./setup-surface.js";
 
 const ROOM_A = "7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c";
@@ -64,6 +64,10 @@ function createRuntime(): RuntimeEnv {
 }
 
 describe("Buzz guided setup", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("generates a dedicated plaintext bot key and configures discovered rooms", async () => {
     const discoverRooms = vi.fn(async () => [
       { id: ROOM_A, name: "General", about: "Team room" },
@@ -273,6 +277,60 @@ describe("Buzz guided setup", () => {
 
     expect(runSecretStep).not.toHaveBeenCalled();
     expect(result.cfg.channels?.buzz?.privateKey).toBe("11".repeat(32));
+  });
+
+  it("does not use BUZZ_PRIVATE_KEY when reusing an unresolved SecretRef", async () => {
+    vi.stubEnv("BUZZ_PRIVATE_KEY", nip19.nsecEncode(GENERATED_KEY));
+    const secretRef = { source: "env" as const, provider: "default", id: "OTHER_BUZZ_KEY" };
+    const discoverRooms = vi.fn(async () => [{ id: ROOM_A, name: "General" }]);
+    const wizard = createBuzzSetupWizard({ discoverRooms });
+    const prompter = createPrompter();
+    vi.mocked(prompter.select).mockImplementation((async ({ message }) => {
+      if (message.includes("identity")) {
+        return "reuse";
+      }
+      if (message.includes("access")) {
+        return "open";
+      }
+      if (message.includes("default")) {
+        return ROOM_A;
+      }
+      throw new Error(`Unexpected select prompt: ${message}`);
+    }) as WizardPrompter["select"]);
+    vi.mocked(prompter.text).mockImplementation(async ({ message }) => {
+      if (message.includes("relay")) {
+        return "wss://buzz.example.com";
+      }
+      if (message.includes("room UUID")) {
+        return ROOM_A;
+      }
+      throw new Error(`Unexpected text prompt: ${message}`);
+    });
+    vi.mocked(prompter.confirm).mockImplementation(async ({ message }) => {
+      if (message.includes("membership")) {
+        return true;
+      }
+      if (message.includes("mentions") || message.includes("test message")) {
+        return false;
+      }
+      throw new Error(`Unexpected confirm prompt: ${message}`);
+    });
+
+    const result = await wizard.configure({
+      cfg: {
+        channels: {
+          buzz: { relayUrl: "wss://buzz.example.com", privateKey: secretRef },
+        },
+      } as OpenClawConfig,
+      runtime: createRuntime(),
+      prompter,
+      accountOverrides: {},
+      shouldPromptAccountIds: false,
+      forceAllowFrom: false,
+    });
+
+    expect(discoverRooms).not.toHaveBeenCalled();
+    expect(result.cfg.channels?.buzz?.privateKey).toEqual(secretRef);
   });
 
   it("does not use the old key after switching to an unresolved SecretRef", async () => {

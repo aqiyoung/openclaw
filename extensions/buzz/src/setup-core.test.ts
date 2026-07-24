@@ -63,4 +63,26 @@ describe("buzzSetupAdapter", () => {
     expect(result.channels?.buzz?.privateKey).toBe("22".repeat(32));
     expect(result.channels?.buzz?.authTag).toBeUndefined();
   });
+
+  it("clears an auth tag when replacing an unresolved SecretRef with the environment", () => {
+    vi.stubEnv("BUZZ_PRIVATE_KEY", "22".repeat(32));
+    const cfg = {
+      channels: {
+        buzz: {
+          relayUrl: "wss://buzz.example.com",
+          privateKey: { source: "env", provider: "default", id: "OTHER_BUZZ_KEY" },
+          authTag: '["auth","owner","kind=9","signature"]',
+        },
+      },
+    } as OpenClawConfig;
+
+    const result = buzzSetupAdapter.applyAccountConfig({
+      cfg,
+      accountId: "default",
+      input: { relayUrl: "wss://buzz.example.com", useEnv: true },
+    });
+
+    expect(result.channels?.buzz?.privateKey).toBeUndefined();
+    expect(result.channels?.buzz?.authTag).toBeUndefined();
+  });
 });
