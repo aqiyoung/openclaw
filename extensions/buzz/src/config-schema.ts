@@ -5,6 +5,7 @@ import {
 } from "openclaw/plugin-sdk/channel-config-schema";
 import { buildSecretInputSchema } from "openclaw/plugin-sdk/secret-input";
 import { z } from "zod";
+import { BUZZ_CHANNEL_ID_PATTERN } from "./target.js";
 
 export const BuzzGroupConfigSchema = z
   .object({
@@ -27,7 +28,12 @@ const RawBuzzConfigSchema = z
     authTag: buildSecretInputSchema().optional(),
     groupPolicy: GroupPolicySchema.optional().default("allowlist"),
     groupAllowFrom: z.array(z.union([z.string(), z.number()])).optional(),
-    groups: z.record(z.string(), BuzzGroupConfigSchema).optional(),
+    groups: z
+      .record(
+        z.string().regex(BUZZ_CHANNEL_ID_PATTERN, "Buzz group key must be a channel UUID"),
+        BuzzGroupConfigSchema,
+      )
+      .optional(),
     defaultTo: z.string().optional(),
   })
   .strict();

@@ -30,4 +30,23 @@ describe("BuzzConfigSchema", () => {
       expectRelayUrlValidity(relayUrl, false);
     },
   );
+
+  it("validates Buzz group keys in runtime and generated schemas", () => {
+    for (const [groupId, valid] of [
+      ["7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c", true],
+      ["7C4A6D2A-2ED9-4B4E-A5E2-4D705EE9B34C", true],
+      ["general", false],
+      ["buzz:7c4a6d2a-2ed9-4b4e-a5e2-4d705ee9b34c", false],
+    ] as const) {
+      const config = { groupPolicy: "allowlist", groups: { [groupId]: {} } };
+      const jsonSchemaResult = validateJsonSchemaValue({
+        cacheKey: `buzz.config-schema.groups.${groupId}`,
+        schema: BuzzConfigSchema.schema,
+        value: config,
+      });
+
+      expect(BuzzConfigSchema.runtime.safeParse(config).success).toBe(valid);
+      expect(jsonSchemaResult.ok).toBe(valid);
+    }
+  });
 });
