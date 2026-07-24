@@ -1,7 +1,7 @@
 import Foundation
 
 public enum GatewayPluginSurfaceURL {
-    public static func resolveHTTPURL(raw: String, against activeGatewayURL: URL?) -> URL? {
+    static func resolveHTTPURL(raw: String, against activeGatewayURL: URL?) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         if let absolute = URL(string: trimmed),
