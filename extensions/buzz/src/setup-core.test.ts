@@ -33,6 +33,9 @@ describe("buzzSetupAdapter", () => {
 
   it("rejects --use-env when BUZZ_PRIVATE_KEY is unset", () => {
     vi.stubEnv("BUZZ_PRIVATE_KEY", "");
+    if (!buzzSetupAdapter.validateInput) {
+      throw new Error("Expected buzzSetupAdapter.validateInput to be defined");
+    }
 
     expect(
       buzzSetupAdapter.validateInput({
