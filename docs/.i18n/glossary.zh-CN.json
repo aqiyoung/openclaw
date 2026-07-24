@@ -28,6 +28,10 @@
     "target": "BlueBubbles"
   },
   {
+    "source": "Buzz",
+    "target": "Buzz"
+  },
+  {
     "source": "Configuration reference - iMessage",
     "target": "Configuration reference - iMessage"
   },

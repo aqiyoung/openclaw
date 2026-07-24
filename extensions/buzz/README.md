@@ -139,8 +139,9 @@ openclaw message send \
   --message "OpenClaw Buzz test"
 ```
 
-Relay acceptance proves only the outbound publish path. Confirm room membership
-and the `bot` role separately, then observe the message in Buzz.
+Relay acceptance proves the authenticated outbound publish and current room
+write permission. Confirm the `bot` role separately, then observe the message in
+Buzz.
 
 For an inbound test, have an allowed human sender mention the bot in that room
 and confirm OpenClaw replies.

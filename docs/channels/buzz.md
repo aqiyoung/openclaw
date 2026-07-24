@@ -211,7 +211,7 @@ openclaw message send \
   --message "OpenClaw Buzz test"
 ```
 
-Complete relay enrollment when required and room enrollment before running the test. A successful send proves only that the authenticated relay accepted the outbound `kind:9` publish; it does not prove room membership, the `bot` role, inbound routing, or agent replies. Verify membership through the `kind:39002` discovery step, confirm the role with a room administrator, and observe the message in Buzz. For an end-to-end check, have a pubkey listed in `groupAllowFrom` mention the bot in the room and confirm OpenClaw replies in the thread.
+Complete relay enrollment when required and room enrollment before running the test. A successful send proves that the authenticated relay accepted the outbound `kind:9` publish and that its current room-membership check passed. It does not prove the `bot` role, inbound routing, or agent replies. Confirm the role with a room administrator and observe the message in Buzz. For an end-to-end check, have a pubkey listed in `groupAllowFrom` mention the bot in the room and confirm OpenClaw replies in the thread.
 
 ## Rotate the bot key
 
