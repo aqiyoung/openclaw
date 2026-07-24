@@ -39,6 +39,7 @@ import {
   createOrResumeClientVoiceSession,
   ensureClientVoiceAgentSessionEntry,
   registerClientVoiceConsultRun,
+  resolveClientVoiceAgentSessionId,
   resolveClientVoiceSessionOrigin,
   resolveOpenClientVoiceSessionId,
 } from "../../talk/client-voice-session.js";
@@ -67,6 +68,7 @@ const LEGACY_VOICE_BINDING_TTL_MS = 6 * 60 * 60_000;
 const REALTIME_VOICE_CONTEXT_MAX_ITEMS = 16;
 const REALTIME_VOICE_CONTEXT_MAX_ITEM_CHARS = 800;
 const REALTIME_VOICE_CONTEXT_MAX_UTF8_BYTES = 8_000;
+const REALTIME_VOICE_CLIENT_SESSION_MIN_TTL_MS = 5_000;
 const legacyVoiceSessionByClient = new Map<string, { voiceSessionId: string; expiresAt: number }>();
 
 type RealtimeVoiceInitialItem = {
@@ -74,7 +76,7 @@ type RealtimeVoiceInitialItem = {
   text: string;
 };
 
-export function boundRealtimeVoiceInitialItems(
+function boundRealtimeVoiceInitialItems(
   items: readonly RealtimeVoiceInitialItem[],
 ): RealtimeVoiceInitialItem[] {
   // Codex app-server rejects oversized startup context. A UTF-8 byte ceiling is
@@ -240,25 +242,27 @@ export const talkClientHandlers: GatewayRequestHandlers = {
       const { agentId, requestedSessionKey } = realtimeContext;
       const sessionKey = requestedSessionKey ?? buildAgentMainSessionKey({ agentId });
       if (resolution.provider.createBrowserSession && transport !== "gateway-relay") {
-        const agentSessionId = await ensureClientVoiceAgentSessionEntry({ agentId, sessionKey });
-        const initialItems = boundRealtimeVoiceInitialItems(
-          readSessionPreviewItemsFromTranscript(
-            {
-              agentId,
-              sessionId: agentSessionId,
-              sessionKey,
-            },
-            REALTIME_VOICE_CONTEXT_MAX_ITEMS,
-            REALTIME_VOICE_CONTEXT_MAX_ITEM_CHARS,
-          ).filter(
-            (
-              item,
-            ): item is {
-              role: "user" | "assistant";
-              text: string;
-            } => item.role === "user" || item.role === "assistant",
-          ),
-        );
+        const agentSessionId = resolveClientVoiceAgentSessionId({ agentId, sessionKey });
+        const initialItems = agentSessionId
+          ? boundRealtimeVoiceInitialItems(
+              readSessionPreviewItemsFromTranscript(
+                {
+                  agentId,
+                  sessionId: agentSessionId,
+                  sessionKey,
+                },
+                REALTIME_VOICE_CONTEXT_MAX_ITEMS,
+                REALTIME_VOICE_CONTEXT_MAX_ITEM_CHARS,
+              ).filter(
+                (
+                  item,
+                ): item is {
+                  role: "user" | "assistant";
+                  text: string;
+                } => item.role === "user" || item.role === "assistant",
+              ),
+            )
+          : [];
         const tools =
           providerCapabilities?.supportsToolCalls === false
             ? []
@@ -270,7 +274,7 @@ export const talkClientHandlers: GatewayRequestHandlers = {
           providerCapabilities?.handlesAgentConsult === true
             ? normalizeOptionalString(realtimeContext.instructions)
             : buildRealtimeInstructions(realtimeContext.instructions);
-        const session = await resolution.provider.createBrowserSession({
+        const browserSessionRequest = {
           cfg: runtimeConfig,
           agentId,
           workspaceDir: resolveAgentWorkspaceDir(runtimeConfig, agentId),
@@ -279,7 +283,8 @@ export const talkClientHandlers: GatewayRequestHandlers = {
           initialItems,
           ...(tools.length > 0 ? { tools } : {}),
           ...launchOptions,
-        });
+        };
+        const session = await resolution.provider.createBrowserSession(browserSessionRequest);
         // Client-owned voice records are minted only for client-owned transports;
         // relay sessions are created via talk.session.create and keyed by relaySessionId.
         // Widening this guard would hand relay calls a mismatched voiceSessionId.
@@ -288,6 +293,34 @@ export const talkClientHandlers: GatewayRequestHandlers = {
           !isUnsupportedBrowserWebRtcSession(session) &&
           (!transport || session.transport === transport)
         ) {
+          try {
+            const sessionEntryDeadlineAt =
+              session.expiresAt === undefined
+                ? undefined
+                : session.expiresAt - REALTIME_VOICE_CLIENT_SESSION_MIN_TTL_MS;
+            if (sessionEntryDeadlineAt !== undefined && Date.now() >= sessionEntryDeadlineAt) {
+              throw new Error("Realtime browser session expired during startup; try again");
+            }
+            // Defer persistent session creation until the provider has returned a
+            // usable client transport. The write boundary rechecks the credential
+            // deadline so queued storage work cannot leave a phantom chat.
+            await ensureClientVoiceAgentSessionEntry({
+              agentId,
+              sessionKey,
+              ...(sessionEntryDeadlineAt !== undefined
+                ? { deadlineAt: sessionEntryDeadlineAt }
+                : {}),
+            });
+          } catch (error) {
+            try {
+              await resolution.provider.cancelBrowserSession?.(browserSessionRequest, session);
+            } catch (cancelError) {
+              context.logGateway.warn(
+                `talk browser session cleanup failed: ${formatForLog(cancelError)}`,
+              );
+            }
+            throw error;
+          }
           // Recovering 6h-abandoned calls (and retrying their digests) is not on the
           // start path; running it inline would delay use of time-sensitive provider
           // credentials behind slow channel sends. Fire it off the response path.

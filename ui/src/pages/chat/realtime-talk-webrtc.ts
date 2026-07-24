@@ -472,8 +472,16 @@ export class WebRtcSdpRealtimeTalkTransport implements RealtimeTalkTransport {
       return;
     }
     this.ctx.callbacks.onTranscript?.({ role, text, final });
+    const type =
+      role === "user"
+        ? final
+          ? "transcript.done"
+          : "transcript.delta"
+        : final
+          ? "output.text.done"
+          : "output.text.delta";
     this.emitTalkEvent({
-      type: final ? "transcript.done" : "output.text.delta",
+      type,
       final,
       itemId,
       payload: { role, text },

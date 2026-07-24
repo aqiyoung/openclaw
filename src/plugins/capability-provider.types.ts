@@ -181,6 +181,10 @@ export type RealtimeVoiceProviderPlugin = {
   createBrowserSession?: (
     req: RealtimeVoiceBrowserSessionCreateRequest,
   ) => Promise<RealtimeVoiceBrowserSession>;
+  cancelBrowserSession?: (
+    req: RealtimeVoiceBrowserSessionCreateRequest,
+    session: RealtimeVoiceBrowserSession,
+  ) => Promise<void> | void;
 };
 
 export type MediaUnderstandingProviderPlugin = MediaUnderstandingProvider;

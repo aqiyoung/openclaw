@@ -7,8 +7,6 @@ import type { CodexAppServerClient } from "./app-server/client.js";
 import type { CodexServerNotification } from "./app-server/protocol.js";
 import {
   CODEX_REALTIME_OFFER_PATH,
-  buildCodexRealtimeStartParams,
-  buildCodexRealtimeThreadStartParams,
   createCodexRealtimeBrowserSessionBroker,
 } from "./realtime-browser-session.js";
 
@@ -147,43 +145,6 @@ describe("Codex OAuth realtime browser session", () => {
     sharedClientMocks.releaseClient.mockReset();
   });
 
-  it("starts an ephemeral read-only Codex thread", () => {
-    expect(buildCodexRealtimeThreadStartParams({ cwd: "/tmp/workspace" })).toEqual({
-      cwd: "/tmp/workspace",
-      ephemeral: true,
-      approvalPolicy: "never",
-      sandbox: "read-only",
-      config: { "features.realtime_conversation": true },
-    });
-  });
-
-  it("uses the upstream V3 WebRTC shape without forcing a model", () => {
-    expect(
-      buildCodexRealtimeStartParams({
-        threadId: "thread-1",
-        sdp: "v=0\r\n",
-        developerInstructions: "Keep the Talk persona.",
-        voice: "marin",
-        initialItems: [
-          { role: "user", text: "Earlier question" },
-          { role: "assistant", text: "Earlier answer" },
-        ],
-      }),
-    ).toEqual({
-      threadId: "thread-1",
-      outputModality: "audio",
-      transport: { type: "webrtc", sdp: "v=0\r\n" },
-      version: "v3",
-      includeStartupContext: true,
-      voice: "marin",
-      initialItems: [
-        { role: "developer", text: "Keep the Talk persona." },
-        { role: "user", text: "Earlier question" },
-        { role: "assistant", text: "Earlier answer" },
-      ],
-    });
-  });
-
   it("redeems browser reservations once and invalidates pending ones on cleanup", async () => {
     const fake = createFakeClient();
     sharedClientMocks.getClient.mockResolvedValue(fake.client);
@@ -201,8 +162,13 @@ describe("Codex OAuth realtime browser session", () => {
       instructions: " Keep the same Talk persona. ",
       model: " gpt-realtime-2 ",
       voice: " Marin ",
+      initialItems: [
+        { role: "user", text: "Earlier question" },
+        { role: "assistant", text: "Earlier answer" },
+      ],
     });
     const second = await realtime.broker.createBrowserSession({ providerConfig: {} });
+    const cancelled = await realtime.broker.createBrowserSession({ providerConfig: {} });
 
     expect(first).toMatchObject({
       provider: "openai",
@@ -217,6 +183,7 @@ describe("Codex OAuth realtime browser session", () => {
       throw new Error("Expected Codex browser sessions to use WebRTC");
     }
     expect(second.clientSecret).not.toBe(first.clientSecret);
+    await realtime.broker.cancelBrowserSession?.(cancelled);
 
     try {
       const accepted = createResponseHarness();
@@ -225,13 +192,34 @@ describe("Codex OAuth realtime browser session", () => {
       ).resolves.toBe(true);
       expect(accepted.res.statusCode).toBe(200);
       expect(accepted.readBody()).toBe("v=answer\r\n");
+      const threadStartParams = (fake.client.request as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([method]) => method === "thread/start",
+      )?.[1];
+      expect(threadStartParams).toEqual({
+        cwd: process.cwd(),
+        ephemeral: true,
+        approvalPolicy: "never",
+        sandbox: "read-only",
+        config: { "features.realtime_conversation": true },
+      });
       const realtimeStartParams = (fake.client.request as ReturnType<typeof vi.fn>).mock.calls.find(
         ([method]) => method === "thread/realtime/start",
       )?.[1];
-      expect(realtimeStartParams).toMatchObject({
-        initialItems: [{ role: "developer", text: "Keep the same Talk persona." }],
+      expect(realtimeStartParams).toEqual({
+        threadId: "thread-1",
+        outputModality: "audio",
+        transport: { type: "webrtc", sdp: "v=offer\r\n" },
+        version: "v3",
+        includeStartupContext: true,
+        voice: "Marin",
+        initialItems: [
+          { role: "developer", text: "Keep the same Talk persona." },
+          { role: "user", text: "Earlier question" },
+          { role: "assistant", text: "Earlier answer" },
+        ],
       });
       expect(realtimeStartParams).not.toHaveProperty("prompt");
+      expect(realtimeStartParams).not.toHaveProperty("model");
 
       const replayed = createResponseHarness();
       await expect(
@@ -239,6 +227,15 @@ describe("Codex OAuth realtime browser session", () => {
       ).resolves.toBe(true);
       expect(replayed.res.statusCode).toBe(401);
       expect(sharedClientMocks.getClient).toHaveBeenCalledTimes(1);
+
+      if (cancelled.transport !== "webrtc") {
+        throw new Error("Expected cancelled Codex browser session to use WebRTC");
+      }
+      const cancelledResponse = createResponseHarness();
+      await expect(
+        realtime.handler(createSdpRequest(cancelled.clientSecret), cancelledResponse.res),
+      ).resolves.toBe(true);
+      expect(cancelledResponse.res.statusCode).toBe(401);
 
       await realtime.cleanup();
       expect(fake.methods).toContain("thread/realtime/stop");
@@ -323,7 +320,7 @@ describe("Codex OAuth realtime browser session", () => {
     }
   });
 
-  it("caps pending browser reservations", async () => {
+  it("caps concurrent pending and active browser sessions", async () => {
     const realtime = createCodexRealtimeBrowserSessionBroker({
       getPluginConfig: () => ({}),
     });
@@ -332,7 +329,7 @@ describe("Codex OAuth realtime browser session", () => {
     );
 
     await expect(realtime.broker.createBrowserSession({ providerConfig: {} })).rejects.toThrow(
-      "Too many pending Codex OAuth realtime sessions",
+      "Too many concurrent Codex OAuth realtime sessions",
     );
 
     await realtime.cleanup();

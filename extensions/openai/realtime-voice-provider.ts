@@ -62,7 +62,7 @@ type OpenAIRealtimeVoice =
   | "verse";
 
 type OpenAIRealtimeVoiceProviderConfig = {
-  authMode?: "codex-oauth";
+  authMode?: "api-key" | "codex-oauth";
   apiKey?: string;
   model?: string;
   voice?: OpenAIRealtimeVoice;
@@ -235,9 +235,9 @@ function normalizeProviderConfig(
   config: RealtimeVoiceProviderConfig,
 ): OpenAIRealtimeVoiceProviderConfig {
   const raw = resolveOpenAIProviderConfigRecord(config);
+  const authMode = trimToUndefined(raw?.authMode)?.toLowerCase();
   return {
-    authMode:
-      trimToUndefined(raw?.authMode)?.toLowerCase() === "codex-oauth" ? "codex-oauth" : undefined,
+    authMode: authMode === "api-key" || authMode === "codex-oauth" ? authMode : undefined,
     apiKey: normalizeResolvedSecretInputString({
       value: raw?.apiKey,
       path: "plugins.entries.voice-call.config.realtime.providers.openai.apiKey",
@@ -1579,6 +1579,19 @@ async function createOpenAIRealtimeBrowserSession(
   };
 }
 
+async function cancelOpenAIRealtimeBrowserSession(
+  req: RealtimeVoiceBrowserSessionCreateRequest,
+  session: RealtimeVoiceBrowserSession,
+): Promise<void> {
+  const config = normalizeProviderConfig(req.providerConfig);
+  if (config.authMode !== "codex-oauth") {
+    return;
+  }
+  await getRealtimeVoiceBrowserSessionBroker("openai", config.authMode)?.cancelBrowserSession?.(
+    session,
+  );
+}
+
 export function buildOpenAIRealtimeVoiceProvider(): RealtimeVoiceProviderPlugin {
   return {
     id: "openai",
@@ -1646,6 +1659,7 @@ export function buildOpenAIRealtimeVoiceProvider(): RealtimeVoiceProviderPlugin 
       });
     },
     createBrowserSession: createOpenAIRealtimeBrowserSession,
+    cancelBrowserSession: cancelOpenAIRealtimeBrowserSession,
   };
 }
 /* oxlint-disable max-lines -- TODO: split this grandfathered oversized file. */

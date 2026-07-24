@@ -24,7 +24,7 @@ import {
 const CODEX_REALTIME_OFFER_PATH = "/plugins/codex/realtime/calls";
 const CODEX_REALTIME_PENDING_TTL_MS = 60_000;
 const CODEX_REALTIME_SESSION_TTL_MS = 30 * 60_000;
-const CODEX_REALTIME_MAX_PENDING = 8;
+const CODEX_REALTIME_MAX_SESSIONS = 8;
 const CODEX_REALTIME_MAX_SDP_BYTES = 256 * 1024;
 const CODEX_REALTIME_START_TIMEOUT_MS = 60_000;
 const CODEX_REALTIME_OFFER_HANDLER = Symbol.for("openclaw.codexRealtimeOfferHandler");
@@ -99,9 +99,7 @@ function readNotificationParams(value: unknown): RealtimeNotificationParams {
   return value && typeof value === "object" ? (value as RealtimeNotificationParams) : {};
 }
 
-export function buildCodexRealtimeThreadStartParams(params: {
-  cwd: string;
-}): CodexThreadStartParams {
+function buildCodexRealtimeThreadStartParams(params: { cwd: string }): CodexThreadStartParams {
   return {
     cwd: params.cwd,
     ephemeral: true,
@@ -111,7 +109,7 @@ export function buildCodexRealtimeThreadStartParams(params: {
   };
 }
 
-export function buildCodexRealtimeStartParams(params: {
+function buildCodexRealtimeStartParams(params: {
   threadId: string;
   sdp: string;
   developerInstructions?: string;
@@ -237,8 +235,8 @@ export function createCodexRealtimeBrowserSessionBroker(params: {
         throw new Error("Codex OAuth realtime is stopping; restart Gateway and try again");
       }
       prunePendingOffers();
-      if (reservations.size >= CODEX_REALTIME_MAX_PENDING) {
-        throw new Error("Too many pending Codex OAuth realtime sessions; try again in a minute");
+      if (reservations.size >= CODEX_REALTIME_MAX_SESSIONS) {
+        throw new Error("Too many concurrent Codex OAuth realtime sessions; try again in a minute");
       }
       const token = randomBytes(32).toString("base64url");
       const expiresAt = Date.now() + CODEX_REALTIME_PENDING_TTL_MS;
@@ -253,6 +251,13 @@ export function createCodexRealtimeBrowserSessionBroker(params: {
         ...(voice ? { voice } : {}),
         expiresAt,
       };
+    },
+    cancelBrowserSession: (session) => {
+      if (session.transport !== "webrtc") {
+        return;
+      }
+      pendingOffers.delete(session.clientSecret);
+      reservations.delete(session.clientSecret);
     },
   };
 

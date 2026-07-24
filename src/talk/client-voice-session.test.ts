@@ -21,6 +21,7 @@ import {
   ensureClientVoiceAgentSessionEntry,
   isClientVoiceSessionConfirmable,
   registerClientVoiceConsultRun,
+  resolveClientVoiceAgentSessionId,
   resolveClientVoiceRunBinding,
   resolveOpenClientVoiceSessionId,
 } from "./client-voice-session.js";
@@ -165,6 +166,40 @@ describe("client voice session", () => {
 
     await ensureClientVoiceAgentSessionEntry({ agentId: "main", sessionKey });
     expect(loadSessionEntry({ agentId: "main", sessionKey })?.createdVia).toBe("talk");
+  });
+
+  it("reads an existing agent session without creating a missing row", async () => {
+    const existingKey = "agent:main:talk:existing";
+    await replaceSessionEntry(
+      { agentId: "main", sessionKey: existingKey },
+      { sessionId: "session-existing", updatedAt: 1 },
+    );
+
+    expect(resolveClientVoiceAgentSessionId({ agentId: "main", sessionKey: existingKey })).toBe(
+      "session-existing",
+    );
+    expect(
+      resolveClientVoiceAgentSessionId({
+        agentId: "main",
+        sessionKey: "agent:main:talk:missing",
+      }),
+    ).toBeUndefined();
+    expect(
+      loadSessionEntry({ agentId: "main", sessionKey: "agent:main:talk:missing" }),
+    ).toBeUndefined();
+  });
+
+  it("does not create an agent session after a browser-session deadline", async () => {
+    const sessionKey = "agent:main:talk:expired";
+
+    await expect(
+      ensureClientVoiceAgentSessionEntry({
+        agentId: "main",
+        sessionKey,
+        deadlineAt: Date.now() - 1,
+      }),
+    ).rejects.toThrow("Realtime browser session expired during startup");
+    expect(loadSessionEntry({ agentId: "main", sessionKey })).toBeUndefined();
   });
 
   it("repairs an incomplete existing row without claiming its creation actor", async () => {

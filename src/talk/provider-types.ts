@@ -4,7 +4,8 @@ import type { TalkTransport } from "./talk-events.js";
 
 export type RealtimeVoiceProviderId = string;
 
-export type RealtimeVoiceRole = "user" | "assistant" | "developer";
+export type RealtimeVoiceRole = "user" | "assistant";
+export type RealtimeVoiceInitialItemRole = RealtimeVoiceRole | "developer";
 
 export type RealtimeVoiceCloseReason = "completed" | "error";
 
@@ -126,7 +127,7 @@ export type RealtimeVoiceBrowserSessionCreateRequest = {
   providerConfig: RealtimeVoiceProviderConfig;
   instructions?: string;
   initialItems?: Array<{
-    role: RealtimeVoiceRole;
+    role: RealtimeVoiceInitialItemRole;
     text: string;
   }>;
   tools?: RealtimeVoiceTool[];
@@ -205,6 +206,7 @@ export type RealtimeVoiceBrowserSessionBroker = {
   createBrowserSession: (
     req: RealtimeVoiceBrowserSessionCreateRequest,
   ) => Promise<RealtimeVoiceBrowserSession>;
+  cancelBrowserSession?: (session: RealtimeVoiceBrowserSession) => Promise<void> | void;
 };
 
 export type RealtimeVoiceBridge = {

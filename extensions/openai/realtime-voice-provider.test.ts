@@ -770,6 +770,7 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
       clientSecret: "codex-session-token",
       offerUrl: "/plugins/codex/realtime/calls",
     }));
+    const cancelBrowserSession = vi.fn();
     const isConfigured = vi.fn(() => true);
     getRealtimeVoiceBrowserSessionBrokerMock.mockReturnValue({
       providerId: "openai",
@@ -781,6 +782,7 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
       },
       isConfigured,
       createBrowserSession,
+      cancelBrowserSession,
     });
     const provider = buildOpenAIRealtimeVoiceProvider();
     const cfg = { agents: { defaults: {} } } as never;
@@ -791,15 +793,21 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
     };
 
     expect(provider.isConfigured(request)).toBe(true);
-    await expect(provider.createBrowserSession?.(request)).resolves.toMatchObject({
+    const session = await provider.createBrowserSession?.(request);
+    expect(session).toMatchObject({
       clientSecret: "codex-session-token",
       offerUrl: "/plugins/codex/realtime/calls",
     });
+    if (!session) {
+      throw new Error("Expected Codex OAuth browser session");
+    }
+    await provider.cancelBrowserSession?.(request, session);
     expect(isConfigured).toHaveBeenCalledWith({
       cfg,
       providerConfig: request.providerConfig,
     });
     expect(createBrowserSession).toHaveBeenCalledWith(request);
+    expect(cancelBrowserSession).toHaveBeenCalledWith(session);
     expect(fetchWithSsrFGuardMock).not.toHaveBeenCalled();
     expect(() =>
       provider.createBridge({
@@ -946,6 +954,17 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
       vadThreshold: 0.35,
       reasoningEffort: "low",
     });
+  });
+
+  it("preserves explicit API-key auth mode from provider config", () => {
+    const provider = buildOpenAIRealtimeVoiceProvider();
+
+    expect(
+      provider.resolveConfig?.({
+        cfg: {} as never,
+        rawConfig: { providers: { openai: { authMode: " API-KEY " } } },
+      }),
+    ).toEqual({ authMode: "api-key" });
   });
 
   it("drops malformed realtime voice numeric settings", () => {
