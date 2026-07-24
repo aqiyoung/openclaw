@@ -114,19 +114,24 @@ export function buildCodexRealtimeThreadStartParams(params: {
 export function buildCodexRealtimeStartParams(params: {
   threadId: string;
   sdp: string;
-  instructions?: string;
+  developerInstructions?: string;
   voice?: string;
   initialItems?: RealtimeVoiceBrowserSessionCreateRequest["initialItems"];
 }): Record<string, unknown> {
+  const initialItems = [
+    ...(params.developerInstructions
+      ? [{ role: "developer" as const, text: params.developerInstructions }]
+      : []),
+    ...(params.initialItems ?? []),
+  ];
   return {
     threadId: params.threadId,
     outputModality: "audio",
     transport: { type: "webrtc", sdp: params.sdp },
     version: "v3",
     includeStartupContext: true,
-    ...(params.instructions ? { prompt: params.instructions } : {}),
     ...(params.voice ? { voice: params.voice } : {}),
-    ...(params.initialItems?.length ? { initialItems: params.initialItems } : {}),
+    ...(initialItems.length > 0 ? { initialItems } : {}),
   };
 }
 
@@ -219,6 +224,11 @@ export function createCodexRealtimeBrowserSessionBroker(params: {
   const broker: RealtimeVoiceBrowserSessionBroker = {
     providerId: "openai",
     authMode: "codex-oauth",
+    capabilities: {
+      handlesAgentConsult: true,
+      supportsToolCalls: false,
+      supportsVideoFrames: false,
+    },
     // Native ChatGPT login state belongs to Codex and is verified by app-server;
     // OpenClaw never reads or copies its OAuth token.
     isConfigured: () => true,
@@ -234,14 +244,12 @@ export function createCodexRealtimeBrowserSessionBroker(params: {
       const expiresAt = Date.now() + CODEX_REALTIME_PENDING_TTL_MS;
       reservations.add(token);
       pendingOffers.set(token, { expiresAt, request });
-      const model = request.model?.trim() || undefined;
       const voice = request.voice?.trim() || undefined;
       return {
         provider: "openai",
         transport: "webrtc",
         clientSecret: token,
         offerUrl: CODEX_REALTIME_OFFER_PATH,
-        ...(model ? { model } : {}),
         ...(voice ? { voice } : {}),
         expiresAt,
       };
@@ -387,7 +395,7 @@ export function createCodexRealtimeBrowserSessionBroker(params: {
         buildCodexRealtimeStartParams({
           threadId,
           sdp,
-          instructions: offer.request.instructions?.trim() || undefined,
+          developerInstructions: offer.request.instructions?.trim() || undefined,
           voice: offer.request.voice?.trim() || undefined,
           initialItems: offer.request.initialItems,
         }),

@@ -44,7 +44,10 @@ import {
   canonicalizeRealtimeVoiceProviderId,
   listRealtimeVoiceProviders,
 } from "../../talk/provider-registry.js";
-import { resolveConfiguredRealtimeVoiceProvider } from "../../talk/provider-resolver.js";
+import {
+  resolveConfiguredRealtimeVoiceProvider,
+  resolveRealtimeVoiceProviderCapabilities,
+} from "../../talk/provider-resolver.js";
 import {
   canonicalizeSpeechProviderId,
   getSpeechProvider,
@@ -344,7 +347,11 @@ function buildTalkCatalog(config: OpenClawConfig) {
         const providerConfig =
           provider.resolveConfig?.({ cfg: config, rawConfig: rawConfigWithModel }) ??
           rawConfigWithModel;
-        const capabilities = provider.capabilities;
+        const capabilities = resolveRealtimeVoiceProviderCapabilities({
+          provider,
+          providerConfig,
+          cfg: config,
+        });
         const entry: Record<string, unknown> = {
           id: provider.id,
           label: provider.label,
@@ -352,7 +359,10 @@ function buildTalkCatalog(config: OpenClawConfig) {
             provider.isConfigured({ cfg: config, providerConfig }),
           ),
           modes: ["realtime"],
-          brains: capabilities?.supportsToolCalls === false ? ["none"] : ["agent-consult"],
+          brains:
+            capabilities?.supportsToolCalls === false && capabilities.handlesAgentConsult !== true
+              ? ["none"]
+              : ["agent-consult"],
           supportsBrowserSession: Boolean(
             capabilities?.supportsBrowserSession ?? provider.createBrowserSession,
           ),

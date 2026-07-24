@@ -162,7 +162,7 @@ describe("Codex OAuth realtime browser session", () => {
       buildCodexRealtimeStartParams({
         threadId: "thread-1",
         sdp: "v=0\r\n",
-        instructions: "Be concise.",
+        developerInstructions: "Keep the Talk persona.",
         voice: "marin",
         initialItems: [
           { role: "user", text: "Earlier question" },
@@ -175,9 +175,9 @@ describe("Codex OAuth realtime browser session", () => {
       transport: { type: "webrtc", sdp: "v=0\r\n" },
       version: "v3",
       includeStartupContext: true,
-      prompt: "Be concise.",
       voice: "marin",
       initialItems: [
+        { role: "developer", text: "Keep the Talk persona." },
         { role: "user", text: "Earlier question" },
         { role: "assistant", text: "Earlier answer" },
       ],
@@ -191,6 +191,11 @@ describe("Codex OAuth realtime browser session", () => {
       getPluginConfig: () => ({}),
     });
     const unregister = registerRealtimeVoiceBrowserSessionBroker(realtime.broker);
+    expect(realtime.broker.capabilities).toEqual({
+      handlesAgentConsult: true,
+      supportsToolCalls: false,
+      supportsVideoFrames: false,
+    });
     const first = await realtime.broker.createBrowserSession({
       providerConfig: {},
       instructions: " Keep the same Talk persona. ",
@@ -203,11 +208,11 @@ describe("Codex OAuth realtime browser session", () => {
       provider: "openai",
       transport: "webrtc",
       offerUrl: CODEX_REALTIME_OFFER_PATH,
-      model: "gpt-realtime-2",
       voice: "Marin",
       clientSecret: expect.stringMatching(/^[A-Za-z0-9_-]{40,}$/),
       expiresAt: expect.any(Number),
     });
+    expect(first).not.toHaveProperty("model");
     if (first.transport !== "webrtc" || second.transport !== "webrtc") {
       throw new Error("Expected Codex browser sessions to use WebRTC");
     }
@@ -220,11 +225,13 @@ describe("Codex OAuth realtime browser session", () => {
       ).resolves.toBe(true);
       expect(accepted.res.statusCode).toBe(200);
       expect(accepted.readBody()).toBe("v=answer\r\n");
-      expect(
-        (fake.client.request as ReturnType<typeof vi.fn>).mock.calls.find(
-          ([method]) => method === "thread/realtime/start",
-        )?.[1],
-      ).toMatchObject({ prompt: "Keep the same Talk persona." });
+      const realtimeStartParams = (fake.client.request as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([method]) => method === "thread/realtime/start",
+      )?.[1];
+      expect(realtimeStartParams).toMatchObject({
+        initialItems: [{ role: "developer", text: "Keep the same Talk persona." }],
+      });
+      expect(realtimeStartParams).not.toHaveProperty("prompt");
 
       const replayed = createResponseHarness();
       await expect(

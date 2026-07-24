@@ -8,7 +8,10 @@ import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { resolveConfiguredCapabilityProvider } from "../plugin-sdk/provider-selection-runtime.js";
 import type { RealtimeVoiceProviderPlugin } from "../plugins/types.js";
 import { getRealtimeVoiceProvider, listRealtimeVoiceProviders } from "./provider-registry.js";
-import type { RealtimeVoiceProviderConfig } from "./provider-types.js";
+import type {
+  RealtimeVoiceProviderCapabilities,
+  RealtimeVoiceProviderConfig,
+} from "./provider-types.js";
 
 /** Resolved realtime voice provider plus provider-normalized config. */
 export type ResolvedRealtimeVoiceProvider = {
@@ -31,6 +34,19 @@ export type ResolveConfiguredRealtimeVoiceProviderParams = {
   defaultModel?: string;
   noRegisteredProviderMessage?: string;
 };
+
+export function resolveRealtimeVoiceProviderCapabilities(params: {
+  provider: RealtimeVoiceProviderPlugin;
+  providerConfig: RealtimeVoiceProviderConfig;
+  cfg?: OpenClawConfig;
+}): RealtimeVoiceProviderCapabilities | undefined {
+  return (
+    params.provider.resolveCapabilities?.({
+      cfg: params.cfg,
+      providerConfig: params.providerConfig,
+    }) ?? params.provider.capabilities
+  );
+}
 
 /** Resolve the configured realtime voice provider or auto-select the first configured one. */
 export function resolveConfiguredRealtimeVoiceProvider(

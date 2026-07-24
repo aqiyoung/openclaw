@@ -43,7 +43,10 @@ import {
   resolveOpenClientVoiceSessionId,
 } from "../../talk/client-voice-session.js";
 import { REALTIME_VOICE_DESCRIBE_VIEW_TOOL } from "../../talk/describe-view-tool.js";
-import { resolveConfiguredRealtimeVoiceProvider } from "../../talk/provider-resolver.js";
+import {
+  resolveConfiguredRealtimeVoiceProvider,
+  resolveRealtimeVoiceProviderCapabilities,
+} from "../../talk/provider-resolver.js";
 import { readSessionPreviewItemsFromTranscript } from "../session-transcript-readers.js";
 import { startTalkRealtimeAgentConsult } from "../talk-agent-consult.js";
 import {
@@ -205,7 +208,12 @@ export const talkClientHandlers: GatewayRequestHandlers = {
         defaultModel: realtimeConfig.model,
         noRegisteredProviderMessage: "No realtime voice provider registered",
       });
-      if (wantsCameraFrames && resolution.provider.capabilities?.supportsVideoFrames !== true) {
+      const providerCapabilities = resolveRealtimeVoiceProviderCapabilities({
+        provider: resolution.provider,
+        providerConfig: resolution.providerConfig,
+        cfg: runtimeConfig,
+      });
+      if (wantsCameraFrames && providerCapabilities?.supportsVideoFrames !== true) {
         respond(
           false,
           undefined,
@@ -251,18 +259,25 @@ export const talkClientHandlers: GatewayRequestHandlers = {
             } => item.role === "user" || item.role === "assistant",
           ),
         );
-        const tools = [REALTIME_VOICE_AGENT_CONSULT_TOOL, REALTIME_VOICE_AGENT_CONTROL_TOOL];
-        if (wantsCameraFrames) {
+        const tools =
+          providerCapabilities?.supportsToolCalls === false
+            ? []
+            : [REALTIME_VOICE_AGENT_CONSULT_TOOL, REALTIME_VOICE_AGENT_CONTROL_TOOL];
+        if (wantsCameraFrames && tools.length > 0) {
           tools.push(REALTIME_VOICE_DESCRIBE_VIEW_TOOL);
         }
+        const instructions =
+          providerCapabilities?.handlesAgentConsult === true
+            ? normalizeOptionalString(realtimeContext.instructions)
+            : buildRealtimeInstructions(realtimeContext.instructions);
         const session = await resolution.provider.createBrowserSession({
           cfg: runtimeConfig,
           agentId,
           workspaceDir: resolveAgentWorkspaceDir(runtimeConfig, agentId),
           providerConfig: resolution.providerConfig,
-          instructions: buildRealtimeInstructions(realtimeContext.instructions),
+          instructions,
           initialItems,
-          tools,
+          ...(tools.length > 0 ? { tools } : {}),
           ...launchOptions,
         });
         // Client-owned voice records are minted only for client-owned transports;

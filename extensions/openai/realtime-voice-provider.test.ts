@@ -331,6 +331,32 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
     expect(bridge.supportsToolResultSuppression).toBe(true);
   });
 
+  it("uses broker-owned capabilities for Codex OAuth browser sessions", () => {
+    getRealtimeVoiceBrowserSessionBrokerMock.mockReturnValue({
+      providerId: "openai",
+      authMode: "codex-oauth",
+      capabilities: {
+        handlesAgentConsult: true,
+        supportsToolCalls: false,
+        supportsVideoFrames: false,
+      },
+      isConfigured: () => true,
+      createBrowserSession: vi.fn(),
+    });
+    const provider = buildOpenAIRealtimeVoiceProvider();
+
+    expect(
+      provider.resolveCapabilities?.({
+        providerConfig: { authMode: "codex-oauth" },
+      }),
+    ).toMatchObject({
+      handlesAgentConsult: true,
+      supportsToolCalls: false,
+      supportsVideoFrames: false,
+    });
+    expect(provider.resolveCapabilities?.({ providerConfig: {} })).toBe(provider.capabilities);
+  });
+
   it("adds OpenClaw attribution headers to native realtime websocket requests", () => {
     vi.stubEnv("OPENCLAW_VERSION", "2026.3.22");
     const provider = buildOpenAIRealtimeVoiceProvider();
@@ -748,6 +774,11 @@ describe("buildOpenAIRealtimeVoiceProvider", () => {
     getRealtimeVoiceBrowserSessionBrokerMock.mockReturnValue({
       providerId: "openai",
       authMode: "codex-oauth",
+      capabilities: {
+        handlesAgentConsult: true,
+        supportsToolCalls: false,
+        supportsVideoFrames: false,
+      },
       isConfigured,
       createBrowserSession,
     });

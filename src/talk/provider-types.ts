@@ -4,7 +4,7 @@ import type { TalkTransport } from "./talk-events.js";
 
 export type RealtimeVoiceProviderId = string;
 
-export type RealtimeVoiceRole = "user" | "assistant";
+export type RealtimeVoiceRole = "user" | "assistant" | "developer";
 
 export type RealtimeVoiceCloseReason = "completed" | "error";
 
@@ -91,6 +91,8 @@ export type RealtimeVoiceProviderCapabilities = {
   supportsBargeIn?: boolean;
   /** True when provider VAD reports confirmed interruptions through onClearAudio("barge-in"). */
   handlesInputAudioBargeIn?: boolean;
+  /** True when the provider owns agent delegation instead of exposing client-side function tools. */
+  handlesAgentConsult?: boolean;
   supportsToolCalls?: boolean;
   supportsVideoFrames?: boolean;
   supportsSessionResumption?: boolean;
@@ -197,6 +199,8 @@ export type RealtimeVoiceBrowserSession =
 export type RealtimeVoiceBrowserSessionBroker = {
   providerId: RealtimeVoiceProviderId;
   authMode: string;
+  /** Auth-route-specific capability overrides owned by the alternate session broker. */
+  capabilities?: Partial<RealtimeVoiceProviderCapabilities>;
   isConfigured: (ctx: RealtimeVoiceProviderConfiguredContext) => boolean;
   createBrowserSession: (
     req: RealtimeVoiceBrowserSessionCreateRequest,

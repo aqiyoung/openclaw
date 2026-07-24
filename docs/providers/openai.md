@@ -169,6 +169,10 @@ app-server route by setting
 uses the bundled Codex plugin's logged-in subscription without exposing its
 OAuth token to OpenClaw or the browser. It is limited to client-owned WebRTC;
 Voice Call and Gateway-relay realtime still require Platform credentials.
+Codex owns the realtime model, base prompt, and native agent delegation on this
+route. OpenClaw adds configured Talk instructions and bounded profile context
+as developer context without replacing that prompt. Direct Realtime function
+tools, VAD/reasoning tuning, and Video Talk remain Platform-only.
 
 If API-key auth reports missing billing, top up Platform credits at
 [platform.openai.com/account/billing](https://platform.openai.com/account/billing)
@@ -179,7 +183,7 @@ auth. Realtime voice accepts the `openai` API-key auth profile created by
 `plugins.entries.voice-call.config.realtime.providers.openai.apiKey` for Voice
 Call, or the `OPENAI_API_KEY` environment variable.
 
-In Control UI Video Talk, OpenAI WebRTC receives camera context on demand:
+In Control UI Video Talk with Platform auth, OpenAI WebRTC receives camera context on demand:
 when the model calls `describe_view`, the browser sends one bounded JPEG over
 the realtime data channel. OpenClaw does not attach a continuous camera track
 to the OpenAI session.
@@ -949,7 +953,9 @@ compatibility fallback when the shared
     `talk.realtime.providers.openai.authMode: "codex-oauth"` to route browser
     WebRTC setup through the bundled Codex plugin and its app-server. Gateway
     relay and Voice Call backend realtime WebSocket bridges continue to use
-    Platform credentials.
+    Platform credentials. The Codex route keeps Codex's native realtime prompt,
+    model selection, and agent handoff; it does not accept the direct Platform
+    model/tool/camera controls.
     Maintainer live verification is available with
     `OPENAI_API_KEY=... GEMINI_API_KEY=... node --import tsx scripts/dev/realtime-talk-live-smoke.ts`;
     the OpenAI legs verify both the backend WebSocket bridge and the browser

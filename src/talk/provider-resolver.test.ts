@@ -1,7 +1,10 @@
 // Talk provider resolver tests cover provider selection from config.
 import { describe, expect, it } from "vitest";
 import type { RealtimeVoiceProviderPlugin } from "../plugins/types.js";
-import { resolveConfiguredRealtimeVoiceProvider } from "./provider-resolver.js";
+import {
+  resolveConfiguredRealtimeVoiceProvider,
+  resolveRealtimeVoiceProviderCapabilities,
+} from "./provider-resolver.js";
 
 describe("realtime voice provider resolver", () => {
   const providers: RealtimeVoiceProviderPlugin[] = [
@@ -110,5 +113,35 @@ describe("realtime voice provider resolver", () => {
         noRegisteredProviderMessage: "No configured realtime voice provider registered",
       }),
     ).toThrow("No configured realtime voice provider registered");
+  });
+
+  it("resolves config-specific provider capabilities", () => {
+    const provider: RealtimeVoiceProviderPlugin = {
+      id: "dynamic",
+      label: "Dynamic",
+      capabilities: {
+        transports: ["webrtc"],
+        inputAudioFormats: [],
+        outputAudioFormats: [],
+        supportsVideoFrames: true,
+      },
+      resolveCapabilities: ({ providerConfig }) => ({
+        transports: ["webrtc"],
+        inputAudioFormats: [],
+        outputAudioFormats: [],
+        supportsVideoFrames: providerConfig.authMode !== "native",
+      }),
+      isConfigured: () => true,
+      createBridge: () => {
+        throw new Error("unused");
+      },
+    };
+
+    expect(
+      resolveRealtimeVoiceProviderCapabilities({
+        provider,
+        providerConfig: { authMode: "native" },
+      })?.supportsVideoFrames,
+    ).toBe(false);
   });
 });

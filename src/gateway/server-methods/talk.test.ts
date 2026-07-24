@@ -31,6 +31,20 @@ const mocks = vi.hoisted(() => ({
   getRealtimeTranscriptionProvider: vi.fn(),
   listRealtimeTranscriptionProviders: vi.fn(() => []),
   resolveConfiguredRealtimeVoiceProvider: vi.fn(),
+  resolveRealtimeVoiceProviderCapabilities: vi.fn(
+    ({
+      provider,
+      providerConfig,
+      cfg,
+    }: {
+      provider: {
+        capabilities?: unknown;
+        resolveCapabilities?: (ctx: { providerConfig: unknown; cfg?: unknown }) => unknown;
+      };
+      providerConfig: unknown;
+      cfg?: unknown;
+    }) => provider.resolveCapabilities?.({ providerConfig, cfg }) ?? provider.capabilities,
+  ),
   createTalkRealtimeRelaySession: vi.fn(),
   sendTalkRealtimeRelayAudio: vi.fn(),
   acknowledgeTalkRealtimeRelayMark: vi.fn(),
@@ -94,6 +108,7 @@ vi.mock("../../realtime-transcription/provider-registry.js", () => ({
 
 vi.mock("../../talk/provider-resolver.js", () => ({
   resolveConfiguredRealtimeVoiceProvider: mocks.resolveConfiguredRealtimeVoiceProvider,
+  resolveRealtimeVoiceProviderCapabilities: mocks.resolveRealtimeVoiceProviderCapabilities,
 }));
 
 vi.mock("../../talk/agent-run-control.js", () => ({
@@ -3040,6 +3055,69 @@ describe("talk.client.create handler", () => {
       transport: "webrtc",
       voiceSessionId: "voice-test",
     });
+  });
+
+  it("lets native agent handoff own the Codex OAuth prompt and omits direct tools", async () => {
+    mocks.resolveRealtimeBootstrapContextInstructions.mockResolvedValue("Bounded profile context.");
+    const createBrowserSession = vi.fn(async (_input: unknown) => ({
+      provider: "openai",
+      transport: "webrtc" as const,
+      clientSecret: "secret",
+    }));
+    const provider = {
+      id: "openai",
+      label: "OpenAI Realtime",
+      capabilities: {
+        transports: ["webrtc"],
+        inputAudioFormats: [],
+        outputAudioFormats: [],
+      },
+      resolveCapabilities: () => ({
+        transports: ["webrtc"],
+        inputAudioFormats: [],
+        outputAudioFormats: [],
+        handlesAgentConsult: true,
+        supportsToolCalls: false,
+        supportsVideoFrames: false,
+      }),
+      isConfigured: () => true,
+      createBrowserSession,
+      createBridge: vi.fn(),
+    };
+    mocks.resolveConfiguredRealtimeVoiceProvider.mockReturnValue({
+      provider,
+      providerConfig: { authMode: "codex-oauth" },
+    });
+
+    const respond = vi.fn();
+    await expectDefined(
+      talkHandlers["talk.client.create"],
+      'talkHandlers["talk.client.create"] test invariant',
+    )({
+      req: { type: "req", id: "codex", method: "talk.client.create" },
+      params: { sessionKey: "main", transport: "webrtc" },
+      client: { connId: "conn-1" } as never,
+      isWebchatConnect: () => false,
+      respond: respond as never,
+      context: {
+        getRuntimeConfig: () =>
+          ({
+            talk: {
+              realtime: {
+                provider: "openai",
+                providers: { openai: { authMode: "codex-oauth" } },
+                instructions: "Speak warmly.",
+              },
+            },
+          }) as OpenClawConfig,
+      } as never,
+    });
+
+    const createInput = mockCallArg(createBrowserSession) as Record<string, unknown>;
+    expect(createInput.instructions).toBe("Speak warmly.\n\nBounded profile context.");
+    expect(createInput).not.toHaveProperty("tools");
+    expect(createInput.instructions).not.toContain("openclaw_agent_consult");
+    expectRespondOk(respond, { provider: "openai", transport: "webrtc" });
   });
 
   it("adds describe_view to camera clients whose provider supports video frames", async () => {
