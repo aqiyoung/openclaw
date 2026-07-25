@@ -249,35 +249,42 @@ function protectResidualBlockPadding(
   atxHeading: boolean,
   protectQuotePadding: boolean,
 ): string {
+  let protectedLine = line;
   let cursor = 0;
-  while (protectQuotePadding && cursor < line.length) {
-    let marker = cursor;
-    while (marker < line.length && marker - cursor < 3 && line[marker] === " ") {
-      marker += 1;
+  if (protectQuotePadding) {
+    while (cursor < protectedLine.length) {
+      let marker = cursor;
+      while (
+        marker < protectedLine.length &&
+        marker - cursor < 3 &&
+        protectedLine[marker] === " "
+      ) {
+        marker += 1;
+      }
+      if (protectedLine[marker] !== ">") {
+        break;
+      }
+      const whitespaceStart = marker + 1;
+      const whitespace = /^[ \t]+/u.exec(protectedLine.slice(whitespaceStart))?.[0] ?? "";
+      const remainingContent = protectedLine.slice(whitespaceStart + whitespace.length);
+      if (whitespace.length > 1 && remainingContent) {
+        protectedLine = `${protectedLine.slice(0, whitespaceStart + 1)}${protectLiteral(
+          registry,
+          whitespace.slice(1),
+        )}${protectedLine.slice(whitespaceStart + whitespace.length)}`;
+        break;
+      }
+      cursor = whitespaceStart + whitespace.length;
     }
-    if (line[marker] !== ">") {
-      break;
-    }
-    const whitespaceStart = marker + 1;
-    const whitespace = /^[ \t]+/u.exec(line.slice(whitespaceStart))?.[0] ?? "";
-    const remainingContent = line.slice(whitespaceStart + whitespace.length);
-    if (whitespace.length > 1 && remainingContent) {
-      line = `${line.slice(0, whitespaceStart + 1)}${protectLiteral(
-        registry,
-        whitespace.slice(1),
-      )}${line.slice(whitespaceStart + whitespace.length)}`;
-      break;
-    }
-    cursor = whitespaceStart + whitespace.length;
   }
   if (atxHeading) {
-    line = line.replace(/(#{1,6})([ \t]+)/u, (_match, marker, whitespace) =>
+    protectedLine = protectedLine.replace(/(#{1,6})([ \t]+)/u, (_match, marker, whitespace) =>
       whitespace.length > 1
         ? `${marker} ${protectLiteral(registry, whitespace.slice(1))}`
         : `${marker}${whitespace}`,
     );
   }
-  return line;
+  return protectedLine;
 }
 
 function protectUnpairedDelimiterRuns(
@@ -286,6 +293,7 @@ function protectUnpairedDelimiterRuns(
   preservedOffsets: ReadonlySet<number> = new Set(),
 ): string {
   const original = line;
+  let protectedLine = line;
   const replacements: Array<{
     end: number;
     literal: string;
@@ -376,7 +384,9 @@ function protectUnpairedDelimiterRuns(
     const text = replacement.literalFirst
       ? `${literal}${replacement.matched}`
       : `${replacement.matched}${literal}`;
-    line = `${line.slice(0, replacement.start)}${text}${line.slice(replacement.end)}`;
+    protectedLine = `${protectedLine.slice(0, replacement.start)}${text}${protectedLine.slice(
+      replacement.end,
+    )}`;
   }
-  return line;
+  return protectedLine;
 }

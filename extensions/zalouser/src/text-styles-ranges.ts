@@ -54,7 +54,7 @@ export function collectStructuralStyles(
                   candidate.start < item.contentEnd!,
               )
               .map((candidate) => ({ start: candidate.start!, end: candidate.end! })),
-          ).map((range) => ({ ...range, preserveWhitespace: false }))
+          ).map(({ start, end }) => ({ start, end, preserveWhitespace: false }))
         : materializedRanges;
     for (const ownedRange of ownedRanges) {
       let contentStart = ownedRange.start;
@@ -225,13 +225,14 @@ export function applyTextEdits(
       priority: 0,
       sequence,
     })),
-    ...structuralStyles.map((style, sequence) => ({ ...style, sequence })),
+    ...structuralStyles.map((style, sequence) => Object.assign({}, style, { sequence })),
   ]
-    .map((style) => ({
-      ...style,
-      start: mapEditedOffset(style.start, edits, false, style.priority > 0),
-      end: mapEditedOffset(style.end, edits, true, style.priority > 0),
-    }))
+    .map((style) =>
+      Object.assign(style, {
+        start: mapEditedOffset(style.start, edits, false, style.priority > 0),
+        end: mapEditedOffset(style.end, edits, true, style.priority > 0),
+      }),
+    )
     .flatMap((style) =>
       style.style === TextStyle.Indent ? splitStyledLines(style, output) : [style],
     )
@@ -282,15 +283,19 @@ export function applyTextEdits(
   );
 
   const styles: Style[] = [];
-  for (const style of ordered.map((style) =>
-    style.style === TextStyle.Indent
+  for (const style of ordered.map((orderedStyle) =>
+    orderedStyle.style === TextStyle.Indent
       ? {
-          start: style.start,
-          len: style.end - style.start,
+          start: orderedStyle.start,
+          len: orderedStyle.end - orderedStyle.start,
           st: TextStyle.Indent,
-          indentSize: style.indentSize,
+          indentSize: orderedStyle.indentSize,
         }
-      : { start: style.start, len: style.end - style.start, st: style.style },
+      : {
+          start: orderedStyle.start,
+          len: orderedStyle.end - orderedStyle.start,
+          st: orderedStyle.style,
+        },
   )) {
     const previous = styles.at(-1);
     if (

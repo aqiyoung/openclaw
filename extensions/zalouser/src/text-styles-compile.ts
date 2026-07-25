@@ -352,12 +352,13 @@ function collectSourceSpacingEdits(
     return starts;
   }, []);
   const boundaries = [
-    ...(ir.blocks ?? []).map((block) => ({
-      ...block,
-      sameLineNested: (sourceIR.listItems ?? []).some(
-        (item) => item.sourceStartLine === block.sourceStartLine,
-      ),
-    })),
+    ...(ir.blocks ?? []).map((block) =>
+      Object.assign({}, block, {
+        sameLineNested: (sourceIR.listItems ?? []).some(
+          (item) => item.sourceStartLine === block.sourceStartLine,
+        ),
+      }),
+    ),
     ...(ir.listItems ?? []).flatMap((item, itemIndex) =>
       item.start !== undefined &&
       item.end !== undefined &&
