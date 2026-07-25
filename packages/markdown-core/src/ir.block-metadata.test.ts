@@ -263,7 +263,8 @@ describe("markdownToIR block metadata", () => {
     expect(Object.keys(ir)).not.toContain("blocks");
     expect(item?.contentStart).toBeDefined();
     expect(Object.keys(item ?? {})).not.toContain("contentStart");
-    expect(JSON.parse(JSON.stringify(ir))).toEqual({
+    const serialized = JSON.stringify(ir);
+    expect(JSON.parse(serialized)).toEqual({
       text: "• item\n\ncode\n",
       styles: [{ start: 8, end: 13, style: "code_block", language: "ts" }],
       links: [],
