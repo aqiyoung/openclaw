@@ -20,7 +20,7 @@ type BlockMetadata = {
   sourceEndLine?: number;
 };
 
-type MarkdownIRWithMetadata = MarkdownIR & {
+type MarkdownIRWithMetadata = Omit<MarkdownIR, "listItems"> & {
   blocks?: BlockMetadata[];
   listItems?: Array<
     NonNullable<MarkdownIR["listItems"]>[number] & {
