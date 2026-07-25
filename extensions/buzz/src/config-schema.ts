@@ -7,7 +7,7 @@ import { buildSecretInputSchema } from "openclaw/plugin-sdk/secret-input";
 import { z } from "zod";
 import { BUZZ_CHANNEL_ID_PATTERN } from "./target.js";
 
-export const BuzzGroupConfigSchema = z
+const BuzzGroupConfigSchema = z
   .object({
     enabled: z.boolean().optional(),
     requireMention: z.boolean().optional(),

@@ -13,6 +13,8 @@ import { BuzzConfigSchema } from "./config-schema.js";
 import { buzzOutboundAdapter, startBuzzGatewayAccount } from "./gateway.js";
 import { discoverBuzzRooms } from "./room-discovery.js";
 import { collectRuntimeConfigAssignments, secretTargetRegistryEntries } from "./secret-contract.js";
+import { buzzSetupAdapter, buzzSetupContract } from "./setup-core.js";
+import { buzzSetupWizard } from "./setup-surface.js";
 import {
   buildBuzzTarget,
   looksLikeBuzzTarget,
@@ -56,6 +58,9 @@ export const buzzPlugin = createChatChannelPlugin<ResolvedBuzzAccount, BuzzProbe
     },
     reload: { configPrefixes: ["channels.buzz"] },
     configSchema: BuzzConfigSchema,
+    setup: buzzSetupAdapter,
+    setupContract: buzzSetupContract,
+    setupWizard: buzzSetupWizard,
     config: {
       listAccountIds: listBuzzAccountIds,
       resolveAccount: (cfg, accountId) => resolveBuzzAccount({ cfg, accountId }),

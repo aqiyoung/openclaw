@@ -6,7 +6,7 @@ import type { ChannelGatewayContext } from "../runtime-api.js";
 import { startBuzzBus, type BuzzBus } from "./buzz-bus.js";
 import { handleBuzzInbound } from "./inbound.js";
 import { getBuzzRuntime } from "./runtime.js";
-import { parseBuzzTarget } from "./target.js";
+import { isConfiguredBuzzChannel, parseBuzzTarget } from "./target.js";
 import {
   resolveBuzzAccount,
   resolveDefaultBuzzAccountId,
@@ -22,17 +22,6 @@ const RECONNECT_BACKOFF = {
 } as const;
 const RECONNECT_STABLE_MS = 60_000;
 const RECONNECT_LOOKBACK_SECONDS = 24 * 60 * 60;
-
-export function isConfiguredBuzzChannel(
-  configuredChannelIds: ReadonlySet<string>,
-  channelId: string,
-): boolean {
-  try {
-    return configuredChannelIds.has(parseBuzzTarget(channelId));
-  } catch {
-    return false;
-  }
-}
 
 export async function startBuzzGatewayAccount(ctx: ChannelGatewayContext<ResolvedBuzzAccount>) {
   const account = resolveBuzzAccount({

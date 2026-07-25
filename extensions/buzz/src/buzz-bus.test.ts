@@ -1,6 +1,7 @@
 import { finalizeEvent } from "nostr-tools";
 import { describe, expect, it } from "vitest";
-import { buildBuzzMessageTags, parseBuzzAuthTag, parseBuzzMessageEvent } from "./buzz-bus.js";
+import { buildBuzzMessageTags, parseBuzzMessageEvent } from "./message-event.js";
+import { parseBuzzAuthTag } from "./relay-auth.js";
 
 const SECRET_KEY = Uint8Array.from(
   Buffer.from("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f", "hex"),

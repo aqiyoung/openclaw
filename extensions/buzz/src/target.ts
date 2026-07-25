@@ -16,6 +16,17 @@ export function parseBuzzTarget(target: string): string {
   return channelId.toLowerCase();
 }
 
+export function isConfiguredBuzzChannel(
+  configuredChannelIds: ReadonlySet<string>,
+  channelId: string,
+): boolean {
+  try {
+    return configuredChannelIds.has(parseBuzzTarget(channelId));
+  } catch {
+    return false;
+  }
+}
+
 export function buildBuzzTarget(channelId: string): string {
   return `buzz:${parseBuzzTarget(channelId)}`;
 }

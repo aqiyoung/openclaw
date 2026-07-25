@@ -1,5 +1,10 @@
 import { Relay, finalizeEvent, type Event } from "nostr-tools";
 import { createChannelReplayGuard } from "openclaw/plugin-sdk/persistent-dedupe";
+import {
+  buildBuzzMessageTags,
+  parseBuzzMessageEvent,
+  type BuzzInboundMessage,
+} from "./message-event.js";
 import { authenticateBuzzRelay, createBuzzAuthSigner, parseBuzzAuthTag } from "./relay-auth.js";
 import { decodeBuzzPrivateKey, resolveBuzzPublicKey } from "./types.js";
 
@@ -8,17 +13,6 @@ const REPLAY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const REPLAY_MAX_ENTRIES = 10_000;
 const REPLAY_STATE_MAX_ENTRIES = 50_000;
 const REPLAY_NAMESPACE_PREFIX = "buzz.inbound-dedupe";
-
-export interface BuzzInboundMessage {
-  id: string;
-  senderPubkey: string;
-  text: string;
-  channelId: string;
-  createdAt: number;
-  threadId?: string;
-  replyToId?: string;
-  mentionedPubkeys: string[];
-}
 
 export interface BuzzBus {
   publicKey: string;
@@ -29,56 +23,6 @@ export interface BuzzBus {
     replyToId?: string;
   }) => Promise<string>;
   close: () => Promise<void>;
-}
-
-function tagValue(event: Event, name: string): string | undefined {
-  return event.tags.find((tag) => tag[0] === name)?.[1];
-}
-
-function markerTagValue(event: Event, marker: string): string | undefined {
-  return event.tags.find((tag) => tag[0] === "e" && tag[3] === marker)?.[1];
-}
-
-export function parseBuzzMessageEvent(event: Event): BuzzInboundMessage | null {
-  if (event.kind !== MESSAGE_KIND || !event.content.trim()) {
-    return null;
-  }
-  const channelId = tagValue(event, "h");
-  if (!channelId) {
-    return null;
-  }
-  const rootId = markerTagValue(event, "root");
-  const replyToId = markerTagValue(event, "reply");
-  return {
-    id: event.id,
-    senderPubkey: event.pubkey,
-    text: event.content,
-    channelId,
-    createdAt: event.created_at,
-    threadId: rootId ?? replyToId,
-    replyToId,
-    mentionedPubkeys: event.tags
-      .filter((tag) => tag[0] === "p" && Boolean(tag[1]))
-      .map((tag) => tag[1] as string),
-  };
-}
-
-export { parseBuzzAuthTag };
-
-export function buildBuzzMessageTags(params: {
-  channelId: string;
-  threadId?: string;
-  replyToId?: string;
-}): string[][] {
-  const tags: string[][] = [["h", params.channelId]];
-  const parentId = params.replyToId ?? params.threadId;
-  if (params.threadId && parentId !== params.threadId) {
-    tags.push(["e", params.threadId, "", "root"]);
-  }
-  if (parentId) {
-    tags.push(["e", parentId, "", "reply"]);
-  }
-  return tags;
 }
 
 export async function startBuzzBus(options: {
