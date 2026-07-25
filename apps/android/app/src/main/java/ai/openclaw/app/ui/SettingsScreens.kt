@@ -185,6 +185,7 @@ internal enum class SettingsRoute {
   Usage,
   Skills,
   SkillWorkshop,
+  SystemAgent,
   NodesDevices,
   Channels,
   Dreaming,
@@ -219,6 +220,7 @@ internal fun SettingsDetailScreen(
     SettingsRoute.Usage -> UsageSettingsScreen(viewModel = viewModel, onBack = onBack)
     SettingsRoute.Skills -> SkillsSettingsScreen(viewModel = viewModel, onBack = onBack)
     SettingsRoute.SkillWorkshop -> SkillWorkshopSettingsScreen(viewModel = viewModel, onBack = onBack)
+    SettingsRoute.SystemAgent -> SystemAgentSettingsScreen(viewModel = viewModel, onBack = onBack)
     SettingsRoute.NodesDevices -> NodesDevicesSettingsScreen(viewModel = viewModel, onBack = onBack)
     SettingsRoute.Channels -> ChannelsSettingsScreen(viewModel = viewModel, onBack = onBack)
     SettingsRoute.Dreaming -> DreamingSettingsScreen(viewModel = viewModel, onBack = onBack)
@@ -2435,7 +2437,6 @@ private fun ExecApprovalCard(
   onResolve: (String, String) -> Unit,
 ) {
   val resolving = approval.resolvingDecision != null
-  val isResolved = approval.allowedDecisions.isEmpty() && !resolving
   ClawPanel {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -2445,11 +2446,7 @@ private fun ExecApprovalCard(
             Text(text = preview, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
           }
         }
-        when {
-          resolving -> ClawStatusPill(text = nativeString("Sending"), status = ClawStatus.Warning)
-          isResolved -> ClawStatusPill(text = nativeString("Done"), status = ClawStatus.Neutral)
-          else -> ClawStatusPill(text = nativeString("Review"), status = ClawStatus.Success)
-        }
+        ClawStatusPill(text = if (resolving) nativeString("Sending") else nativeString("Review"), status = if (resolving) ClawStatus.Warning else ClawStatus.Success)
       }
       ExecApprovalCommandReview(approval.commandText.resolveNativeTextResource())
       approval.warningText?.let { warningText ->
@@ -2459,24 +2456,22 @@ private fun ExecApprovalCard(
       approval.errorText?.let { errorText ->
         Text(text = gatewayExecApprovalTextForDisplay(errorText), style = ClawTheme.type.caption, color = ClawTheme.colors.warning)
       }
-      if (!isResolved) {
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          execApprovalActions(approval.allowedDecisions).forEach { action ->
-            if (action.decision == "allow-once") {
-              ClawPrimaryButton(
-                text = action.label,
-                onClick = { onResolve(approval.id, action.decision) },
-                enabled = !resolving,
-                modifier = Modifier.fillMaxWidth(),
-              )
-            } else {
-              ClawSecondaryButton(
-                text = action.label,
-                onClick = { onResolve(approval.id, action.decision) },
-                enabled = !resolving,
-                modifier = Modifier.fillMaxWidth(),
-              )
-            }
+      Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        execApprovalActions(approval.allowedDecisions).forEach { action ->
+          if (action.decision == "allow-once") {
+            ClawPrimaryButton(
+              text = action.label,
+              onClick = { onResolve(approval.id, action.decision) },
+              enabled = !resolving,
+              modifier = Modifier.fillMaxWidth(),
+            )
+          } else {
+            ClawSecondaryButton(
+              text = action.label,
+              onClick = { onResolve(approval.id, action.decision) },
+              enabled = !resolving,
+              modifier = Modifier.fillMaxWidth(),
+            )
           }
         }
       }
