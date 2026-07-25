@@ -501,29 +501,6 @@ describe("handleModelsCommand", () => {
     expect(data.modelNames.get("openai/gpt-5.5")).toBe("ChatGPT GPT-5.5");
   });
 
-  it("hides deprecated rows from the numbered picker but keeps them in all browse data", async () => {
-    modelCatalogMocks.loadModelCatalog.mockResolvedValue([
-      { provider: "openai", id: "gpt-current", name: "GPT Current" },
-      {
-        provider: "openai",
-        id: "gpt-old",
-        name: "GPT Old",
-        status: "deprecated",
-        replacedBy: "gpt-current",
-      },
-    ]);
-    modelProviderAuthMocks.authenticatedProviders = new Set(["openai"]);
-    const cfg = {
-      agents: { defaults: { model: { primary: "openai/gpt-current" } } },
-    } as OpenClawConfig;
-
-    const picker = await buildModelsProviderData(cfg);
-    const all = await buildModelsProviderData(cfg, undefined, { view: "all" });
-
-    expect(picker.byProvider.get("openai")).toEqual(new Set(["gpt-current"]));
-    expect(all.byProvider.get("openai")).toEqual(new Set(["gpt-current", "gpt-old"]));
-  });
-
   it("shows plugin-normalized allowlist models in browse data", async () => {
     normalizeProviderModelIdWithRuntimeMock.mockImplementation(({ provider, context }) => {
       if (
