@@ -2,9 +2,21 @@
 
 Official Buzz channel plugin for OpenClaw.
 
-Connect OpenClaw agents to Buzz rooms so people can message an agent where their
-team already works. The plugin handles incoming room messages, threaded replies,
-mentions, access controls, and outbound text messages.
+Bring an OpenClaw agent into Buzz so people can work with it from the same rooms
+as the rest of their team. Conversations stay in the room and thread where they
+started, while OpenClaw supplies the agent's model, workspace, skills, memory,
+tools, and automation.
+
+## What you can do
+
+- Give support, engineering, or operations rooms their own specialized agents
+- Let room members ask an agent to research, write, run approved tools, or use
+  team-specific skills and memory
+- Send proactive updates from OpenClaw automations and operators into Buzz
+- Keep one Gateway and bot identity while routing different rooms to different
+  agents, models, and workspaces
+- Control who can activate an agent with mentions and sender allowlists
+- Keep replies attached to the originating Buzz conversation
 
 ## How Buzz maps to OpenClaw
 
@@ -17,7 +29,13 @@ Each room is identified by a UUID. Incoming room messages enter the normal
 OpenClaw conversation flow, while replies stay in the originating Buzz room and
 preserve thread context.
 
-## What it adds
+The high-level message flow is:
+
+```text
+Buzz room <-> Buzz relay <-> Buzz plugin <-> routed OpenClaw agent
+```
+
+## What the plugin adds
 
 - Buzz as an OpenClaw group-chat channel
 - Guided bot identity and room setup
@@ -77,6 +95,10 @@ and send an optional test message.
   recommended starting policy.
 - Buzz messages are untrusted input to the routed agent. Match that agent's tool
   policy and sandbox access to the room's trust level.
+- Anyone who obtains the bot private key can impersonate it. Treat the key like
+  a password, use a SecretRef when appropriate, and never paste it into Buzz.
+- Key rotation requires the new public key to be approved for the relay and
+  rooms before the old identity is removed.
 
 ## Verify
 
@@ -96,10 +118,10 @@ openclaw message send \
 For a full round trip, have an allowed Buzz user mention the bot and confirm
 that OpenClaw replies in the room.
 
-## Current limits and roadmap
+## Roadmap, not supported today
 
-The current plugin supports text conversations in group rooms. These roadmap
-areas are not shipped yet:
+The current plugin supports text conversations in group rooms. The following
+areas are planned but are not shipped yet:
 
 - Direct messages
 - Media and files
