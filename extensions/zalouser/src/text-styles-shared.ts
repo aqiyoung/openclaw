@@ -16,6 +16,7 @@ export type MarkdownBlockMetadata = {
   sourceEndLine?: number;
 };
 
+/** Bundled transport view of non-enumerable parser metadata; keep it in lockstep with markdown-core. */
 export type MarkdownIRWithBlockMetadata = Omit<MarkdownIR, "listItems"> & {
   blocks?: MarkdownBlockMetadata[];
   listItems?: Array<

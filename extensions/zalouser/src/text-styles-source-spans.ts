@@ -121,7 +121,7 @@ export function sourceBlockquotePrefixLength(
   return cursor;
 }
 
-export function markdownSourceColumn(text: string, initialColumn = 0): number {
+function markdownSourceColumn(text: string, initialColumn = 0): number {
   let column = initialColumn;
   for (const character of text) {
     column += character === "\t" ? 4 - (column % 4) : 1;
@@ -129,7 +129,7 @@ export function markdownSourceColumn(text: string, initialColumn = 0): number {
   return column;
 }
 
-export function blockquoteTabResidual(prefix: string, initialColumn = 0): number {
+function blockquoteTabResidual(prefix: string, initialColumn = 0): number {
   let column = initialColumn;
   let residual = 0;
   for (let index = 0; index < prefix.length; index += 1) {
