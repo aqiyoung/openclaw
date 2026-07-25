@@ -3123,7 +3123,9 @@ class TalkModeManager internal constructor(
       // Recheck after dispatch so a listener queued before PTT cannot reclaim
       // the microphone while the full PTT turn still owns it.
       if (stopRequested || !shouldAllowSpeechInterrupt()) return@post
-      if (!SpeechRecognizer.isRecognitionAvailable(context)) return@post
+      if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        Log.w(tag, "SpeechInterrupt: isRecognitionAvailable returned false, attempting anyway")
+      }
       try {
         if (recognizer == null) {
           recognizer = SpeechRecognizer.createSpeechRecognizer(context).also { it.setRecognitionListener(listener) }

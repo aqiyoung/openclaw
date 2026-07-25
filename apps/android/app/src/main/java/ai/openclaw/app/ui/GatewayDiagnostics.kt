@@ -34,7 +34,7 @@ internal fun gatewayDiagnosticsEndpoint(
   manualTls: Boolean,
 ): String {
   remoteAddress?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
-  return composeGatewayManualUrl(manualHost, manualPort.toString(), manualTls)?.let { parseGatewayEndpoint(it)?.displayUrl } ?: "Not set"
+  return composeGatewayManualUrl(manualHost, manualPort.toString(), manualTls)?.let { parseGatewayEndpoint(it)?.displayUrl } ?: nativeString("Not set")
 }
 
 /** Detects pairing/approval status text so UI can offer pairing-specific actions. */

@@ -25,7 +25,6 @@ import ai.openclaw.app.i18n.nativeText
 import ai.openclaw.app.i18n.resolveNativeTextResource
 import ai.openclaw.app.i18n.verbatimText
 import ai.openclaw.app.node.CanvasController
-import ai.openclaw.app.systemagent.SystemAgentChatAccess
 import ai.openclaw.app.ui.design.AgentAvatarSource
 import ai.openclaw.app.ui.design.ClawAgentAvatar
 import ai.openclaw.app.ui.design.ClawBottomNav
@@ -75,7 +74,6 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Favorite
@@ -1013,9 +1011,9 @@ internal fun overviewHeaderState(
   hasAttention: Boolean,
 ): OverviewHeaderState =
   when {
-    !isConnected -> OverviewHeaderState("Offline", ClawStatus.Neutral)
-    hasAttention -> OverviewHeaderState("Needs attention", ClawStatus.Warning)
-    else -> OverviewHeaderState("Online", ClawStatus.Success)
+    !isConnected -> OverviewHeaderState(nativeString("Offline"), ClawStatus.Neutral)
+    hasAttention -> OverviewHeaderState(nativeString("Needs attention"), ClawStatus.Warning)
+    else -> OverviewHeaderState(nativeString("Online"), ClawStatus.Success)
   }
 
 internal fun overviewHeaderRoute(attentionRows: List<HomeAttentionRow>): SettingsRoute = attentionRows.firstNotNullOfOrNull { it.settingsRoute } ?: SettingsRoute.Gateway
@@ -1461,7 +1459,7 @@ internal fun overviewRecentSessionRows(
         key = session.key,
         ownerAgentId = session.ownerAgentId,
         title = title,
-        source = sessionListSubtitle(session, sessionSourceLabel(session.key, channelsSummary)),
+        source = sessionSourceLabel(session.key, channelsSummary),
         metadata = (session.lastActivityAt ?: session.updatedAtMs)?.let(::overviewRelativeSessionTime) ?: "",
       )
     }
@@ -1582,7 +1580,6 @@ private fun SettingsShellScreen(
   val displayName by viewModel.displayName.collectAsState()
   val gatewayConnectionDisplay by viewModel.gatewayConnectionDisplay.collectAsState()
   val isConnected = gatewayConnectionDisplay.isConnected
-  val systemAgentChatState by viewModel.systemAgentChatState.collectAsState()
   val models by viewModel.providerModelCatalog.collectAsState()
   val providers by viewModel.modelAuthProviders.collectAsState()
   val cameraEnabled by viewModel.cameraEnabled.collectAsState()
@@ -1670,18 +1667,6 @@ private fun SettingsShellScreen(
           SettingsRow(nativeText("Nodes & Devices"), verbatimText(nodesDevicesSummaryText(nodesDevicesSummary)), Icons.Default.Cloud, status = nodesDevicesStatus(nodesDevicesSummary), route = SettingsRoute.NodesDevices),
           SettingsRow(nativeText("Channels"), verbatimText(channelsSummaryText(channelsSummary)), Icons.Default.Notifications, status = channelsStatus(channelsSummary), route = SettingsRoute.Channels),
           SettingsRow(nativeText("Agents"), if (agents.isEmpty()) nativeText("Load from gateway") else nativeText("\${agents.size} available", agents.size), Icons.Default.Person, status = agents.isNotEmpty(), route = SettingsRoute.Agents),
-          SettingsRow(
-            nativeText("OpenClaw"),
-            nativeText("Setup, status, and repair"),
-            Icons.Default.Bolt,
-            status =
-              when (systemAgentChatState.access) {
-                SystemAgentChatAccess.Ready -> true
-                SystemAgentChatAccess.CheckingGateway -> null
-                else -> false
-              },
-            route = SettingsRoute.SystemAgent,
-          ),
           SettingsRow(
             nativeText("Providers & Models"),
             when {
@@ -1955,7 +1940,6 @@ internal fun settingsSectionTitleForRoute(route: SettingsRoute): NativeText =
     -> nativeText("Connection")
 
     SettingsRoute.Agents,
-    SettingsRoute.SystemAgent,
     SettingsRoute.ProvidersModels,
     SettingsRoute.Approvals,
     SettingsRoute.CronJobs,
