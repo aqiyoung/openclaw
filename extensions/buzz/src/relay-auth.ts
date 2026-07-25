@@ -22,7 +22,14 @@ export function parseBuzzAuthTag(raw: string): string[] | undefined {
 async function waitWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   signal.throwIfAborted();
   return await new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(signal.reason ?? new Error("Buzz relay authentication aborted"));
+    const onAbort = () => {
+      const reason = signal.reason;
+      reject(
+        reason instanceof Error
+          ? reason
+          : new Error("Buzz relay authentication aborted", { cause: reason }),
+      );
+    };
     signal.addEventListener("abort", onAbort, { once: true });
     void promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
   });
@@ -65,7 +72,9 @@ export async function authenticateBuzzRelay(params: {
           throw error;
         }
         await waitWithSignal(
-          new Promise<void>((resolve) => setTimeout(resolve, AUTH_CHALLENGE_POLL_MS)),
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, AUTH_CHALLENGE_POLL_MS);
+          }),
           signal,
         );
       }

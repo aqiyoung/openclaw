@@ -26,32 +26,36 @@ async function queryRelay(params: {
   params.signal?.throwIfAborted();
   return await new Promise<Event[]>((resolve, reject) => {
     const events: Event[] = [];
-    let settled = false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let subscription: ReturnType<Relay["subscribe"]> | undefined;
+    const state: {
+      settled: boolean;
+      timeout?: ReturnType<typeof setTimeout>;
+      subscription?: ReturnType<Relay["subscribe"]>;
+    } = { settled: false };
     const finish = (error?: unknown) => {
-      if (settled) {
+      if (state.settled) {
         return;
       }
-      settled = true;
-      if (timeout) {
-        clearTimeout(timeout);
+      state.settled = true;
+      if (state.timeout) {
+        clearTimeout(state.timeout);
       }
       params.signal?.removeEventListener("abort", onAbort);
-      subscription?.close("query complete");
-      if (error) {
-        reject(error);
+      state.subscription?.close("query complete");
+      if (error !== undefined) {
+        reject(
+          error instanceof Error ? error : new Error("Buzz room query failed", { cause: error }),
+        );
       } else {
         resolve(events);
       }
     };
     const onAbort = () => finish(params.signal?.reason ?? new Error("Buzz room query aborted"));
     params.signal?.addEventListener("abort", onAbort, { once: true });
-    timeout = setTimeout(
+    state.timeout = setTimeout(
       () => finish(new Error("Timed out querying Buzz room membership")),
       params.timeoutMs,
     );
-    subscription = params.relay.subscribe([params.filter], {
+    state.subscription = params.relay.subscribe([params.filter], {
       onevent: (event) => events.push(event),
       oneose: () => finish(),
       onclose: (reason) => {
@@ -60,8 +64,8 @@ async function queryRelay(params: {
         }
       },
     });
-    if (settled) {
-      subscription.close("query complete");
+    if (state.settled) {
+      state.subscription.close("query complete");
     }
   });
 }
@@ -111,7 +115,7 @@ export async function discoverBuzzRooms(params: {
           .map((event) => tagValue(event, "d")?.toLowerCase())
           .filter((roomId): roomId is string => Boolean(roomId?.match(BUZZ_CHANNEL_ID_PATTERN))),
       ),
-    ].sort();
+    ].toSorted();
     if (roomIds.length === 0) {
       return [];
     }
@@ -140,11 +144,14 @@ export async function discoverBuzzRooms(params: {
       const metadata = latestMetadata.get(id);
       const name = metadata ? tagValue(metadata, "name")?.trim() : undefined;
       const about = metadata ? tagValue(metadata, "about")?.trim() : undefined;
-      return {
+      const room: BuzzDiscoveredRoom = {
         id,
         name: name || id,
-        ...(about ? { about } : {}),
       };
+      if (about) {
+        room.about = about;
+      }
+      return room;
     });
   } finally {
     relay.close();

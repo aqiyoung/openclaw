@@ -117,9 +117,7 @@ describe("Buzz guided setup", () => {
     });
     expect(result.cfg.channels?.buzz?.authTag).toBeUndefined();
     expect(
-      vi
-        .mocked(prompter.note)
-        .mock.calls.some(([message]) => String(message).includes(expectedPrivateKey)),
+      vi.mocked(prompter.note).mock.calls.some(([message]) => message.includes(expectedPrivateKey)),
     ).toBe(false);
     expect(prompter.note).toHaveBeenCalledWith(
       expect.stringContaining("buzz-admin add-member"),
