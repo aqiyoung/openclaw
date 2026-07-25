@@ -10,13 +10,24 @@ Docs: https://docs.openclaw.ai
 - **Native automation and nodes:** bring Automations parity to mobile, add foreground Voice Wake on Android, and expose camera, location, and notification capabilities from headless Linux nodes. (#106355, #107081, #107193)
 - **Meeting bots and durable notes:** enable the Teams and Zoom meeting plugins by default, enable Google Meet after plugin installation, and automatically retain speaker-attributed transcripts and summaries from live captions. (#113022, #113053, #113122)
 - **Safer channel operation:** prevent Telegram durable-ingress loss after restarts, keep Signal stop and approval controls responsive during active turns, and stop channel allowlists from granting owner access. (#107288, #107422, #107403) Thanks @obviyus, @arduano, and @yetval.
-- **Guided Control UI setup:** configure model providers from Settings, onboard channels through a guided setup page, and choose images and models while creating sessions. (#106490, #106469, #107358) Thanks @alexandre-leng and @fuller-stack-dev.
+- **Guided model setup:** configure providers from Settings, onboard channels through a guided setup page, choose images and models while creating sessions, add Claude Opus 5 across Anthropic routes, and download or prepare local models from web and macOS onboarding. (#106490, #106469, #107358, #113391, #113392, #113476) Thanks @alexandre-leng and @fuller-stack-dev.
 - **Private and branch-safe sessions:** add process-memory incognito chats and atomic draft workflows, record who archived shared sessions, and stop stale panes from sending messages to branches the user never saw. (#113006, #113127, #113116, #113073)
-- **Gateway and session recovery:** prevent restart admission from wedging the Gateway, recover reply sessions after finalization stalls, and keep one-shot cron jobs enabled through lifecycle claim races. (#107339, #106792, #107236) Thanks @obviyus, @joshavant, @charliemeyer2000, and @SL4N.
+- **SQLite and backup safety:** repair canonical indexes before database use, reject schema-loss upgrades and invalid canonical state, publish snapshots and backups crash-durably, and prove recovery from abruptly terminated writers. (#113216, #113261, #113287, #113302, #113367, #113390, #113453, #113473, #113498) Thanks @vincentkoc.
 - **Install and packaging:** add Linux deb and AppImage bundles with Gateway guidance, publish them from stable main-based releases, and let Windows installs continue immediately after winget adds Node.js. (#106533, #106891, #106862)
 
 ### Changes
 
+- **Local model onboarding:** start and monitor local-model download or preparation from Control UI and macOS onboarding, with explicit progress, success, and retry states on the owning Gateway. (#113476)
+- **Claude Opus 5:** add and complete Claude Opus 5 catalog, setup, and routing support across Anthropic-backed model surfaces. (#113391, #113392) Thanks @fuller-stack-dev.
+- **Native channel formatting:** render rich Markdown lists natively in Telegram, and add spoilers, underline, and native tables in Matrix. (#113158, #113199)
+- **Independent heartbeat jobs:** convert `heartbeat.tasks` entries into separately scheduled cron jobs so each task has its own lifecycle and history. (#113165)
+- **Session suggestions:** add the session suggestion queue and typing indicator for queued collaborative input. (#113173)
+- **Browser batch CLI:** add `openclaw browser batch` for grouped browser operations from one CLI command. (#111457) Thanks @FMLS and @hxy91819.
+- **Plugin MCP Apps:** let native plugins declare MCP App servers through manifest metadata and the plugin-owned runtime boundary. Fixes #113218. (#113224) Thanks @fuller-stack-dev.
+- **Signed ClawHub feeds:** bind the default marketplace feed to signed trust metadata and allow trusted feeds to rotate signing keys without weakening verification. (#101981, #108342) Thanks @giodl73-repo.
+- **Approval prompt formatting:** render bold headers and labels in approval prompts so decisions are easier to scan. Fixes #85954. (#113193) Thanks @omarshahine.
+- **Control UI navigation and notices:** move creator controls into clearer sidebar surfaces, paginate session sections independently, and render chat notice rows as Markdown. (#113150, #113156, #113343, #113450)
+- **Planner JSON constraints:** constrain system-agent planner JSON at generation time so model output conforms before parsing and execution. (#113482)
 - **Control UI incognito sessions:** create admin-scoped threads that live only in Gateway process memory, skip session and memory persistence, propagate ephemerality to child runs, fail closed after restart, and surface their temporary state with a lock badge. (#113006) Thanks @vincentkoc.
 - **Session drafts and archive attribution:** create drafts atomically when multi-identity policy allows it, promote them in one action, distinguish other users' drafts for admins, and show who archived a shared session. (#113127, #113116)
 - **Branch-safe chat sends:** reject a send when the displayed transcript branch changed elsewhere, restore the draft, refresh the pane, and ask the user to review and resend instead of silently writing to an unseen branch. (#113073)
@@ -71,7 +82,15 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
-- **Cron local-provider preflight:** report the guarded-fetch deadline as a bounded preflight timeout, preserve concrete nested non-timeout errors, and carry the failure reason into fallback warnings. Thanks @shakkernerd.
+- **SQLite state and backup durability:** open version-13 agent databases on supported Node releases, and keep maintenance rows, token metadata, journals, snapshots, quarantine state, canonical indexes, and published filesystem artifacts consistent across races, long Windows paths, database replacement, compaction, backup publication, and abrupt process termination. (#113151, #113216, #113228, #113261, #113287, #113302, #113313, #113336, #113367, #113382, #113385, #113390, #113404, #113453, #113459, #113473, #113498) Thanks @jalehman and @vincentkoc.
+- **Secret redaction and exec approvals:** redact AWS access keys, unquoted config secrets, and additional GitLab token prefixes; require approval for opaque shell wrappers; keep inline eval approvals one-shot; and bind reusable approvals to the approved arguments. (#112947, #112952, #112953, #112954, #112955, #112956, #112946) Thanks @pgondhi987.
+- **Upgrade and auth migration:** preserve secret references and OAuth fields through doctor migration, keep OAuth refresh failures terminal, migrate shipped Discord DM config during upgrades, prevent legacy channel config from blocking updates, and repair plugin config during upgrade finalization. (#97881, #112957, #113280, #113317, #113324) Thanks @yetval, @pgondhi987, and @vincentkoc.
+- **Control UI reliability:** keep questions working after upgrades, render managed images once under base paths, preserve session identity across snapshots, and avoid dashboard-face chat overlap. (#113153, #113163, #113322, #113356) Fixes #113161 Thanks @fuller-stack-dev and @fr-meyer.
+- **Cron execution reliability:** accept benign same-generation session claims, preserve authorized tools for senderless isolated runs, report guarded-fetch deadlines as bounded preflight timeouts, and retain concrete nested non-timeout errors through fallback warnings. (#113088, #112661, #113409) Fixes #113085, #111809, #113195 Thanks @metahacker, @joshavant, @andersonjeccel, @shakkernerd, and @timme0126.
+- **Channel delivery and access:** settle Feishu outbound lifecycle after delivery, restore WhatsApp reactions in current conversations, stop selected channel sessions from WebChat, scope Discord pending history by sender, warn on broad group-member access, and run outbound hooks for routed agent replies. (#113152, #113178, #111108, #113407, #113414, #113448) Fixes #113177 Thanks @joshavant, @scotthuang, and @Patrick-Erichsen.
+- **Provider and Codex recovery:** fail fast on deterministic OpenAI TLS certificate errors, prevent Computer Use readiness stalls across fallbacks, preserve canonical Codex steering-abort outcomes, and detect Claude CLI routes pinned to non-default models. (#111818, #113393, #113416, #113424) Fixes #111817, #113410 Thanks @ooiuuii, @altaywtf, and @fuller-stack-dev.
+- **Native localization:** cover Android flavor and Apple settings surfaces, correct Android accessibility-executor text, and refresh native locale timing with the canonical Indonesian mapping. (#113214, #113276, #113289) Fixes #113213 Thanks @vincentkoc.
+- **Installer validation:** verify downloaded installer scripts before execution so untrusted replacement bytes cannot run. Fixes #90013. (#113307) Thanks @SebTardif.
 - **Session replacement and MCP writes:** reject stale mutations after a session is replaced, and serialize MCP config updates without leaking diagnostics across concurrent requests. (#113023, #113026)
 - **Plugin install and uninstall lifecycle:** preserve shipped SDK and lifecycle state, keep channel ownership intact while uninstalling, release install leases before CLI exit, and record ClawHub-managed installs correctly. (#113101, #113133) Thanks @Patrick-Erichsen.
 - **Channel Markdown rendering:** preserve WhatsApp CommonMark italics, Google Chat outbound formatting, Discord bold text, and Mattermost tables across their native renderers. (#113010, #113024, #113037)
@@ -258,7 +277,7 @@ Docs: https://docs.openclaw.ai
 
 ### Complete contribution record
 
-This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8..2a64c35486b67d114048a3db97e1a7dbe143feeb history: 5197 merged PRs. The generation manifest also supplies direct commits as editorial input; the grouped notes above prioritize user impact.
+This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8..5365451f4023acc0fa77ec8221298bc803025294 history: 5350 merged PRs. The generation manifest also supplies direct commits as editorial input; the grouped notes above prioritize user impact.
 
 #### Pull requests
 
@@ -496,7 +515,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #107640**
 - **PR #107144** Thanks @SunnyShu0925.
 - **PR #107636**
-- **PR #107234** Thanks @wahaha1223 and @cursoragent.
+- **PR #107234** Thanks @wahaha1223.
 - **PR #104708** Related #102391. Thanks @VACInc and @yetval.
 - **PR #107652**
 - **PR #107315** Thanks @smthfoxy.
@@ -1089,7 +1108,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #108743** Thanks @Alix-007.
 - **PR #108770**
 - **PR #108760**
-- **PR #106541** Thanks @Pick-cat and @cursoragent.
+- **PR #106541** Thanks @Pick-cat.
 - **PR #108683** Related #95131, #105445, #107262. Thanks @a-m-a-r-a and @laurenceputra and @ndj888.
 - **PR #108701** Thanks @Alix-007.
 - **PR #106407** Thanks @zenglingbiao.
@@ -1325,7 +1344,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #109223**
 - **PR #109238**
 - **PR #109147**
-- **PR #109052** Thanks @Pick-cat and @cursoragent.
+- **PR #109052** Thanks @Pick-cat.
 - **PR #109222**
 - **PR #108776**
 - **PR #106840** Related #106839. Thanks @bill-starfoundry.
@@ -1506,7 +1525,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #96250** Related #96203. Thanks @xydt-tanshanshan and @roybelen.
 - **PR #95852** Related #95780. Thanks @yetval and @jpplaisted.
 - **PR #101826** Thanks @100yenadmin.
-- **PR #90779** Related #90296. Thanks @joelnishanth and @cursoragent and @jerrywang241220-create.
+- **PR #90779** Related #90296. Thanks @joelnishanth and @jerrywang241220-create.
 - **PR #109586**
 - **PR #109418** Thanks @Patrick-Erichsen.
 - **PR #101748** Related #101172. Thanks @PollyBot13.
@@ -1636,7 +1655,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #109740**
 - **PR #109677** Thanks @wangmiao0668000666.
 - **PR #109766**
-- **PR #109718** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109718** Thanks @ZengWen-DT.
 - **PR #109801**
 - **PR #109701** Thanks @Monkey-wusky.
 - **PR #109778** Related #95560. Thanks @Footree.
@@ -1652,7 +1671,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #109702** Thanks @krissding.
 - **PR #109773**
 - **PR #109708** Thanks @wangmiao0668000666.
-- **PR #109667** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109667** Thanks @ZengWen-DT.
 - **PR #109698** Thanks @LZY3538.
 - **PR #109803**
 - **PR #109750** Thanks @zhangguiping-xydt.
@@ -1751,7 +1770,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #109952**
 - **PR #110054**
 - **PR #110088**
-- **PR #106942** Thanks @ZengWen-DT and @cursoragent.
+- **PR #106942** Thanks @ZengWen-DT.
 - **PR #110106**
 - **PR #110135**
 - **PR #104967** Thanks @qingminglong.
@@ -1859,7 +1878,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #103518** Thanks @maweibin.
 - **PR #110274**
 - **PR #110264** Thanks @Patrick-Erichsen.
-- **PR #109903** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109903** Thanks @ZengWen-DT.
 - **PR #103855** Thanks @Leon-SK668 and @Alix-007.
 - **PR #110273** Thanks @Patrick-Erichsen.
 - **PR #110268**
@@ -1872,7 +1891,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #110290**
 - **PR #101998** Related #101988. Thanks @LiLan0125 and @NianJiuZst and @hfgwq2dgx8-tech.
 - **PR #98480** Thanks @sheyanmin.
-- **PR #109794** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109794** Thanks @ZengWen-DT.
 - **PR #110267**
 - **PR #110287**
 - **PR #106420** Thanks @ZOOWH.
@@ -2608,7 +2627,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #111607**
 - **PR #111282** Thanks @zenglingbiao.
 - **PR #111605**
-- **PR #109767** Thanks @ZengWen-DT and @cursoragent and @sallyom.
+- **PR #109767** Thanks @ZengWen-DT and @sallyom.
 - **PR #111569**
 - **PR #111260** Thanks @LZY3538.
 - **PR #110721** Thanks @hugenshen and @sallyom.
@@ -2775,7 +2794,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #112021** Thanks @fuller-stack-dev.
 - **PR #111152** Thanks @zenglingbiao.
 - **PR #112044**
-- **PR #106314** Thanks @wahaha1223 and @cursoragent.
+- **PR #106314** Thanks @wahaha1223.
 - **PR #105487** Related #105423. Thanks @zw-xysk and @aniruddhaadak80.
 - **PR #111769** Thanks @chenyangjun-xy.
 - **PR #112059**
@@ -2797,7 +2816,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #96482** Thanks @winger007.
 - **PR #109909** Thanks @chengzhichao-xydt.
 - **PR #112046**
-- **PR #109729** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109729** Thanks @ZengWen-DT.
 - **PR #110537** Thanks @wahaha1223.
 - **PR #112035**
 - **PR #103658** Thanks @mikasa0818.
@@ -2914,7 +2933,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #112301** Thanks @RomneyDa.
 - **PR #112235** Related #112234. Thanks @RomneyDa.
 - **PR #112249** Thanks @RomneyDa.
-- **PR #111872** Thanks @Pick-cat and @cursoragent and @altaywtf.
+- **PR #111872** Thanks @Pick-cat and @altaywtf.
 - **PR #112293**
 - **PR #105162** Related #105164. Thanks @Papilionidae.
 - **PR #111998**
@@ -2926,7 +2945,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #105807** Related #105803. Thanks @moguangyu5-design.
 - **PR #99643** Related #99601. Thanks @mushuiyu886 and @34262315716.
 - **PR #109177** Thanks @ZOOWH.
-- **PR #109815** Thanks @ZengWen-DT and @cursoragent.
+- **PR #109815** Thanks @ZengWen-DT.
 - **PR #112175**
 - **PR #103808** Thanks @fengjikui.
 - **PR #103751** Related #100988. Thanks @849261680 and @1231CheGites.
@@ -3119,7 +3138,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #112704**
 - **PR #112567**
 - **PR #102959** Thanks @giodl73-repo and @Patrick-Erichsen.
-- **PR #110235** Thanks @stantheman0128 and @cursoragent.
+- **PR #110235** Thanks @stantheman0128.
 - **PR #112585**
 - **PR #108278** Thanks @xydt-juyaohui and @ly85206559 and @LiuwqGit.
 - **PR #111258** Thanks @LZY3538.
@@ -3256,7 +3275,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #112985**
 - **PR #112936**
 - **PR #112999** Thanks @vincentkoc.
-- **PR #113002**
+- **PR #113002** Thanks @omarshahine.
 - **PR #113003**
 - **PR #112988**
 - **PR #112911**
@@ -3332,11 +3351,163 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #112478** Related #112341. Thanks @loulanyue and @p0pfan.
 - **PR #113138**
 - **PR #110037** Thanks @giodl73-repo.
+- **PR #113142**
+- **PR #113141**
+- **PR #113145**
+- **PR #113153**
+- **PR #113103** Thanks @zenglingbiao.
+- **PR #108342** Thanks @giodl73-repo.
+- **PR #113150**
+- **PR #113151** Thanks @jalehman.
+- **PR #113154**
+- **PR #113088** Related #113085. Thanks @metahacker.
+- **PR #113158**
+- **PR #113157**
+- **PR #113163** Related #113161. Thanks @fuller-stack-dev.
+- **PR #113155**
+- **PR #113165**
+- **PR #113167**
+- **PR #113175**
+- **PR #113179**
+- **PR #113156**
+- **PR #113174**
+- **PR #113152** Thanks @joshavant.
+- **PR #113187** Related #113186. Thanks @joshavant.
+- **PR #113178** Related #113177. Thanks @joshavant.
+- **PR #113173**
+- **PR #113199**
+- **PR #113202** Thanks @joshavant.
+- **PR #113201**
+- **PR #97881** Thanks @yetval.
+- **PR #111457** Thanks @FMLS and @hxy91819.
+- **PR #113212** Thanks @vincentkoc.
+- **PR #112963**
+- **PR #113216** Related #113209, #113210, #113211. Thanks @vincentkoc.
+- **PR #113230**
+- **PR #113235**
+- **PR #113229** Thanks @vincentkoc.
+- **PR #113240**
+- **PR #112947** Thanks @pgondhi987.
+- **PR #113242**
+- **PR #113237**
+- **PR #112952** Thanks @pgondhi987.
+- **PR #112661** Related #111809. Thanks @joshavant and @andersonjeccel.
+- **PR #113228** Related #113227. Thanks @vincentkoc.
+- **PR #113247**
+- **PR #113222**
+- **PR #113250**
+- **PR #113223**
+- **PR #113245**
+- **PR #113258** Thanks @vincentkoc.
+- **PR #112834** Related #112826. Thanks @RomneyDa.
+- **PR #112837** Related #112830. Thanks @RomneyDa.
+- **PR #113214** Related #113213. Thanks @vincentkoc.
+- **PR #113248**
+- **PR #113260** Thanks @vincentkoc.
+- **PR #113261** Related #113255. Thanks @vincentkoc.
+- **PR #113254**
+- **PR #113243**
+- **PR #113224** Related #113218. Thanks @fuller-stack-dev.
+- **PR #113239**
+- **PR #113234**
+- **PR #113238**
+- **PR #113236**
+- **PR #113268** Thanks @vincentkoc.
+- **PR #113225**
+- **PR #113256**
+- **PR #113269**
+- **PR #113277** Thanks @vincentkoc.
+- **PR #113278** Thanks @vincentkoc.
+- **PR #113276** Thanks @vincentkoc.
+- **PR #113283** Thanks @vincentkoc.
+- **PR #112954** Thanks @pgondhi987.
+- **PR #113246**
+- **PR #113280** Thanks @vincentkoc.
+- **PR #113279**
+- **PR #113287** Related #113265. Thanks @vincentkoc.
+- **PR #112953** Thanks @pgondhi987.
+- **PR #113289** Thanks @vincentkoc.
+- **PR #112955** Thanks @pgondhi987.
+- **PR #111818** Related #111817. Thanks @ooiuuii and @altaywtf.
+- **PR #113295** Thanks @vincentkoc.
+- **PR #112956** Thanks @pgondhi987.
+- **PR #113296**
+- **PR #112946** Thanks @pgondhi987.
+- **PR #112957** Thanks @pgondhi987.
+- **PR #113303**
+- **PR #113299**
+- **PR #113298** Thanks @vincentkoc.
+- **PR #113302** Related #113293. Thanks @vincentkoc.
+- **PR #113297**
+- **PR #113316** Related #113305. Thanks @vincentkoc.
+- **PR #113317** Thanks @vincentkoc.
+- **PR #113313** Related #113304. Thanks @vincentkoc.
+- **PR #113332**
+- **PR #113131**
+- **PR #101981** Thanks @giodl73-repo.
+- **PR #113335**
+- **PR #113339**
+- **PR #113343**
+- **PR #113334**
+- **PR #113193** Related #85954. Thanks @omarshahine.
+- **PR #113350**
+- **PR #113338**
+- **PR #113336** Thanks @vincentkoc.
+- **PR #113356**
+- **PR #113324** Thanks @vincentkoc.
+- **PR #113364**
+- **PR #113363**
+- **PR #113373**
+- **PR #113355**
+- **PR #113367** Thanks @vincentkoc.
+- **PR #113381**
+- **PR #113382** Thanks @vincentkoc.
+- **PR #113384** Thanks @vincentkoc.
+- **PR #113385** Thanks @vincentkoc.
+- **PR #113386**
+- **PR #112773** Thanks @giodl73-repo.
+- **PR #113387**
+- **PR #111108** Thanks @scotthuang and @Patrick-Erichsen.
+- **PR #113322** Thanks @fr-meyer.
+- **PR #113390** Thanks @vincentkoc.
+- **PR #113393** Thanks @fuller-stack-dev.
+- **PR #113397**
+- **PR #113391** Thanks @fuller-stack-dev.
+- **PR #113399** Thanks @vincentkoc.
+- **PR #113400**
+- **PR #113406**
+- **PR #113409** Related #113195. Thanks @shakkernerd and @timme0126.
+- **PR #113407**
+- **PR #113416**
+- **PR #113414**
+- **PR #113392**
+- **PR #113420** Thanks @vincentkoc.
+- **PR #113418**
+- **PR #113307** Related #90013. Thanks @SebTardif.
+- **PR #113428** Thanks @vincentkoc.
+- **PR #113424** Related #113410. Thanks @fuller-stack-dev.
+- **PR #113413** Thanks @fuller-stack-dev.
+- **PR #113439** Related #113438. Thanks @joshavant.
+- **PR #113404** Thanks @vincentkoc.
+- **PR #113452** Thanks @vincentkoc.
+- **PR #113448** Thanks @joshavant.
+- **PR #113457**
+- **PR #113450**
+- **PR #113459** Thanks @vincentkoc.
+- **PR #113461** Thanks @vincentkoc.
+- **PR #113468** Related #112842. Thanks @RomneyDa.
+- **PR #113472**
+- **PR #113476**
+- **PR #113453**
+- **PR #113482**
+- **PR #113484** Thanks @vincentkoc.
+- **PR #113473** Thanks @vincentkoc.
+- **PR #113498** Thanks @vincentkoc.
+- **PR #113499**
 - **PR #106355** Related #106145.
 - **PR #107081** Related #107080.
 - **PR #106490** Related #81961. Thanks @alexandre-leng.
 - **PR #106469**
-- **PR #106792** Related #106112. Thanks @joshavant and @charliemeyer2000.
 - **PR #106533**
 - **PR #106891**
 - **PR #106862**
@@ -3436,6 +3607,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #106889** Related #106877.
 - **PR #106318** Related #106261.
 - **PR #106806** Related #103056. Thanks @yetval.
+- **PR #106792** Related #106112. Thanks @joshavant and @charliemeyer2000.
 - **PR #100361** Thanks @giodl73-repo.
 - **PR #102316** Related #102312.
 - **PR #102331** Thanks @steipete-oai.
@@ -3443,7 +3615,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #99065** Related #77922. Thanks @jacobtomlinson and @joshavant and @Mcamin.
 - **PR #98299** Thanks @giodl73-repo and @Patrick-Erichsen.
 - **PR #101754** Thanks @wings1029.
-- **PR #101630** Thanks @hugenshen and @cursoragent.
+- **PR #101630** Thanks @hugenshen.
 - **PR #101736** Thanks @chengzhichao-xydt and @Alix-007.
 - **PR #102377** Thanks @Patrick-Erichsen.
 - **PR #101617** Thanks @zhangguiping-xydt.
@@ -3467,7 +3639,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #102395** Thanks @wangmiao0668000666.
 - **PR #102422** Related #102421.
 - **PR #102266** Thanks @zw-xysk.
-- **PR #101781** Thanks @hugenshen and @cursoragent.
+- **PR #101781** Thanks @hugenshen.
 - **PR #101934** Thanks @wm0018.
 - **PR #88082** Thanks @lit26.
 - **PR #102455**
@@ -3557,7 +3729,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #102563** Related #102545.
 - **PR #102551** Thanks @lsr911.
 - **PR #102567** Thanks @lsr911.
-- **PR #101744** Thanks @hugenshen and @cursoragent.
+- **PR #101744** Thanks @hugenshen.
 - **PR #101739** Thanks @Alix-007.
 - **PR #102089** Thanks @Alix-007.
 - **PR #102641**
@@ -4008,7 +4180,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #103809** Related #103800. Thanks @vincentkoc.
 - **PR #103515** Related #44749, #78225. Thanks @coygeek and @aukei.
 - **PR #103936** Related #103897.
-- **PR #90817** Related #90766. Thanks @Pick-cat and @cursoragent and @Timofa.
+- **PR #90817** Related #90766. Thanks @Pick-cat and @Timofa.
 - **PR #103943** Related #103942.
 - **PR #103941**
 - **PR #103908** Thanks @mushuiyu886.
@@ -4280,7 +4452,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #104188** Related #104176. Thanks @kevinslin and @kevinlin-openai.
 - **PR #104539**
 - **PR #104553**
-- **PR #101000** Thanks @hugenshen and @cursoragent.
+- **PR #101000** Thanks @hugenshen.
 - **PR #104557**
 - **PR #104563**
 - **PR #104440** Thanks @qingminglong.
@@ -4350,7 +4522,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #104674**
 - **PR #103903**
 - **PR #104673**
-- **PR #103445** Thanks @zw-xysk and @cursoragent.
+- **PR #103445** Thanks @zw-xysk.
 - **PR #104650** Related #104648.
 - **PR #104682** Related #104679.
 - **PR #104686**
@@ -4940,7 +5112,7 @@ This audited record covers the complete a5b2e4167de860fe3fe3da7284cd5f36883560c8
 - **PR #105918**
 - **PR #97078** Thanks @developersdigest.
 - **PR #105955**
-- **PR #104218** Related #104136. Thanks @zw-xysk and @cursoragent and @dale-goes-fast.
+- **PR #104218** Related #104136. Thanks @zw-xysk and @dale-goes-fast.
 - **PR #105983**
 - **PR #105991**
 - **PR #105365** Thanks @Glucksberg.
