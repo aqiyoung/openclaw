@@ -1,34 +1,38 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeQrDataUrlToTempFile } from "./qr-temp-file.js";
 
 describe("writeQrDataUrlToTempFile", () => {
-  const createdPaths: string[] = [];
+  const profile = `test/profile-${process.pid}`;
+  const expectedPath = path.join(
+    resolvePreferredOpenClawTmpDir(),
+    `openclaw-zalouser-qr-test-profile-${process.pid}.png`,
+  );
 
   afterEach(async () => {
-    await Promise.all(createdPaths.splice(0).map((filePath) => fs.rm(filePath, { force: true })));
+    await fs.rm(expectedPath, { force: true });
   });
 
-  it("writes each QR image to a private randomized temp path", async () => {
-    const data = Buffer.from("qr-image");
-    const dataUrl = `data:image/png;base64,${data.toString("base64")}`;
-    const first = await writeQrDataUrlToTempFile(dataUrl, "profile/name");
-    if (!first) {
-      throw new Error("expected first QR temp path");
-    }
-    createdPaths.push(first);
-    const second = await writeQrDataUrlToTempFile(dataUrl, "profile/name");
-    if (!second) {
-      throw new Error("expected second QR temp path");
-    }
-    createdPaths.push(second);
+  it("overwrites the stable per-profile path and enforces private mode", async () => {
+    const firstData = Buffer.from("first-qr-image");
+    const secondData = Buffer.from("second-qr-image");
+    const first = await writeQrDataUrlToTempFile(
+      `data:image/png;base64,${firstData.toString("base64")}`,
+      profile,
+    );
+    expect(first).toBe(expectedPath);
+    await fs.chmod(expectedPath, 0o644);
 
-    expect(first).not.toBe(second);
-    expect(path.basename(first)).toMatch(/^openclaw-zalouser-qr-profile-name-.*\.png$/);
-    await expect(fs.readFile(first)).resolves.toEqual(data);
+    const second = await writeQrDataUrlToTempFile(
+      `data:image/png;base64,${secondData.toString("base64")}`,
+      profile,
+    );
+    expect(second).toBe(expectedPath);
+    await expect(fs.readFile(expectedPath)).resolves.toEqual(secondData);
     if (process.platform !== "win32") {
-      expect((await fs.stat(first)).mode & 0o777).toBe(0o600);
+      expect((await fs.stat(expectedPath)).mode & 0o777).toBe(0o600);
     }
   });
 });
