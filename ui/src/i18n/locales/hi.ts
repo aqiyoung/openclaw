@@ -1913,6 +1913,15 @@ export const hi: TranslationMap = {
       pair: "पेयर करें",
       more: "साइन-इन के और विकल्प",
     },
+    prepare: {
+      title: "स्थानीय मॉडल सेट अप करें",
+      intro: "इस Gateway पर स्थानीय मॉडल डाउनलोड या तैयार करें।",
+      button: "मॉडल सेट अप / डाउनलोड करें",
+      ollamaLabel: "Ollama",
+      ollamaHint: "अपने Ollama सर्वर से टूल-सक्षम मॉडल डाउनलोड करें",
+      llamaCppLabel: "स्थानीय मॉडल (llama.cpp)",
+      llamaCppHint: "लगभग 5.0 GB का स्थानीय मॉडल डाउनलोड करें; 16 GB RAM आवश्यक है",
+    },
     manual: {
       title: "API key या token से कनेक्ट करें",
       provider: "प्रदाता",
@@ -1943,8 +1952,11 @@ export const hi: TranslationMap = {
     },
     wizard: {
       dialogLabel: "प्रदाता साइन-इन",
+      prepareDialogLabel: "स्थानीय मॉडल सेटअप",
       title: "प्रदाता के साथ साइन इन करें",
+      prepareTitle: "स्थानीय मॉडल सेट अप करें",
       starting: "प्रदाता साइन-इन शुरू हो रहा है…",
+      prepareStarting: "स्थानीय मॉडल सेटअप शुरू हो रहा है…",
       checking: "आपके मॉडल सेटअप की जाँच की जा रही है…",
       working: "काम हो रहा है…",
       continue: "जारी रखें",

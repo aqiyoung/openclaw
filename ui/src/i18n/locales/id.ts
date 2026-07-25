@@ -1929,6 +1929,15 @@ export const id: TranslationMap = {
       pair: "Pasangkan",
       more: "Opsi masuk lainnya",
     },
+    prepare: {
+      title: "Siapkan model lokal",
+      intro: "Unduh atau siapkan model lokal di Gateway ini.",
+      button: "Siapkan / Unduh model",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Unduh model yang mendukung penggunaan alat dari server Ollama Anda",
+      llamaCppLabel: "Model lokal (llama.cpp)",
+      llamaCppHint: "Unduh model lokal berukuran sekitar 5.0 GB; memerlukan RAM 16 GB",
+    },
     manual: {
       title: "Hubungkan dengan kunci API atau token",
       provider: "Penyedia",
@@ -1959,8 +1968,11 @@ export const id: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Masuk ke penyedia",
+      prepareDialogLabel: "Penyiapan model lokal",
       title: "Masuk dengan penyedia",
+      prepareTitle: "Siapkan model lokal",
       starting: "Memulai proses masuk ke penyedia…",
+      prepareStarting: "Memulai penyiapan model lokal…",
       checking: "Memeriksa penyiapan model Anda…",
       working: "Sedang bekerja…",
       continue: "Lanjutkan",

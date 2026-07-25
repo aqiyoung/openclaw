@@ -1933,6 +1933,15 @@ export const vi: TranslationMap = {
       pair: "Ghép nối",
       more: "Các tùy chọn đăng nhập khác",
     },
+    prepare: {
+      title: "Thiết lập mô hình cục bộ",
+      intro: "Tải xuống hoặc chuẩn bị mô hình cục bộ trên Gateway này.",
+      button: "Thiết lập / Tải xuống mô hình",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Tải xuống một mô hình có khả năng sử dụng công cụ từ máy chủ Ollama của bạn",
+      llamaCppLabel: "Mô hình cục bộ (llama.cpp)",
+      llamaCppHint: "Tải xuống một mô hình cục bộ có dung lượng khoảng 5.0 GB; yêu cầu RAM 16 GB",
+    },
     manual: {
       title: "Kết nối bằng khóa API hoặc token",
       provider: "Nhà cung cấp",
@@ -1963,8 +1972,11 @@ export const vi: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Đăng nhập nhà cung cấp",
+      prepareDialogLabel: "Thiết lập mô hình cục bộ",
       title: "Đăng nhập bằng nhà cung cấp",
+      prepareTitle: "Thiết lập mô hình cục bộ",
       starting: "Đang bắt đầu đăng nhập nhà cung cấp…",
+      prepareStarting: "Đang bắt đầu thiết lập mô hình cục bộ…",
       checking: "Đang kiểm tra thiết lập mô hình của bạn…",
       working: "Đang làm việc…",
       continue: "Tiếp tục",

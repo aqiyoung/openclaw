@@ -1945,6 +1945,15 @@ export const ru: TranslationMap = {
       pair: "Связать",
       more: "Другие способы входа",
     },
+    prepare: {
+      title: "Настройка локальной модели",
+      intro: "Загрузите или подготовьте локальную модель на этом Gateway.",
+      button: "Настроить / загрузить модель",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Загрузите с сервера Ollama модель с поддержкой инструментов",
+      llamaCppLabel: "Локальная модель (llama.cpp)",
+      llamaCppHint: "Загрузите локальную модель размером около 5,0 ГБ; требуется 16 ГБ ОЗУ",
+    },
     manual: {
       title: "Подключение с помощью API-ключа или токена",
       provider: "Поставщик",
@@ -1975,8 +1984,11 @@ export const ru: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Вход через провайдера",
+      prepareDialogLabel: "Настройка локальной модели",
       title: "Войти через провайдера",
+      prepareTitle: "Настройка локальной модели",
       starting: "Запуск входа через провайдера…",
+      prepareStarting: "Запуск настройки локальной модели…",
       checking: "Проверка настройки модели…",
       working: "Выполняется…",
       continue: "Продолжить",

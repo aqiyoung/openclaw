@@ -1949,6 +1949,15 @@ export const es: TranslationMap = {
       pair: "Vincular",
       more: "Más opciones de inicio de sesión",
     },
+    prepare: {
+      title: "Configurar un modelo local",
+      intro: "Descarga o prepara un modelo local en este Gateway.",
+      button: "Configurar / Descargar modelo",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Descarga un modelo compatible con herramientas desde tu servidor Ollama",
+      llamaCppLabel: "Modelo local (llama.cpp)",
+      llamaCppHint: "Descarga un modelo local de aproximadamente 5,0 GB; requiere 16 GB de RAM",
+    },
     manual: {
       title: "Conectar con una clave de API o un token",
       provider: "Proveedor",
@@ -1979,8 +1988,11 @@ export const es: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Inicio de sesión con el proveedor",
+      prepareDialogLabel: "Configuración del modelo local",
       title: "Inicia sesión con un proveedor",
+      prepareTitle: "Configurar un modelo local",
       starting: "Iniciando sesión con el proveedor…",
+      prepareStarting: "Iniciando la configuración del modelo local…",
       checking: "Comprobando la configuración de tu modelo…",
       working: "Procesando…",
       continue: "Continuar",

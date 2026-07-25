@@ -1959,6 +1959,15 @@ export const fr: TranslationMap = {
       pair: "Associer",
       more: "Plus d’options de connexion",
     },
+    prepare: {
+      title: "Configurer un modèle local",
+      intro: "Téléchargez ou préparez un modèle local sur ce Gateway.",
+      button: "Configurer / Télécharger le modèle",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Téléchargez un modèle prenant en charge les outils depuis votre serveur Ollama",
+      llamaCppLabel: "Modèle local (llama.cpp)",
+      llamaCppHint: "Téléchargez un modèle local d’environ 5,0 Go ; nécessite 16 Go de RAM",
+    },
     manual: {
       title: "Se connecter avec une clé API ou un jeton",
       provider: "Fournisseur",
@@ -1989,8 +1998,11 @@ export const fr: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Connexion au fournisseur",
+      prepareDialogLabel: "Configuration du modèle local",
       title: "Se connecter avec un fournisseur",
+      prepareTitle: "Configurer un modèle local",
       starting: "Démarrage de la connexion au fournisseur…",
+      prepareStarting: "Démarrage de la configuration du modèle local…",
       checking: "Vérification de la configuration de votre modèle…",
       working: "Traitement en cours…",
       continue: "Continuer",

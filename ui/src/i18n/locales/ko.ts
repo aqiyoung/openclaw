@@ -1921,6 +1921,15 @@ export const ko: TranslationMap = {
       pair: "페어링",
       more: "더 많은 로그인 옵션",
     },
+    prepare: {
+      title: "로컬 모델 설정",
+      intro: "이 Gateway에서 로컬 모델을 다운로드하거나 준비합니다.",
+      button: "모델 설정 / 다운로드",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Ollama 서버에서 도구를 사용할 수 있는 모델을 다운로드합니다",
+      llamaCppLabel: "로컬 모델 (llama.cpp)",
+      llamaCppHint: "약 5.0GB 크기의 로컬 모델을 다운로드합니다. 16GB RAM이 필요합니다",
+    },
     manual: {
       title: "API 키 또는 토큰으로 연결",
       provider: "제공업체",
@@ -1951,8 +1960,11 @@ export const ko: TranslationMap = {
     },
     wizard: {
       dialogLabel: "제공업체 로그인",
+      prepareDialogLabel: "로컬 모델 설정",
       title: "제공업체로 로그인",
+      prepareTitle: "로컬 모델 설정",
       starting: "제공업체 로그인을 시작하는 중…",
+      prepareStarting: "로컬 모델 설정을 시작하는 중…",
       checking: "모델 설정을 확인하는 중…",
       working: "작업 중…",
       continue: "계속",

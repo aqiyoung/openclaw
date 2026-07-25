@@ -1885,6 +1885,15 @@ export const zh_TW: TranslationMap = {
       pair: "配對",
       more: "更多登入選項",
     },
+    prepare: {
+      title: "設定本機模型",
+      intro: "在此 Gateway 下載或準備本機模型。",
+      button: "設定 / 下載模型",
+      ollamaLabel: "Ollama",
+      ollamaHint: "從您的 Ollama 伺服器下載支援工具的模型",
+      llamaCppLabel: "本機模型 (llama.cpp)",
+      llamaCppHint: "下載約 5.0 GB 的本機模型；需要 16 GB RAM",
+    },
     manual: {
       title: "使用 API 金鑰或權杖連線",
       provider: "供應商",
@@ -1915,8 +1924,11 @@ export const zh_TW: TranslationMap = {
     },
     wizard: {
       dialogLabel: "供應商登入",
+      prepareDialogLabel: "本機模型設定",
       title: "使用提供者登入",
+      prepareTitle: "設定本機模型",
       starting: "正在啟動提供者登入…",
+      prepareStarting: "正在啟動本機模型設定…",
       checking: "正在檢查您的模型設定…",
       working: "處理中…",
       continue: "繼續",

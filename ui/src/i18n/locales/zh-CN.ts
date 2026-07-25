@@ -1880,6 +1880,15 @@ export const zh_CN: TranslationMap = {
       pair: "配对",
       more: "更多登录选项",
     },
+    prepare: {
+      title: "设置本地模型",
+      intro: "在此 Gateway 上下载或准备本地模型。",
+      button: "设置 / 下载模型",
+      ollamaLabel: "Ollama",
+      ollamaHint: "从您的 Ollama 服务器下载支持工具调用的模型",
+      llamaCppLabel: "本地模型 (llama.cpp)",
+      llamaCppHint: "下载约 5.0 GB 的本地模型；需要 16 GB 内存",
+    },
     manual: {
       title: "使用 API 密钥或令牌连接",
       provider: "提供商",
@@ -1910,8 +1919,11 @@ export const zh_CN: TranslationMap = {
     },
     wizard: {
       dialogLabel: "提供商登录",
+      prepareDialogLabel: "本地模型设置",
       title: "使用提供商登录",
+      prepareTitle: "设置本地模型",
       starting: "正在启动提供商登录…",
+      prepareStarting: "正在启动本地模型设置…",
       checking: "正在检查您的模型设置…",
       working: "正在工作…",
       continue: "继续",

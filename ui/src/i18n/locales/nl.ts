@@ -1938,6 +1938,15 @@ export const nl: TranslationMap = {
       pair: "Koppelen",
       more: "Meer aanmeldopties",
     },
+    prepare: {
+      title: "Een lokaal model instellen",
+      intro: "Download of configureer een lokaal model op deze Gateway.",
+      button: "Model instellen / downloaden",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Download een model met toolondersteuning van je Ollama-server",
+      llamaCppLabel: "Lokaal model (llama.cpp)",
+      llamaCppHint: "Download een lokaal model van ongeveer 5,0 GB; vereist 16 GB RAM",
+    },
     manual: {
       title: "Verbinding maken met een API-sleutel of token",
       provider: "Provider",
@@ -1968,8 +1977,11 @@ export const nl: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Aanmelden bij provider",
+      prepareDialogLabel: "Instellen van lokaal model",
       title: "Aanmelden met een provider",
+      prepareTitle: "Een lokaal model instellen",
       starting: "Aanmelding bij provider starten…",
+      prepareStarting: "Instellen van lokaal model wordt gestart…",
       checking: "Je modelconfiguratie controleren…",
       working: "Bezig…",
       continue: "Doorgaan",

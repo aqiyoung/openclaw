@@ -1934,6 +1934,15 @@ export const tr: TranslationMap = {
       pair: "Eşleştir",
       more: "Diğer oturum açma seçenekleri",
     },
+    prepare: {
+      title: "Yerel model kurulumu",
+      intro: "Bu Gateway üzerinde yerel bir model indirin veya hazırlayın.",
+      button: "Model kur / İndir",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Ollama sunucunuzdan araçları destekleyen bir model indirin",
+      llamaCppLabel: "Yerel model (llama.cpp)",
+      llamaCppHint: "Yaklaşık 5.0 GB boyutunda bir yerel model indirin; 16 GB RAM gerektirir",
+    },
     manual: {
       title: "API anahtarı veya token ile bağlan",
       provider: "Sağlayıcı",
@@ -1964,8 +1973,11 @@ export const tr: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Sağlayıcıda oturum açma",
+      prepareDialogLabel: "Yerel model kurulumu",
       title: "Bir sağlayıcıyla oturum açın",
+      prepareTitle: "Yerel model kurulumu",
       starting: "Sağlayıcıda oturum açma başlatılıyor…",
+      prepareStarting: "Yerel model kurulumu başlatılıyor…",
       checking: "Model kurulumunuz kontrol ediliyor…",
       working: "Çalışıyor…",
       continue: "Devam et",

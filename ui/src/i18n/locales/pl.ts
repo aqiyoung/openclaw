@@ -1942,6 +1942,15 @@ export const pl: TranslationMap = {
       pair: "Sparuj",
       more: "Więcej opcji logowania",
     },
+    prepare: {
+      title: "Skonfiguruj model lokalny",
+      intro: "Pobierz lub przygotuj model lokalny na tym Gateway.",
+      button: "Skonfiguruj / Pobierz model",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Pobierz model obsługujący narzędzia z serwera Ollama",
+      llamaCppLabel: "Model lokalny (llama.cpp)",
+      llamaCppHint: "Pobierz model lokalny o rozmiarze około 5,0 GB; wymaga 16 GB pamięci RAM",
+    },
     manual: {
       title: "Połącz za pomocą klucza API lub tokenu",
       provider: "Dostawca",
@@ -1972,8 +1981,11 @@ export const pl: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Logowanie u dostawcy",
+      prepareDialogLabel: "Konfiguracja modelu lokalnego",
       title: "Zaloguj się u dostawcy",
+      prepareTitle: "Skonfiguruj model lokalny",
       starting: "Rozpoczynanie logowania u dostawcy…",
+      prepareStarting: "Rozpoczynanie konfiguracji modelu lokalnego…",
       checking: "Sprawdzanie konfiguracji modelu…",
       working: "Pracuje…",
       continue: "Kontynuuj",

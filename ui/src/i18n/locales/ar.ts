@@ -1915,6 +1915,15 @@ export const ar: TranslationMap = {
       pair: "إقران",
       more: "المزيد من خيارات تسجيل الدخول",
     },
+    prepare: {
+      title: "إعداد نموذج محلي",
+      intro: "نزّل نموذجًا محليًا أو جهّزه على هذا الـ Gateway.",
+      button: "إعداد / تنزيل النموذج",
+      ollamaLabel: "Ollama",
+      ollamaHint: "نزّل نموذجًا يدعم الأدوات من خادم Ollama لديك",
+      llamaCppLabel: "نموذج محلي (llama.cpp)",
+      llamaCppHint: "نزّل نموذجًا محليًا بحجم 5.0 غيغابايت تقريبًا؛ يتطلب ذاكرة RAM بسعة 16 غيغابايت",
+    },
     manual: {
       title: "الاتصال باستخدام مفتاح API أو رمز مميز",
       provider: "المزوّد",
@@ -1945,8 +1954,11 @@ export const ar: TranslationMap = {
     },
     wizard: {
       dialogLabel: "تسجيل الدخول إلى المزود",
+      prepareDialogLabel: "إعداد النموذج المحلي",
       title: "تسجيل الدخول باستخدام مزود",
+      prepareTitle: "إعداد نموذج محلي",
       starting: "جارٍ بدء تسجيل الدخول إلى المزود…",
+      prepareStarting: "جارٍ بدء إعداد النموذج المحلي…",
       checking: "جارٍ التحقق من إعداد النموذج…",
       working: "جارٍ العمل…",
       continue: "متابعة",

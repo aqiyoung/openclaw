@@ -1949,6 +1949,15 @@ export const de: TranslationMap = {
       pair: "Koppeln",
       more: "Weitere Anmeldeoptionen",
     },
+    prepare: {
+      title: "Lokales Modell einrichten",
+      intro: "Laden Sie ein lokales Modell auf diesem Gateway herunter oder bereiten Sie es vor.",
+      button: "Modell einrichten / herunterladen",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Laden Sie ein für Tools geeignetes Modell von Ihrem Ollama-Server herunter",
+      llamaCppLabel: "Lokales Modell (llama.cpp)",
+      llamaCppHint: "Laden Sie ein etwa 5,0 GB großes lokales Modell herunter; erfordert 16 GB RAM",
+    },
     manual: {
       title: "Mit einem API-Schlüssel oder Token verbinden",
       provider: "Anbieter",
@@ -1979,8 +1988,11 @@ export const de: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Anmeldung beim Anbieter",
+      prepareDialogLabel: "Einrichtung des lokalen Modells",
       title: "Bei einem Anbieter anmelden",
+      prepareTitle: "Lokales Modell einrichten",
       starting: "Anmeldung beim Anbieter wird gestartet…",
+      prepareStarting: "Einrichtung des lokalen Modells wird gestartet…",
       checking: "Ihre Modelleinrichtung wird überprüft…",
       working: "Arbeitet…",
       continue: "Weiter",

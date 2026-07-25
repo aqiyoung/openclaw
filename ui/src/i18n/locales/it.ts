@@ -1949,6 +1949,15 @@ export const it: TranslationMap = {
       pair: "Associa",
       more: "Altre opzioni di accesso",
     },
+    prepare: {
+      title: "Configura un modello locale",
+      intro: "Scarica o prepara un modello locale su questo Gateway.",
+      button: "Configura / Scarica modello",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Scarica dal tuo server Ollama un modello con supporto per gli strumenti",
+      llamaCppLabel: "Modello locale (llama.cpp)",
+      llamaCppHint: "Scarica un modello locale di circa 5,0 GB; richiede 16 GB di RAM",
+    },
     manual: {
       title: "Connetti con una chiave API o un token",
       provider: "Provider",
@@ -1979,8 +1988,11 @@ export const it: TranslationMap = {
     },
     wizard: {
       dialogLabel: "Accesso al provider",
+      prepareDialogLabel: "Configurazione del modello locale",
       title: "Accedi con un provider",
+      prepareTitle: "Configura un modello locale",
       starting: "Avvio dell’accesso al provider…",
+      prepareStarting: "Avvio della configurazione del modello locale…",
       checking: "Verifica della configurazione del modello…",
       working: "In elaborazione…",
       continue: "Continua",

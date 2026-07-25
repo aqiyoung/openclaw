@@ -1940,6 +1940,15 @@ export const ja_JP: TranslationMap = {
       pair: "ペアリング",
       more: "その他のサインインオプション",
     },
+    prepare: {
+      title: "ローカルモデルをセットアップ",
+      intro: "この Gateway にローカルモデルをダウンロードまたは準備します。",
+      button: "モデルをセットアップ / ダウンロード",
+      ollamaLabel: "Ollama",
+      ollamaHint: "Ollama サーバーからツール対応モデルをダウンロードします",
+      llamaCppLabel: "ローカルモデル（llama.cpp）",
+      llamaCppHint: "約 5.0 GB のローカルモデルをダウンロードします。16 GB の RAM が必要です",
+    },
     manual: {
       title: "APIキーまたはトークンで接続",
       provider: "プロバイダー",
@@ -1970,8 +1979,11 @@ export const ja_JP: TranslationMap = {
     },
     wizard: {
       dialogLabel: "プロバイダーへのサインイン",
+      prepareDialogLabel: "ローカルモデルのセットアップ",
       title: "プロバイダーでサインイン",
+      prepareTitle: "ローカルモデルをセットアップ",
       starting: "プロバイダーへのサインインを開始しています…",
+      prepareStarting: "ローカルモデルのセットアップを開始しています…",
       checking: "モデルのセットアップを確認しています…",
       working: "作業中…",
       continue: "続ける",

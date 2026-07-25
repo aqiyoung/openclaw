@@ -1927,6 +1927,16 @@ export const fa: TranslationMap = {
       pair: "جفت‌سازی",
       more: "گزینه‌های بیشتر برای ورود",
     },
+    prepare: {
+      title: "راه‌اندازی مدل محلی",
+      intro: "یک مدل محلی را در این Gateway دانلود یا آماده کنید.",
+      button: "راه‌اندازی / دانلود مدل",
+      ollamaLabel: "Ollama",
+      ollamaHint: "یک مدل با قابلیت استفاده از ابزارها را از سرور Ollama خود دانلود کنید",
+      llamaCppLabel: "مدل محلی (llama.cpp)",
+      llamaCppHint:
+        "یک مدل محلی با حجم تقریبی 5.0 گیگابایت دانلود کنید؛ به 16 گیگابایت RAM نیاز دارد",
+    },
     manual: {
       title: "اتصال با کلید API یا توکن",
       provider: "ارائه‌دهنده",
@@ -1957,8 +1967,11 @@ export const fa: TranslationMap = {
     },
     wizard: {
       dialogLabel: "ورود به ارائه‌دهنده",
+      prepareDialogLabel: "راه‌اندازی مدل محلی",
       title: "ورود با یک ارائه‌دهنده",
+      prepareTitle: "راه‌اندازی مدل محلی",
       starting: "در حال آغاز ورود به ارائه‌دهنده…",
+      prepareStarting: "راه‌اندازی مدل محلی در حال شروع است…",
       checking: "در حال بررسی تنظیمات مدل شما…",
       working: "در حال کار…",
       continue: "ادامه",
