@@ -84,18 +84,12 @@ jobs:
             node scripts/run-android-gradle.mjs \
               -PopenclawBuildCommit="$OPENCLAW_BUILD_COMMIT" \
               -PopenclawBuildTimestamp="$OPENCLAW_BUILD_TIMESTAMP" \
-              :app:assembleThirdPartyRelease --no-daemon --stacktrace > /tmp/build.log 2>&1
+              :app:assembleThirdPartyRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
           else
             node scripts/run-android-gradle.mjs \
-              :app:assembleThirdPartyDebug --no-daemon --stacktrace > /tmp/build.log 2>&1
+              :app:assembleThirdPartyDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
           fi
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-
-      - name: Show last 100 lines of build log
-        if: always()
-        run: |
-          echo "=== LAST 100 LINES OF BUILD LOG ==="
-          tail -100 /tmp/build.log || echo "No build log found"
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
       - name: Fail if build failed
         if: steps.build_step.outputs.exit_code != '0'
