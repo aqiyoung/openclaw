@@ -1,6 +1,7 @@
 /** Doctor repairs for legacy auth profile JSON stores and OpenAI provider-id migrations. */
 import fs from "node:fs";
 import path from "node:path";
+import { writeJsonSync } from "@openclaw/fs-safe/json";
 import { collectConfiguredModelRefs } from "@openclaw/model-catalog-core/configured-model-refs";
 import { isRecord } from "@openclaw/normalization-core/record-coerce";
 import { note } from "../../packages/terminal-core/src/note.js";
@@ -739,10 +740,6 @@ function backupAndRemoveAuthProfileJson(
   return backupPath;
 }
 
-function writeJsonFile(pathname: string, value: unknown): void {
-  fs.writeFileSync(pathname, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
 /**
  * Imports legacy auth profile JSON and state files into the per-agent SQLite store.
  *
@@ -974,7 +971,7 @@ export async function maybeMigrateAuthProfileJsonStoresToSqlite(params: {
       if (fs.existsSync(candidate.authPath)) {
         if (unresolvedSidecarRawStore) {
           backups.push(backupAuthProfileJson(candidate.authPath, "sqlite-import", now));
-          writeJsonFile(candidate.authPath, unresolvedSidecarRawStore);
+          writeJsonSync(candidate.authPath, unresolvedSidecarRawStore);
         } else {
           backups.push(backupAndRemoveAuthProfileJson(candidate.authPath, "sqlite-import", now));
         }

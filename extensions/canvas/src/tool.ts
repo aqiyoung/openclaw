@@ -5,6 +5,8 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { readRegularFile } from "@openclaw/fs-safe/advanced";
+import { DEFAULT_ROOT_MAX_BYTES } from "@openclaw/fs-safe/root";
 import {
   callGatewayTool,
   listNodes,
@@ -78,7 +80,9 @@ async function readJsonlFromPath(jsonlPath: string, workspaceDir?: string): Prom
   if (!isPathInsideRoot(workspaceReal, resolvedReal)) {
     throw new Error("jsonlPath outside workspace");
   }
-  return await fs.readFile(resolvedReal, "utf8");
+  return (
+    await readRegularFile({ filePath: resolvedReal, maxBytes: DEFAULT_ROOT_MAX_BYTES })
+  ).buffer.toString("utf8");
 }
 
 function resolveCanvasImageSanitizationLimits(

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { hasNodeErrorCode } from "@openclaw/fs-safe/path";
 import { sliceUtf16Safe } from "@openclaw/normalization-core/utf16-slice";
 import { killProcessTree } from "../../process/kill-tree.js";
 import { workerSshCommandOptions } from "./ssh.js";
@@ -151,16 +152,6 @@ export async function runLocalCommandToFile(params: {
   }
 }
 
-function hasErrorCode(error: unknown, code: string): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    typeof error.code === "string" &&
-    error.code === code
-  );
-}
-
 export async function writeEligibleGitFiles(params: {
   gitRoot: string;
   eligiblePath: string;
@@ -186,7 +177,7 @@ export async function writeEligibleGitFiles(params: {
     }
     const absolute = path.join(canonicalRoot, file);
     const stats = await fs.lstat(absolute).catch((error: unknown) => {
-      if (hasErrorCode(error, "ENOENT")) {
+      if (hasNodeErrorCode(error, "ENOENT")) {
         return undefined;
       }
       throw error;

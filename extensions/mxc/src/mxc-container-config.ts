@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { statSync } from "node:fs";
 import path from "node:path";
 import type { ContainerConfig } from "@microsoft/mxc-sdk";
+import { isNodeError } from "@openclaw/fs-safe/path";
 import { isPathInside } from "openclaw/plugin-sdk/security-runtime";
 import type { MxcConfig } from "./config.js";
 import { resolveBaselineReadonlyPaths, type BaselineHostEnv } from "./sandbox-baseline.js";
@@ -405,8 +406,4 @@ function hostPathExists(candidatePath: string): boolean {
     }
     throw err;
   }
-}
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && "code" in err;
 }
