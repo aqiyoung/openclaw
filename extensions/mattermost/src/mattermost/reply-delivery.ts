@@ -88,6 +88,15 @@ export function createMattermostReplyDeliveryBarrier(params: {
  */
 export type MattermostReplyDeliveryOutcome = "reasoning_skipped" | "empty" | "text" | "media";
 
+export function toMattermostChannelDeliveryResult(outcome: MattermostReplyDeliveryOutcome) {
+  return outcome === "text" || outcome === "media"
+    ? { visibleReplySent: true as const }
+    : {
+        visibleReplySent: false as const,
+        suppression: { reason: "no_visible_result" as const },
+      };
+}
+
 export async function deliverMattermostReplyPayload(params: {
   core: PluginRuntime;
   cfg: OpenClawConfig;

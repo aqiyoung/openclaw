@@ -100,6 +100,7 @@ import { runWithReconnect } from "./reconnect.js";
 import {
   createMattermostReplyDeliveryBarrier,
   deliverMattermostReplyPayload,
+  toMattermostChannelDeliveryResult,
 } from "./reply-delivery.js";
 import type {
   ChannelAccountSnapshot,
@@ -465,12 +466,51 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
           channel: "mattermost",
           accountId: account.accountId,
         });
-        const { onModelSelected, typingCallbacks, ...replyPipeline } =
-          createChannelMessageReplyPipeline({
-            cfg,
+        const deliveryBarrier = createMattermostReplyDeliveryBarrier({
+          isDirect: kind === "direct",
+          dmRetryOptions: account.config.dmChannelRetry,
+        });
+        await core.channel.inbound.dispatch({
+          cfg,
+          channel: "mattermost",
+          accountId: account.accountId,
+          route: {
             agentId: route.agentId,
-            channel: "mattermost",
-            accountId: account.accountId,
+            dmScope: route.dmScope,
+            sessionKey: threadContext.sessionKey,
+          },
+          ctxPayload,
+          delivery: {
+            deliver: async (payload: ReplyPayload) => {
+              const result = toMattermostChannelDeliveryResult(
+                await deliverMattermostReplyPayload({
+                  core,
+                  cfg,
+                  payload,
+                  to,
+                  accountId: account.accountId,
+                  agentId: route.agentId,
+                  replyToId: resolveMattermostReplyRootId({
+                    kind,
+                    threadRootId: threadContext.effectiveReplyToId,
+                    replyToId: payload.replyToId,
+                  }),
+                  textLimit,
+                  tableMode,
+                  sendMessage: sendMessageMattermost,
+                  onDmChannelResolution: deliveryBarrier.trackDmChannelResolution,
+                }),
+              );
+              if (result.visibleReplySent) {
+                runtime.log?.(`delivered button-click reply to ${to}`);
+              }
+              return result;
+            },
+            onError: (err, info) => {
+              runtime.error?.(`mattermost button-click ${info.kind} reply failed: ${String(err)}`);
+            },
+          },
+          replyPipeline: {
             typing: {
               start: () =>
                 sendTypingIndicator(optsLocal.channelId, threadContext.effectiveReplyToId),
@@ -483,48 +523,15 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
                 });
               },
             },
-          });
-        const deliveryBarrier = createMattermostReplyDeliveryBarrier({
-          isDirect: kind === "direct",
-          dmRetryOptions: account.config.dmChannelRetry,
-        });
-        await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
-          ctx: ctxPayload,
-          cfg,
+          },
           dispatcherOptions: {
-            ...replyPipeline,
             resolveFollowupAdmissionBarrierTimeoutPolicy: deliveryBarrier.resolveTimeoutPolicy,
             onDeliverySettled: deliveryBarrier.markDeliverySettled,
             humanDelay: resolveHumanDelayConfig(cfg, route.agentId),
-            deliver: async (payload: ReplyPayload) => {
-              await deliverMattermostReplyPayload({
-                core,
-                cfg,
-                payload,
-                to,
-                accountId: account.accountId,
-                agentId: route.agentId,
-                replyToId: resolveMattermostReplyRootId({
-                  kind,
-                  threadRootId: threadContext.effectiveReplyToId,
-                  replyToId: payload.replyToId,
-                }),
-                textLimit,
-                tableMode,
-                sendMessage: sendMessageMattermost,
-                onDmChannelResolution: deliveryBarrier.trackDmChannelResolution,
-              });
-              runtime.log?.(`delivered button-click reply to ${to}`);
-            },
-            onError: (err, info) => {
-              runtime.error?.(`mattermost button-click ${info.kind} reply failed: ${String(err)}`);
-            },
-            typingCallbacks,
           },
           replyOptions: {
             disableBlockStreaming:
               typeof account.blockStreaming === "boolean" ? !account.blockStreaming : undefined,
-            onModelSelected,
           },
         });
       },
@@ -605,8 +612,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
     postId: string;
     messageSid?: string;
     effectiveReplyToId?: string;
-    deliverReplies?: boolean;
-  }): Promise<string> => {
+  }): Promise<void> => {
     const to = params.kind === "direct" ? `user:${params.senderId}` : `channel:${params.channelId}`;
     const fromLabel =
       params.kind === "direct"
@@ -662,39 +668,21 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
         fallbackLimit: account.textChunkLimit ?? 4000,
       },
     );
-    const shouldDeliverReplies = params.deliverReplies === true;
-    const { onModelSelected, typingCallbacks, ...replyPipeline } =
-      createChannelMessageReplyPipeline({
-        cfg,
-        agentId: params.route.agentId,
-        channel: "mattermost",
-        accountId: account.accountId,
-        typing: shouldDeliverReplies
-          ? {
-              start: () => sendTypingIndicator(params.channelId, params.effectiveReplyToId),
-              onStartError: (err) => {
-                logTypingFailure({
-                  log: (message) => logger.debug?.(message),
-                  channel: "mattermost",
-                  target: params.channelId,
-                  error: err,
-                });
-              },
-            }
-          : undefined,
-      });
-    const capturedTexts: string[] = [];
     const deliveryBarrier = createMattermostReplyDeliveryBarrier({
       isDirect: params.kind === "direct",
       dmRetryOptions: account.config.dmChannelRetry,
     });
-    await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
-      ctx: ctxPayload,
+    await core.channel.inbound.dispatch({
       cfg,
-      dispatcherOptions: {
-        ...replyPipeline,
-        resolveFollowupAdmissionBarrierTimeoutPolicy: deliveryBarrier.resolveTimeoutPolicy,
-        onDeliverySettled: deliveryBarrier.markDeliverySettled,
+      channel: "mattermost",
+      accountId: account.accountId,
+      route: {
+        agentId: params.route.agentId,
+        dmScope: params.route.dmScope,
+        sessionKey: params.sessionKey,
+      },
+      ctxPayload,
+      delivery: {
         // Picker-triggered confirmations should stay immediate.
         deliver: async (payload: ReplyPayload) => {
           const trimmedPayload = {
@@ -702,45 +690,53 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
             text: core.channel.text.convertMarkdownTables(payload.text ?? "", tableMode).trim(),
           };
 
-          if (!shouldDeliverReplies) {
-            if (trimmedPayload.text) {
-              capturedTexts.push(trimmedPayload.text);
-            }
-            return;
-          }
-
-          await deliverMattermostReplyPayload({
-            core,
-            cfg,
-            payload: trimmedPayload,
-            to,
-            accountId: account.accountId,
-            agentId: params.route.agentId,
-            replyToId: resolveMattermostReplyRootId({
-              kind: params.kind,
-              threadRootId: params.effectiveReplyToId,
-              replyToId: trimmedPayload.replyToId,
+          return toMattermostChannelDeliveryResult(
+            await deliverMattermostReplyPayload({
+              core,
+              cfg,
+              payload: trimmedPayload,
+              to,
+              accountId: account.accountId,
+              agentId: params.route.agentId,
+              replyToId: resolveMattermostReplyRootId({
+                kind: params.kind,
+                threadRootId: params.effectiveReplyToId,
+                replyToId: trimmedPayload.replyToId,
+              }),
+              textLimit,
+              // The picker path already converts and trims text before delivery.
+              tableMode: "off",
+              sendMessage: sendMessageMattermost,
+              onDmChannelResolution: deliveryBarrier.trackDmChannelResolution,
             }),
-            textLimit,
-            // The picker path already converts and trims text before capture/delivery.
-            tableMode: "off",
-            sendMessage: sendMessageMattermost,
-            onDmChannelResolution: deliveryBarrier.trackDmChannelResolution,
-          });
+          );
         },
         onError: (err, info) => {
           runtime.error?.(`mattermost model picker ${info.kind} reply failed: ${String(err)}`);
         },
-        typingCallbacks,
+      },
+      replyPipeline: {
+        typing: {
+          start: () => sendTypingIndicator(params.channelId, params.effectiveReplyToId),
+          onStartError: (err) => {
+            logTypingFailure({
+              log: (message) => logger.debug?.(message),
+              channel: "mattermost",
+              target: params.channelId,
+              error: err,
+            });
+          },
+        },
+      },
+      dispatcherOptions: {
+        resolveFollowupAdmissionBarrierTimeoutPolicy: deliveryBarrier.resolveTimeoutPolicy,
+        onDeliverySettled: deliveryBarrier.markDeliverySettled,
       },
       replyOptions: {
         disableBlockStreaming:
           typeof account.blockStreaming === "boolean" ? !account.blockStreaming : undefined,
-        onModelSelected,
       },
     });
-
-    return capturedTexts.join("\n\n").trim();
   };
 
   async function handleModelPickerInteraction(params: {
@@ -925,7 +921,6 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
             model: pickerState.model,
           }),
           effectiveReplyToId: threadContext.effectiveReplyToId,
-          deliverReplies: true,
         });
         const updatedModel = resolveMattermostModelPickerCurrentModel({
           cfg,
