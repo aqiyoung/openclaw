@@ -7,8 +7,6 @@ import {
   type TextEdit,
 } from "./text-styles-shared.js";
 import {
-  blockquoteTabResidual,
-  markdownSourceColumn,
   sourceContainerPrefixLength,
   sourceContainerProjection,
 } from "./text-styles-source-spans.js";
@@ -24,7 +22,7 @@ export function collectBlockEdits(
 ): TextEdit[] {
   const edits: TextEdit[] = [];
   const sourceLines = source.split("\n");
-  const sourceLineStarts = sourceLines.reduce<number[]>((starts, line, index) => {
+  const sourceLineStarts = sourceLines.reduce<number[]>((starts, _line, index) => {
     starts.push(
       index === 0 ? 0 : (starts[index - 1] ?? 0) + (sourceLines[index - 1]?.length ?? 0) + 1,
     );
@@ -347,7 +345,7 @@ function collectSourceSpacingEdits(
   source: string,
 ): TextEdit[] {
   const sourceLines = source.split("\n");
-  const sourceLineStarts = sourceLines.reduce<number[]>((starts, line, index) => {
+  const sourceLineStarts = sourceLines.reduce<number[]>((starts, _line, index) => {
     starts.push(
       index === 0 ? 0 : (starts[index - 1] ?? 0) + (sourceLines[index - 1]?.length ?? 0) + 1,
     );

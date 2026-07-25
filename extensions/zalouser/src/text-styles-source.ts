@@ -98,7 +98,7 @@ export function protectInlineSyntaxOutsideCode(
   registry: TokenRegistry,
 ): string {
   const sourceLines = source.split("\n");
-  const sourceLineStarts = sourceLines.reduce<number[]>((starts, line, index) => {
+  const sourceLineStarts = sourceLines.reduce<number[]>((starts, _line, index) => {
     starts.push(
       index === 0 ? 0 : (starts[index - 1] ?? 0) + (sourceLines[index - 1]?.length ?? 0) + 1,
     );
