@@ -7,7 +7,7 @@ import type { ResolvedBuzzAccount } from "./types.js";
 const gatewayMocks = vi.hoisted(() => ({
   close: vi.fn(async () => {}),
   onMessage: undefined as
-    | ((message: import("./buzz-bus.js").BuzzInboundMessage, bus: BuzzBus) => Promise<void>)
+    | ((message: import("./message-event.js").BuzzInboundMessage, bus: BuzzBus) => Promise<void>)
     | undefined,
   onMessageError: undefined as ((error: Error) => void) | undefined,
   onFatalError: undefined as ((error: Error) => void) | undefined,
@@ -37,7 +37,7 @@ describe("Buzz gateway lifecycle", () => {
     gatewayMocks.startBuzzBus.mockImplementation(
       async (options: {
         onMessage: (
-          message: import("./buzz-bus.js").BuzzInboundMessage,
+          message: import("./message-event.js").BuzzInboundMessage,
           bus: BuzzBus,
         ) => Promise<void>;
         onMessageError?: (error: Error) => void;

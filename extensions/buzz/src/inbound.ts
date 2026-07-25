@@ -4,7 +4,8 @@ import {
 } from "openclaw/plugin-sdk/channel-inbound";
 import { resolveStableChannelMessageIngress } from "openclaw/plugin-sdk/channel-ingress-runtime";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
-import type { BuzzBus, BuzzInboundMessage } from "./buzz-bus.js";
+import type { BuzzBus } from "./buzz-bus.js";
+import type { BuzzInboundMessage } from "./message-event.js";
 import { getBuzzRuntime } from "./runtime.js";
 import { buildBuzzTarget, parseBuzzTarget } from "./target.js";
 import type { ResolvedBuzzAccount } from "./types.js";
