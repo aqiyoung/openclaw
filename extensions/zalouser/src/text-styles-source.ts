@@ -110,7 +110,16 @@ export function protectInlineSyntaxOutsideCode(
   const emptyAtxMarkers = new Map<number, string>();
   const closingAtxLines = new Set<number>();
   const atxHeadingLines = new Set<number>();
+  const blockquoteDepthByLine = new Map<number, number>();
   for (const block of ir.blocks ?? []) {
+    if (block.kind === "blockquote") {
+      for (let line = block.sourceStartLine ?? 0; line < (block.sourceEndLine ?? 0); line += 1) {
+        blockquoteDepthByLine.set(
+          line,
+          Math.max(blockquoteDepthByLine.get(line) ?? 0, block.blockquoteDepth ?? 0),
+        );
+      }
+    }
     if (block.kind === "heading" && block.headingOrigin === "atx") {
       atxHeadingLines.add(block.sourceStartLine ?? 0);
     }
@@ -235,6 +244,7 @@ export function protectInlineSyntaxOutsideCode(
         registry,
         atxHeadingLines.has(lineIndex),
         !listLines.has(lineIndex),
+        blockquoteDepthByLine.get(lineIndex) ?? 0,
       );
       return thematicBreakLines.has(lineIndex)
         ? line
@@ -248,9 +258,11 @@ function protectResidualBlockPadding(
   registry: TokenRegistry,
   atxHeading: boolean,
   protectQuotePadding: boolean,
+  blockquoteDepth: number,
 ): string {
   let protectedLine = line;
   let cursor = 0;
+  let consumedBlockquotes = 0;
   if (protectQuotePadding) {
     while (cursor < protectedLine.length) {
       let marker = cursor;
@@ -264,10 +276,12 @@ function protectResidualBlockPadding(
       if (protectedLine[marker] !== ">") {
         break;
       }
+      consumedBlockquotes += 1;
       const whitespaceStart = marker + 1;
       const whitespace = /^[ \t]+/u.exec(protectedLine.slice(whitespaceStart))?.[0] ?? "";
       const remainingContent = protectedLine.slice(whitespaceStart + whitespace.length);
-      if (whitespace.length > 1 && remainingContent) {
+      const structuralPadding = atxHeading || consumedBlockquotes < blockquoteDepth;
+      if (!structuralPadding && whitespace.length > 1 && remainingContent) {
         protectedLine = `${protectedLine.slice(0, whitespaceStart + 1)}${protectLiteral(
           registry,
           whitespace.slice(1),

@@ -98,6 +98,56 @@ export function sourceContainerProjection(
   };
 }
 
+export function sourceListItemContent(
+  source: string,
+  ir: MarkdownIRWithBlockMetadata,
+  sourceLineStarts: number[],
+  sourceLines: string[],
+  item: NonNullable<MarkdownIRWithBlockMetadata["listItems"]>[number],
+): string {
+  if (
+    item.sourceContent === undefined ||
+    item.sourceStartLine === undefined ||
+    item.sourceEndLine === undefined
+  ) {
+    return "";
+  }
+  const blockquoteDepth = (ir.blocks ?? [])
+    .filter(
+      (block) =>
+        block.kind === "blockquote" &&
+        (block.sourceStartLine ?? 0) <= item.sourceStartLine! &&
+        (block.sourceEndLine ?? 0) >= item.sourceEndLine!,
+    )
+    .reduce((depth, block) => Math.max(depth, block.blockquoteDepth ?? 0), 0);
+  const contentLines: string[] = [];
+  for (let lineIndex = item.sourceStartLine; lineIndex < item.sourceEndLine; lineIndex += 1) {
+    const lineStart = sourceLineStarts[lineIndex] ?? 0;
+    const lineEnd =
+      lineIndex + 1 < sourceLineStarts.length
+        ? Math.max(lineStart, (sourceLineStarts[lineIndex + 1] ?? source.length) - 1)
+        : source.length;
+    const contentStart = Math.max(item.sourceContent.start, lineStart);
+    const contentEnd = Math.min(item.sourceContent.end, lineEnd);
+    const projectedStart = Math.max(
+      contentStart,
+      lineStart +
+        sourceContainerPrefixLength(
+          sourceLines[lineIndex] ?? "",
+          lineIndex,
+          ir,
+          sourceLineStarts,
+          sourceLines,
+          blockquoteDepth,
+        ),
+    );
+    contentLines.push(
+      source.slice(Math.min(projectedStart, contentEnd), contentEnd).replace(/\r$/u, ""),
+    );
+  }
+  return contentLines.join("\n").replace(/^\n+|[ \t\r\n]+$/gu, "");
+}
+
 export function sourceBlockquotePrefixLength(
   line: string,
   maxDepth = Number.POSITIVE_INFINITY,

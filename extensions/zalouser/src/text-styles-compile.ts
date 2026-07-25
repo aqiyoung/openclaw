@@ -9,6 +9,7 @@ import {
 import {
   sourceContainerPrefixLength,
   sourceContainerProjection,
+  sourceListItemContent,
 } from "./text-styles-source-spans.js";
 import { sourceAtxIsMarkerOnly } from "./text-styles-source.js";
 import { TextStyle } from "./zca-constants.js";
@@ -50,10 +51,8 @@ export function collectBlockEdits(
         block.end <= item.end,
     );
     const sourceItem = sourceIR.listItems?.[itemIndex];
-    const sourceContent = sourceItem?.sourceContent
-      ? source
-          .slice(sourceItem.sourceContent.start, sourceItem.sourceContent.end)
-          .replace(/[ \t\r\n]+$/gu, "")
+    const sourceContent = sourceItem
+      ? sourceListItemContent(source, sourceIR, sourceLineStarts, sourceLines, sourceItem)
       : "";
     const hasRenderedContent =
       item.contentStart !== undefined &&

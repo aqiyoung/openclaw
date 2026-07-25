@@ -234,6 +234,10 @@ describe("parseZalouserTextStyles containers", () => {
       text: "\u00A0",
       styles: [{ start: 0, len: 1, st: TextStyle.UnorderedList }],
     });
+    expect(parseZalouserTextStyles("-\n  \u00A0")).toEqual({
+      text: "\u00A0",
+      styles: [{ start: 0, len: 1, st: TextStyle.UnorderedList }],
+    });
     expect(parseZalouserTextStyles("- parent\n  - \u00A0")).toEqual({
       text: "parent\n\u00A0",
       styles: [

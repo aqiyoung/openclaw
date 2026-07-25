@@ -231,6 +231,21 @@ describe("parseZalouserTextStyles blocks", () => {
       text: "quoted",
       styles: [{ start: 0, len: 6, st: TextStyle.Indent, indentSize: 2 }],
     });
+    expect(parseZalouserTextStyles(">  > nested")).toEqual({
+      text: "nested",
+      styles: [{ start: 0, len: 6, st: TextStyle.Indent, indentSize: 2 }],
+    });
+  });
+
+  it("keeps blockquote padding structural before headings", () => {
+    expect(parseZalouserTextStyles(">   # Title")).toEqual({
+      text: "Title",
+      styles: [
+        { start: 0, len: 5, st: TextStyle.Bold },
+        { start: 0, len: 5, st: TextStyle.Big },
+        { start: 0, len: 5, st: TextStyle.Indent, indentSize: 1 },
+      ],
+    });
   });
 
   it("keeps container-only nested blockquotes empty", () => {
