@@ -1,60 +1,6 @@
 // Tier-eval config compatibility migration and its scoped traversal helpers.
 import { ensureRecord, getRecord } from "../../../config/legacy.shared.js";
-
-function deleteRetiredPath(owner: unknown, path: readonly string[], index = 0): boolean {
-  const record = getRecord(owner);
-  if (!record) {
-    return false;
-  }
-  const key = path[index];
-  if (!key) {
-    return false;
-  }
-  if (key === "*") {
-    let changed = false;
-    for (const value of Object.values(record)) {
-      changed = deleteRetiredPath(value, path, index + 1) || changed;
-    }
-    return changed;
-  }
-  if (index === path.length - 1) {
-    if (!Object.hasOwn(record, key)) {
-      return false;
-    }
-    delete record[key];
-    return true;
-  }
-  const child = getRecord(record[key]);
-  if (!child || !deleteRetiredPath(child, path, index + 1)) {
-    return false;
-  }
-  if (Object.keys(child).length === 0) {
-    delete record[key];
-  }
-  return true;
-}
-
-function visitChannelEntries(
-  raw: Record<string, unknown>,
-  channelId: string,
-  visitor: (entry: Record<string, unknown>, path: string) => void,
-): void {
-  const channel = getRecord(getRecord(raw.channels)?.[channelId]);
-  if (!channel) {
-    return;
-  }
-  visitor(channel, `channels.${channelId}`);
-  const accounts = getRecord(channel.accounts);
-  if (!accounts) {
-    return;
-  }
-  for (const [accountId, value] of Object.entries(accounts)) {
-    const account = getRecord(value);
-    if (account) {
-      visitor(account, `channels.${channelId}.accounts.${accountId}`);
-    }
-  }
-}
+import { deleteRetiredPath, visitChannelEntries } from "./legacy-config-record-shared.js";
 
 const TIER_EVAL_RETIRED_ROOT_PATHS = [
   ["cloudWorkers", "profiles", "*", "lifetime"],
