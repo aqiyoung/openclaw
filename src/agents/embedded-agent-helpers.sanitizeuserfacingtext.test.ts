@@ -5,6 +5,7 @@
 
 import { expectDefined } from "@openclaw/normalization-core";
 import { describe, expect, it } from "vitest";
+import { markInboundContextLabel } from "../auto-reply/reply/inbound-context-marker.js";
 import {
   downgradeOpenAIFunctionCallReasoningPairs,
   downgradeOpenAIReasoningBlocks,
@@ -498,12 +499,12 @@ describe("sanitizeUserFacingText", () => {
 
   it("strips copied inbound metadata blocks from user-facing assistant text", () => {
     const input = [
-      "Conversation info:",
+      markInboundContextLabel("Conversation info:"),
       "```json",
       '{"chat_id":"channel:123","sender":"OpenClaw"}',
       "```",
       "",
-      "Sender:",
+      markInboundContextLabel("Sender:"),
       "```json",
       '{"label":"OpenClaw (123)"}',
       "```",

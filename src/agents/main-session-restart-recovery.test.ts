@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GatewayClientRequestError } from "../../packages/gateway-client/src/index.js";
+import { markInboundContextLabel } from "../auto-reply/reply/inbound-context-marker.js";
 import type { InternalSessionEntry as SessionEntry } from "../config/sessions.js";
 import * as sessionAccessor from "../config/sessions/session-accessor.js";
 import {
@@ -1757,7 +1758,7 @@ describe("main-session-restart-recovery", () => {
       "internal recovery detail",
       INTERNAL_RUNTIME_CONTEXT_END,
       "",
-      "Conversation info:",
+      markInboundContextLabel("Conversation info:"),
       "```json",
       '{"message_id":"msg-1"}',
       "```",

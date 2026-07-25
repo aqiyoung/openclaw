@@ -125,6 +125,7 @@ import { resolveEffectiveReplyRoute } from "./effective-reply-route.js";
 import { createFollowupRunner } from "./followup-runner.js";
 import { REPLY_RUN_STILL_SHUTTING_DOWN_TEXT } from "./get-reply-run-queue.js";
 import type { InternalGetReplyOptions } from "./get-reply.types.js";
+import { INBOUND_CONTEXT_MARKER } from "./inbound-context-marker.js";
 import { attachMcpAppChannelAction } from "./mcp-app-channel-action.js";
 import { normalizeReplyPayload } from "./normalize-reply.js";
 import { resolveOriginMessageProvider, resolveOriginMessageTo } from "./origin-routing.js";
@@ -689,8 +690,8 @@ function derivePromptSegments(prompt: string | undefined): TracePromptSegmentVie
         }
       }
     }
-    const metadataMatch = line.match(/^(.+):$/);
-    if (metadataMatch) {
+    const metadataHeaderLine = line.trim().endsWith(INBOUND_CONTEXT_MARKER) ? line : null;
+    if (metadataHeaderLine) {
       const start = index;
       const fence = lines[index + 1] ?? "";
       // Generated metadata blocks always use ```json fences (inbound-meta.ts,
@@ -702,8 +703,12 @@ function derivePromptSegments(prompt: string | undefined): TracePromptSegmentVie
           end += 1;
         }
         if (end < lines.length) {
+          const headerWithoutMarker = metadataHeaderLine
+            .trim()
+            .slice(0, -INBOUND_CONTEXT_MARKER.length)
+            .trim();
           addChars(
-            resolveMetadataSegmentKey(metadataMatch[1] ?? "metadata"),
+            resolveMetadataSegmentKey(headerWithoutMarker || "metadata"),
             lines.slice(start, end + 1).join("\n").length,
           );
           index = end + 1;

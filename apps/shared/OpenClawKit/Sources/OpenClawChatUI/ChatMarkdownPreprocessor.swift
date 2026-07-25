@@ -1,17 +1,10 @@
 import Foundation
 
 enum ChatMarkdownPreprocessor {
-    /// Keep in sync with `src/auto-reply/reply/strip-inbound-meta.ts`
-    /// (`INBOUND_META_SENTINELS`), and extend parser expectations in
-    /// `ChatMarkdownPreprocessorTests` when sentinels change.
-    private static let inboundContextHeaders = [
-        "Conversation info:",
-        "Sender:",
-        "Thread starter:",
-        "Reply target of current user message:",
-        "Forwarded message context:",
-        "Chat history since last reply:",
-    ]
+    /// Provenance marker appended to every OpenClaw-injected inbound context header.
+    /// Keep byte-identical with `src/auto-reply/reply/inbound-context-marker.ts` INBOUND_CONTEXT_MARKER.
+    private static let inboundContextMarker = "\u{27E6}openclaw:ctx\u{27E7}"
+
     private static let contextHeader =
         "Context:"
     private static let envelopeChannels = [
@@ -137,7 +130,7 @@ enum ChatMarkdownPreprocessor {
     }
 
     private static func stripInboundContextBlocks(_ raw: String) -> String {
-        guard self.inboundContextHeaders.contains(where: raw.contains) || raw.contains(self.contextHeader)
+        guard raw.contains(self.inboundContextMarker) || raw.contains(self.contextHeader)
         else {
             return raw
         }
@@ -147,25 +140,38 @@ enum ChatMarkdownPreprocessor {
         var outputLines: [String] = []
         var inMetaBlock = false
         var inFencedJson = false
+        var inProseBlock = false
 
         for index in lines.indices {
             let currentLine = lines[index]
+
+            // Prose context body (chat history/window): drop lines until the
+            // block-terminating blank line so the visible marker never renders.
+            if inProseBlock {
+                if currentLine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    inProseBlock = false
+                }
+                continue
+            }
 
             if !inMetaBlock, self.shouldStripTrailingUntrustedContext(lines: lines, index: index) {
                 break
             }
 
-            if !inMetaBlock,
-               self.inboundContextHeaders.contains(currentLine.trimmingCharacters(in: .whitespacesAndNewlines))
-            {
-                let nextLine = index + 1 < lines.count ? lines[index + 1] : nil
-                if nextLine?.trimmingCharacters(in: .whitespacesAndNewlines) != "```json" {
-                    outputLines.append(currentLine)
+            if !inMetaBlock {
+                let trimmed = currentLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                let isContextHeader = trimmed.count > self.inboundContextMarker.count &&
+                    trimmed.hasSuffix(self.inboundContextMarker)
+                if isContextHeader {
+                    let nextLine = index + 1 < lines.count ? lines[index + 1] : nil
+                    if nextLine?.trimmingCharacters(in: .whitespacesAndNewlines) != "```json" {
+                        inProseBlock = true
+                        continue
+                    }
+                    inMetaBlock = true
+                    inFencedJson = false
                     continue
                 }
-                inMetaBlock = true
-                inFencedJson = false
-                continue
             }
 
             if inMetaBlock {

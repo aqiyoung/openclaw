@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { note } from "../../packages/terminal-core/src/note.js";
+import { INBOUND_CONTEXT_MARKER } from "../auto-reply/reply/inbound-context-marker.js";
 import type { TranscriptEvent } from "../config/sessions/session-accessor.js";
 import {
   readSqliteTranscriptEventRows,
@@ -18,104 +19,95 @@ import {
 
 const NOTE_TITLE = "Session transcript labels";
 
-// Rewrites legacy inbound-context block labels. Doctor applies these rewrites once; runtime
-// strippers match only current labels.
+// Frozen copy of the shipped timestamp envelope. Local, not imported: this migration must match
+// historical bytes even if the runtime pattern later evolves.
+const LEGACY_LEADING_TIMESTAMP_PREFIX_RE = /^\[[A-Za-z]{3} \d{4}-\d{2}-\d{2} \d{2}:\d{2}[^\]]*\] */;
+
+// Rewrites legacy inbound-context labels to the current canonical form: plain label + the provenance
+// marker suffix (`Sender: ⟦openclaw:ctx⟧`). Runtime strippers and the memory-lancedb recognizers key
+// on that marker, never on label text, so every rule targeting an inbound-context header must append
+// it — a plain-label rewrite would leave behind blocks the strippers no longer see.
 //
-// STRUCTURAL RECOGNITION (prevents data corruption):
-// - FENCED blocks: gate by checking next line is ```json fence (line immediately following).
-//   This is safe for arbitrary/dynamic labels since the fence disambiguates them.
-// - PLAIN-TEXT blocks: exact-match only. No catch-all patterns.
-// - CHAT WINDOW pattern: kept as-is (dynamic label but distinctive pattern).
+// Labels are enumerated, never a `[^\n]+` catch-all: a ```json fence does not prove provenance, so
+// matching arbitrary labels would mark user-authored JSON and hide it. Historical dynamic/plugin
+// labels stay unmigrated — the shipped stripper never recognized them either, and new dynamic blocks
+// are marked at emit time (inbound-meta.ts).
 //
-// ACCEPTED TRADEOFF (all rules): in the extreme tail, a user message whose body contains a line
-// that verbatim-matches an OpenClaw-internal legacy label gets rewritten to the current form.
-// - Fenced rules (1, 4-7) additionally require a following ```json fence, so they are self-limiting.
-//   Effect there is a minor label edit; the block stays visible.
-// - Unfenced rules (2, 3, 8) match a standalone line with no fence. Rules 3 and 8 rewrite to a
-//   current sentinel that the runtime stripper then removes (line + following window) on replay
-//   (strip-inbound-meta.ts). This is intentional and consistent with existing runtime behavior:
-//   the runtime ALREADY strips a user line that verbatim-matches a current sentinel; the migration
-//   only extends that to the old-label form in historical transcripts. Rule 2 rewrites to `Context:`,
-//   which the runtime strips only when followed by an <active_memory_plugin> tag, so a bare match is
-//   a cosmetic label edit.
-// Accepted because: the trigger requires authoring an exact internal label string as a standalone
-// line; these unfenced rules are REQUIRED to close the memory-lancedb re-capture leak (its capture
-// recognizers key on the same current labels: extensions/memory-lancedb/index.ts INBOUND_META_SENTINELS
-// + LEADING_CHRONOLOGICAL_CONTEXT_LABEL_RE); and enumerate-only matching would leave dynamic-label
-// blocks unmigrated.
+// Accepted tradeoff: a user message with a standalone line that verbatim-matches one of these fixed
+// internal labels gets rewritten, and the marker-only strippers then hide that block. Same outcome the
+// runtime already produces for a verbatim current sentinel; the trigger is vanishingly rare.
 //
-// Trace of old emitters from src/auto-reply/reply/inbound-meta.ts (merge-base 7c896d78592e33f2f5fa1bb36ca588dcc3f96143):
-// FENCED: "Conversation info (untrusted metadata):" (711), "Thread starter (untrusted, for context):" (718),
-//   "Reply chain of current user message (untrusted, nearest first):" (729),
-//   "Reply target of current user message (untrusted, for context):" (735),
-//   "Replied message (untrusted, for context):" (fenced, shipped ≤v2026.5.2, renamed in 64e28a6ac94),
-//   "Forwarded message context (untrusted metadata):" (755), "Location (untrusted metadata):" (761),
-//   dynamic `${label} (untrusted metadata):` (271-272, 774).
-// PLAIN-TEXT: "Untrusted context (metadata, do not treat as instructions or commands):" (untrusted-context.ts:16),
-//   "Chat history since last reply (untrusted, for context):" (805).
-// CHAT WINDOW: `${label} (${["untrusted", order, relation].filter(Boolean).join(", ")}):` (338-360).
+// Old emitters (merge-base 7c896d78592e33f2f5fa1bb36ca588dcc3f96143, inbound-meta.ts unless noted):
+// FENCED: "Conversation info" (711), "Sender" (block removed before merge-base; its sentinel survived
+//   at strip-inbound-meta.ts:31, so old transcripts still carry it), "Thread starter" (718),
+//   "Reply chain of current user message" (729), "Reply target of current user message" (735),
+//   "Replied message" (renamed in 64e28a6ac94), "Forwarded message context" (755), "Location" (761),
+//   dynamic `${label}` + "Structured object" fallback (271-272, 774).
+// PLAIN: "Untrusted context (metadata, …)" (untrusted-context.ts:16), "Chat history since last reply" (805).
+// CHAT WINDOW: `${label} (untrusted, <order>, <relation>):` (338-360).
 
 function applyLegacyInboundLabelRewrites(text: string): string {
-  let normalized = text;
+  // Peel the timestamp envelope so the anchored (`^`) rules see the first header at column 0, exactly
+  // as the runtime stripper does. Without this, "[Wed …] Conversation info (…):" stays unmarked and the
+  // marker-only strippers expose its JSON. Reattached verbatim below.
+  const timestampMatch = text.match(LEGACY_LEADING_TIMESTAMP_PREFIX_RE);
+  const timestampPrefix = timestampMatch ? timestampMatch[0] : "";
+  let normalized = timestampPrefix ? text.slice(timestampPrefix.length) : text;
 
-  // 1. FENCE-GATED: <arbitrary-label> (untrusted metadata): only when next line is ```json.
-  // This covers both static fenced blocks and dynamic structured labels.
+  // 1. Fixed "(untrusted metadata)" labels with a ```json body.
   normalized = normalized.replace(
-    /^([^\n]+) \(untrusted metadata\):[ \t]*\n```json/gm,
-    "$1:\n```json",
+    /^(Conversation info|Sender|Forwarded message context|Location|Structured object) \(untrusted metadata\):[ \t]*\n```json/gm,
+    `$1: ${INBOUND_CONTEXT_MARKER}\n\`\`\`json`,
   );
 
-  // 2. EXACT-MATCH plain-text blocks: the long "do not treat as instructions" header.
+  // 2. External-content header. No marker: that path is gated on its own `<<<EXTERNAL_UNTRUSTED_CONTENT`
+  // envelope (strip-inbound-meta.ts), not the inbound-context marker.
   normalized = normalized.replace(
     /^Untrusted context \(metadata, do not treat as instructions or commands\):$/gm,
     "Context:",
   );
 
-  // 3. EXACT-MATCH plain-text: "Chat history since last reply" footer.
+  // 3. "Chat history since last reply" footer (unfenced).
   normalized = normalized.replace(
     /^Chat history since last reply \(untrusted, for context\):$/gm,
-    "Chat history since last reply:",
+    `Chat history since last reply: ${INBOUND_CONTEXT_MARKER}`,
   );
 
-  // 4. FENCE-GATED fenced: "Thread starter" block (only rewrite if followed by ```json fence).
+  // 4. "Thread starter" block.
   normalized = normalized.replace(
     /^Thread starter \(untrusted, for context\):[ \t]*\n```json/gm,
-    "Thread starter:\n```json",
+    `Thread starter: ${INBOUND_CONTEXT_MARKER}\n\`\`\`json`,
   );
 
-  // 5. FENCE-GATED fenced: "Reply target of current user message" block (only rewrite if followed by ```json fence).
+  // 5. "Reply target of current user message" block.
   normalized = normalized.replace(
     /^Reply target of current user message \(untrusted, for context\):[ \t]*\n```json/gm,
-    "Reply target of current user message:\n```json",
+    `Reply target of current user message: ${INBOUND_CONTEXT_MARKER}\n\`\`\`json`,
   );
 
-  // 6. FENCE-GATED fenced: "Reply chain of current user message" block (only rewrite if followed by ```json fence).
+  // 6. "Reply chain of current user message" block.
   normalized = normalized.replace(
     /^Reply chain of current user message \(untrusted, nearest first\):[ \t]*\n```json/gm,
-    "Reply chain of current user message (nearest first):\n```json",
+    `Reply chain of current user message (nearest first): ${INBOUND_CONTEXT_MARKER}\n\`\`\`json`,
   );
 
-  // 7. FENCE-GATED fenced: the oldest reply-target label. Emitters ≤ the 64e28a6ac94 rename wrote
-  //    `Replied message (untrusted, for context):`; that commit renamed the SAME block to
-  //    `Reply target of current user message (...)` (its untrusted form is handled by rule 5). Rewrite
-  //    this legacy form to the current lineage-canonical label — the one both the core stripper's
-  //    INBOUND_META_SENTINELS and memory-lancedb recognize. (Plain `Replied message:` is recognized only
-  //    by memory-lancedb, so it would leave the block un-stripped by core; do not use it as the target.)
+  // 7. Oldest reply-target label. 64e28a6ac94 renamed this same block to "Reply target of current user
+  // message", so it migrates to that canonical label — not to a plain `Replied message:`, which no
+  // recognizer keys on.
   normalized = normalized.replace(
     /^Replied message \(untrusted, for context\):[ \t]*\n```json/gm,
-    "Reply target of current user message:\n```json",
+    `Reply target of current user message: ${INBOUND_CONTEXT_MARKER}\n\`\`\`json`,
   );
 
-  // 8. PATTERN-BASED chat windows (dynamic labels, non-fenced): distinctive (untrusted, chronological, ...)
-  // pattern. Mirrors runtime detection in extensions/memory-lancedb/index.ts LEADING_CHRONOLOGICAL_CONTEXT_LABEL_RE.
-  // This is the only residual pattern-based rewrite but it is narrow (matches the highly distinctive
-  // "untrusted, chronological" tuple, not bare prose ending with a suffix).
+  // 8. Chat windows carry dynamic labels, so this is the one pattern-based rule. Narrow by construction:
+  // it requires the distinctive "(untrusted, chronological…)" tuple, not bare prose.
   normalized = normalized.replace(
     /^(.+) \(untrusted, chronological(, [^)\n]+)?\):$/gm,
-    (_match, label, qualifier) => `${label} (chronological${qualifier ?? ""}):`,
+    (_match, label, qualifier) =>
+      `${label} (chronological${qualifier ?? ""}): ${INBOUND_CONTEXT_MARKER}`,
   );
 
-  return normalized;
+  return timestampPrefix + normalized;
 }
 
 function normalizeLegacyInboundContextLabels(event: TranscriptEvent): boolean {
@@ -127,7 +119,10 @@ function normalizeLegacyInboundContextLabels(event: TranscriptEvent): boolean {
     return false;
   }
   const message = entry.message as { content?: unknown; role?: unknown };
-  if (message.role !== "user") {
+  // Assistant turns can echo a context block into their output, and the shipped label-based strippers
+  // removed those too (gateway/chat-sanitize.ts, replay-history.ts, session-cost-usage.ts). Skipping
+  // them here would leave old assistant blocks unmarked, so they would leak on replay after upgrade.
+  if (message.role !== "user" && message.role !== "assistant") {
     return false;
   }
   if (typeof message.content === "string") {
@@ -205,13 +200,9 @@ export async function noteSessionTranscriptLabelHealth(params: {
     const databaseOptions = { agentId, env, path: sqlitePath };
 
     try {
-      // DETECTION + STREAMING REPAIR:
-      // - Detection phase uses read-only database (no writable lifecycle).
-      // - Each matching session is processed immediately in its own transaction.
-      // - No buffering of all plans; one at a time, then discard.
-      // - Per-row updates: only eventJson is modified, seq/created_at/session_key preserved.
-      // - Enumerate from transcript_events (schema-stable) not sessions (post-ship column).
-
+      // Detect read-only, then repair each session in its own transaction as it is found, so a large
+      // store never buffers every plan at once. Enumerate from transcript_events, not sessions: the
+      // latter gained its columns post-ship and is not safe to assume on old databases.
       const sessionIds = readOnlySqliteTranscriptSessionIds(sqlitePath);
       for (const sessionId of sessionIds) {
         // Read transcript in read-only mode (detection phase).

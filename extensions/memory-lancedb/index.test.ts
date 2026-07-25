@@ -39,6 +39,13 @@ import memoryPlugin, {
 import { createLanceDbRuntimeLoader } from "./lancedb-runtime.test-support.js";
 import { installTmpDirHarness } from "./test-helpers.js";
 
+// Provenance marker OpenClaw appends to every injected inbound-context header.
+// Detectors key on this marker, not label text. Keep byte-identical with
+// src/auto-reply/reply/inbound-context-marker.ts (extensions cannot import core).
+const CTX = "⟦openclaw:ctx⟧";
+// Marks a context header line the way buildInboundUserContextPrefix does.
+const ctxHeader = (label: string): string => `${label} ${CTX}`;
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "test-key";
 type MemoryPluginTestConfig = {
   embedding?: {
@@ -3414,22 +3421,30 @@ describe("memory plugin e2e", () => {
     }
   });
 
-  test("looksLikeEnvelopeSludge detects inbound metadata sentinels", () => {
-    expect(looksLikeEnvelopeSludge("Conversation info:")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Sender:")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Sender: Alex\nI prefer dark mode")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Thread starter:")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Replied message:")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Forwarded message context:")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Chat history since last reply:")).toBe(true);
+  test("looksLikeEnvelopeSludge detects marked inbound context headers", () => {
+    // Detection keys on the provenance marker suffix, not label text: any header
+    // OpenClaw injects carries it, and it never collides with user prose.
+    expect(looksLikeEnvelopeSludge(ctxHeader("Conversation info:"))).toBe(true);
+    expect(looksLikeEnvelopeSludge(ctxHeader("Sender:"))).toBe(true);
+    expect(looksLikeEnvelopeSludge(`${ctxHeader("Sender:")}\nAlex\nI prefer dark mode`)).toBe(true);
+    expect(looksLikeEnvelopeSludge(ctxHeader("Thread starter:"))).toBe(true);
+    expect(looksLikeEnvelopeSludge(ctxHeader("Forwarded message context:"))).toBe(true);
+    expect(looksLikeEnvelopeSludge(ctxHeader("Chat history since last reply:"))).toBe(true);
     expect(
       looksLikeEnvelopeSludge(
-        "Conversation context (chronological, selected for current message):",
+        ctxHeader("Conversation context (chronological, selected for current message):"),
       ),
     ).toBe(true);
     expect(
-      looksLikeEnvelopeSludge("Current local chat window (chronological, before current message):"),
+      looksLikeEnvelopeSludge(
+        ctxHeader("Current local chat window (chronological, before current message):"),
+      ),
     ).toBe(true);
+    // Marker is label-agnostic: an arbitrary plugin structured-context label is caught too.
+    expect(looksLikeEnvelopeSludge(ctxHeader("Some Custom Plugin Label:"))).toBe(true);
+    // Unmarked look-alikes are NOT sludge (this is the over-strip fix).
+    expect(looksLikeEnvelopeSludge("Conversation info:")).toBe(false);
+    expect(looksLikeEnvelopeSludge("Sender: Alex\nI prefer dark mode")).toBe(false);
   });
 
   test("looksLikeEnvelopeSludge detects context header at line start", () => {
@@ -3475,15 +3490,17 @@ describe("memory plugin e2e", () => {
     expect(looksLikeEnvelopeSludge(indentedPretty)).toBe(true);
   });
 
-  test("looksLikeEnvelopeSludge detects known inbound-meta label variants", () => {
-    // buildInboundUserContextPrefix injects a fixed set of labels beyond the
-    // legacy sentinels; every one is enumerated in INBOUND_META_SENTINELS and
-    // recognized by known-label + fence.
-    expect(looksLikeEnvelopeSludge("Location:\n```json\n{}\n```")).toBe(true);
-    expect(looksLikeEnvelopeSludge("Structured object:\n```json\n{}\n```")).toBe(true);
+  test("looksLikeEnvelopeSludge detects marked inbound-meta label variants", () => {
+    // buildInboundUserContextPrefix marks every injected header with the
+    // provenance marker; the marker suffix (not the label) is what's recognized,
+    // even when the fenced payload carries no envelope key.
+    expect(looksLikeEnvelopeSludge(`${ctxHeader("Location:")}\n\`\`\`json\n{}\n\`\`\``)).toBe(true);
+    expect(
+      looksLikeEnvelopeSludge(`${ctxHeader("Structured object:")}\n\`\`\`json\n{}\n\`\`\``),
+    ).toBe(true);
     expect(
       looksLikeEnvelopeSludge(
-        "Reply chain of current user message (nearest first):\n```json\n[]\n```",
+        `${ctxHeader("Reply chain of current user message (nearest first):")}\n\`\`\`json\n[]\n\`\`\``,
       ),
     ).toBe(true);
   });
@@ -3750,7 +3767,9 @@ describe("memory plugin e2e", () => {
 
   test("shouldCapture rejects envelope sludge", () => {
     expect(
-      shouldCapture('Conversation info:\n```json\n{"id":"123"}\n```\nI always prefer dark mode'),
+      shouldCapture(
+        `${ctxHeader("Conversation info:")}\n\`\`\`json\n{"id":"123"}\n\`\`\`\nI always prefer dark mode`,
+      ),
     ).toBe(false);
     expect(
       shouldCapture("I always prefer this [media attached: /tmp/img.jpg (image/jpeg)] style"),
@@ -3765,7 +3784,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture strips inbound metadata blocks", () => {
     const input = [
-      "Sender:",
+      ctxHeader("Sender:"),
       "```json",
       '{"name": "Alex"}',
       "```",
@@ -3775,19 +3794,9 @@ describe("memory plugin e2e", () => {
     expect(sanitizeForMemoryCapture(input)).toBe("I always prefer verbose output");
   });
 
-  test("sanitizeForMemoryCapture strips bare sentinel lines without code fences", () => {
-    const input = ["Sender: Alex", "", "I always prefer dark mode"].join("\n");
-    expect(sanitizeForMemoryCapture(input)).toBe("I always prefer dark mode");
-  });
-
-  test("sanitizeForMemoryCapture strips bare sentinel line with trailing content on same line", () => {
-    const input = "Conversation info: {some inline json}\nI prefer verbose output";
-    expect(sanitizeForMemoryCapture(input)).toBe("I prefer verbose output");
-  });
-
   test("sanitizeForMemoryCapture strips known current inbound metadata blocks", () => {
     const locationInput = [
-      "Location:",
+      ctxHeader("Location:"),
       "```json",
       '{"lat": 48.2, "lng": 16.3}',
       "```",
@@ -3797,7 +3806,7 @@ describe("memory plugin e2e", () => {
     expect(sanitizeForMemoryCapture(locationInput)).toBe("I always prefer dark mode");
 
     const replyChainInput = [
-      "Reply chain of current user message (nearest first):",
+      ctxHeader("Reply chain of current user message (nearest first):"),
       "```json",
       '[{"body":"quoted context"}]',
       "```",
@@ -3858,11 +3867,11 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture returns empty string for pure metadata", () => {
     const input = [
-      "Conversation info:",
+      ctxHeader("Conversation info:"),
       "```json",
       '{"id": "chat-123", "title": "Test"}',
       "```",
-      "Sender:",
+      ctxHeader("Sender:"),
       "```json",
       '{"name": "Alex"}',
       "```",
@@ -3872,11 +3881,11 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture handles combined contamination", () => {
     const input = [
-      "[Sun 2026-04-13 09:15 EDT] Conversation info:",
+      `[Sun 2026-04-13 09:15 EDT] ${ctxHeader("Conversation info:")}`,
       "```json",
       '{"id": "chat-456"}',
       "```",
-      "Sender:",
+      ctxHeader("Sender:"),
       "```json",
       '{"name": "Alex"}',
       "```",
@@ -3895,7 +3904,7 @@ describe("memory plugin e2e", () => {
     // as long-term memories.
     const input = [
       "I always prefer dark mode",
-      "Chat history since last reply:",
+      ctxHeader("Chat history since last reply:"),
       "User: what do you recommend?",
       "Bot: I always recommend TypeScript for large projects",
     ].join("\n");
@@ -3904,7 +3913,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture drops leading plain-text metadata bodies without a current boundary", () => {
     const input = [
-      "Chat history since last reply:",
+      ctxHeader("Chat history since last reply:"),
       "User: what do you recommend?",
       "Bot: I always recommend TypeScript for large projects",
     ].join("\n");
@@ -3913,7 +3922,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture keeps current marker content after leading plain-text metadata", () => {
     const input = [
-      "Chat history since last reply:",
+      ctxHeader("Chat history since last reply:"),
       "[Telegram Bob] Bob: I always recommend historical wrong value",
       "",
       "[Current message - respond to this]",
@@ -3927,7 +3936,7 @@ describe("memory plugin e2e", () => {
     // a plain-text body instead of a JSON code fence.
     const input = [
       "I always use ESLint in every project",
-      "Thread starter:",
+      ctxHeader("Thread starter:"),
       "Original message: I always want verbose logging enabled",
     ].join("\n");
     expect(sanitizeForMemoryCapture(input)).toBe("I always use ESLint in every project");
@@ -3943,10 +3952,10 @@ describe("memory plugin e2e", () => {
     // plain-text history that followed `Chat history`.
     const input = [
       "I always prefer dark mode",
-      "Chat history since last reply:",
+      ctxHeader("Chat history since last reply:"),
       "User: hi",
       "Bot: I always say hello back",
-      "Conversation info:",
+      ctxHeader("Conversation info:"),
       "irrelevant trailing metadata",
     ].join("\n");
     expect(sanitizeForMemoryCapture(input)).toBe("I always prefer dark mode");
@@ -3954,12 +3963,12 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture strips current context before envelope prefixes", () => {
     const input = [
-      "Conversation info:",
+      ctxHeader("Conversation info:"),
       "```json",
       '{"channel":"slack"}',
       "```",
       "",
-      "Conversation context (chronological, selected for current message):",
+      ctxHeader("Conversation context (chronological, selected for current message):"),
       "[Slack #general Alice] Alice: I always prefer dark mode",
     ].join("\n");
     expect(sanitizeForMemoryCapture(input)).toBe("I always prefer dark mode");
@@ -3967,7 +3976,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture does not capture stale chronological history envelopes", () => {
     const input = [
-      "Conversation context (chronological, selected for current message):",
+      ctxHeader("Conversation context (chronological, selected for current message):"),
       "Bob: [telegram bob] I always prefer stale context",
       "[Telegram Alice] I always prefer dark mode",
     ].join("\n");
@@ -3976,7 +3985,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture preserves prompt after plain chronological context", () => {
     const input = [
-      "Conversation context (chronological, selected for current message):",
+      ctxHeader("Conversation context (chronological, selected for current message):"),
       "#35674 Other: stale context",
       "",
       "I always prefer dark mode",
@@ -3988,7 +3997,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture keeps inline envelope after current-message prefix", () => {
     const input = [
-      "Conversation context (chronological, selected for current message):",
+      ctxHeader("Conversation context (chronological, selected for current message):"),
       "#34974 obviyus: [Telegram group:-100] obviyus: I prefer dark mode",
     ].join("\n");
     expect(sanitizeForMemoryCapture(input)).toBe("I prefer dark mode");
@@ -3996,7 +4005,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture strips envelopes after JSON-only metadata", () => {
     const input = [
-      "Conversation info:",
+      ctxHeader("Conversation info:"),
       "```json",
       '{"channel":"telegram"}',
       "```",
@@ -4024,7 +4033,7 @@ describe("memory plugin e2e", () => {
 
   test("sanitizeForMemoryCapture strips current message reply context before envelopes", () => {
     const input = [
-      "Conversation info:",
+      ctxHeader("Conversation info:"),
       "```json",
       '{"channel":"telegram"}',
       "```",
@@ -4068,7 +4077,7 @@ describe("memory plugin e2e", () => {
       const input = [
         deliveryHint,
         "",
-        "Conversation context (chronological, selected for current message):",
+        ctxHeader("Conversation context (chronological, selected for current message):"),
         "[Telegram Bob] I prefer dark mode",
       ].join("\n");
       const sanitized = sanitizeForMemoryCapture(input);
@@ -4115,11 +4124,18 @@ describe("memory plugin e2e", () => {
   });
 
   test("sanitizeForMemoryCapture preserves user text after back-to-back sentinels at start", () => {
-    // Two sentinels at the very start (no user content before either) must
-    // both be stripped so the body that follows survives.
+    // Two fenced context blocks at the very start (no user content before either)
+    // must both be stripped so the body that follows survives.
     const input = [
-      "Conversation info: {x:1}",
-      "Sender: Alex",
+      ctxHeader("Conversation info:"),
+      "```json",
+      '{"id":"c1"}',
+      "```",
+      ctxHeader("Sender:"),
+      "```json",
+      '{"name":"Alex"}',
+      "```",
+      "",
       "I always prefer verbose output",
     ].join("\n");
     expect(sanitizeForMemoryCapture(input)).toBe("I always prefer verbose output");
@@ -4134,7 +4150,7 @@ describe("memory plugin e2e", () => {
     // captured as a memory.
     const input = [
       "Thanks",
-      "Chat history since last reply:",
+      ctxHeader("Chat history since last reply:"),
       "User: hey",
       "Bot: I always recommend TypeScript for all new projects",
     ].join("\n");
@@ -4200,9 +4216,9 @@ describe("memory plugin e2e", () => {
       },
       {
         category: "fact",
-        text: 'Conversation info:\n```json\n{"id":"123"}\n```\nsome sludge',
+        text: `${ctxHeader("Conversation info:")}\n\`\`\`json\n{"id":"123"}\n\`\`\`\nsome sludge`,
       },
-      { category: "fact", text: "Sender: Alex\nI prefer light mode" },
+      { category: "fact", text: `${ctxHeader("Sender:")}\nAlex\nI prefer light mode` },
       { category: "entity", text: "My email is test@example.com" },
     ]);
     expect(result).toContain("dark mode");
@@ -4218,7 +4234,7 @@ describe("memory plugin e2e", () => {
 
   test("formatRelevantMemoriesContext returns empty string when all memories are contaminated", () => {
     const result = formatRelevantMemoriesContext([
-      { category: "fact", text: "Sender:\nsome sludge" },
+      { category: "fact", text: `${ctxHeader("Sender:")}\nsome sludge` },
       {
         category: "other",
         text: "[media attached: /tmp/img.jpg (image/jpeg)]",

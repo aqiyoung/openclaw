@@ -19,6 +19,7 @@ import {
   MAX_CONTEXT_JSON_STRING_CHARS,
   neutralizeMarkdownFences,
 } from "./channel-prompt-context.js";
+import { markInboundContextLabel } from "./inbound-context-marker.js";
 
 const MAX_UNTRUSTED_HISTORY_ENTRIES = 20;
 const MAX_UNTRUSTED_TRANSCRIPT_FIELD_CHARS = 500;
@@ -352,7 +353,7 @@ function formatChatWindowStructuredContext(
   const relation = formatStructuredContextRelation(entry.payload["relation"]);
   const order = sanitizeTranscriptField(entry.payload["order"]);
   const qualifiers = [order, relation].filter(Boolean).join(", ");
-  return [`${label} (${qualifiers}):`, ...lines].join("\n");
+  return [markInboundContextLabel(`${label} (${qualifiers}):`), ...lines].join("\n");
 }
 
 function isChatWindowStructuredContext(
@@ -705,13 +706,15 @@ export function buildInboundUserContextPrefix(
     history_truncated: inboundHistory.length > MAX_UNTRUSTED_HISTORY_ENTRIES ? true : undefined,
   };
   if (Object.values(conversationInfo).some((v) => v !== undefined)) {
-    blocks.push(formatContextJsonBlock("Conversation info:", conversationInfo));
+    blocks.push(
+      formatContextJsonBlock(markInboundContextLabel("Conversation info:"), conversationInfo),
+    );
   }
 
   const threadStarterBody = sanitizePromptBody(ctx.ThreadStarterBody);
   if (threadStarterBody) {
     blocks.push(
-      formatContextJsonBlock("Thread starter:", {
+      formatContextJsonBlock(markInboundContextLabel("Thread starter:"), {
         body: threadStarterBody,
       }),
     );
@@ -722,13 +725,13 @@ export function buildInboundUserContextPrefix(
   if (replyChainPayload.length > 0 && !chatWindowCoversReplyContext && !currentMessageContext) {
     blocks.push(
       formatContextJsonBlock(
-        "Reply chain of current user message (nearest first):",
+        markInboundContextLabel("Reply chain of current user message (nearest first):"),
         replyChainPayload,
       ),
     );
   } else if (replyToBody && !chatWindowCoversReplyContext && !currentMessageContext) {
     blocks.push(
-      formatContextJsonBlock("Reply target of current user message:", {
+      formatContextJsonBlock(markInboundContextLabel("Reply target of current user message:"), {
         sender_label: normalizePromptMetadataString(ctx.ReplyToSender),
         is_quote: ctx.ReplyToIsQuote === true ? true : undefined,
         body: replyToBody,
@@ -747,12 +750,17 @@ export function buildInboundUserContextPrefix(
     date_ms: typeof ctx.ForwardedDate === "number" ? ctx.ForwardedDate : undefined,
   };
   if (forwardedFrom) {
-    blocks.push(formatContextJsonBlock("Forwarded message context:", forwardedContext));
+    blocks.push(
+      formatContextJsonBlock(
+        markInboundContextLabel("Forwarded message context:"),
+        forwardedContext,
+      ),
+    );
   }
 
   const locationContext = buildLocationContextPayload(ctx);
   if (locationContext) {
-    blocks.push(formatContextJsonBlock("Location:", locationContext));
+    blocks.push(formatContextJsonBlock(markInboundContextLabel("Location:"), locationContext));
   }
 
   for (const entry of structuredContext) {
@@ -765,11 +773,14 @@ export function buildInboundUserContextPrefix(
       continue;
     }
     blocks.push(
-      formatContextJsonBlock(formatChannelStructuredContextLabel(entry.label), {
-        source: normalizePromptMetadataString(entry.source),
-        type: normalizePromptMetadataString(entry.type),
-        payload: entry.payload,
-      }),
+      formatContextJsonBlock(
+        markInboundContextLabel(formatChannelStructuredContextLabel(entry.label)),
+        {
+          source: normalizePromptMetadataString(entry.source),
+          type: normalizePromptMetadataString(entry.type),
+          payload: entry.payload,
+        },
+      ),
     );
   }
 
@@ -795,7 +806,9 @@ export function buildInboundUserContextPrefix(
       return line ? [line] : [];
     });
     if (historyLines.length > 0) {
-      blocks.push(["Chat history since last reply:", ...historyLines].join("\n"));
+      blocks.push(
+        [markInboundContextLabel("Chat history since last reply:"), ...historyLines].join("\n"),
+      );
     }
   }
 

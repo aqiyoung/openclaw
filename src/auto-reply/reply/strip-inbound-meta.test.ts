@@ -5,6 +5,7 @@ import {
   MESSAGE_TOOL_ONLY_DELIVERY_HINT,
 } from "../../plugin-sdk/message-tool-delivery-hints.js";
 import type { TemplateContext } from "../templating.js";
+import { markInboundContextLabel } from "./inbound-context-marker.js";
 import { buildInboundUserContextPrefix } from "./inbound-meta.js";
 import {
   extractInboundSenderLabel,
@@ -14,7 +15,7 @@ import {
 
 const ROOM_EVENT_DELIVERY_HINT = MESSAGE_TOOL_DELIVERY_HINTS[3];
 
-const CONV_BLOCK = `Conversation info:
+const CONV_BLOCK = `${markInboundContextLabel("Conversation info:")}
 \`\`\`json
 {
   "message_id": "msg-abc",
@@ -24,7 +25,7 @@ const CONV_BLOCK = `Conversation info:
 }
 \`\`\``;
 
-const SENDER_BLOCK = `Sender:
+const SENDER_BLOCK = `${markInboundContextLabel("Sender:")}
 \`\`\`json
 {
   "label": "Alice",
@@ -32,7 +33,7 @@ const SENDER_BLOCK = `Sender:
 }
 \`\`\``;
 
-const REPLY_BLOCK = `Reply target of current user message:
+const REPLY_BLOCK = `${markInboundContextLabel("Reply target of current user message:")}
 \`\`\`json
 {
   "body": "What time is it?"
@@ -53,11 +54,11 @@ const ACTIVE_MEMORY_PREFIX_BLOCK = `Context:
 User prefers aisle seats and extra buffer on connections.
 </active_memory_plugin>`;
 
-const CHAT_WINDOW_CONTEXT_BLOCK = `Conversation context (chronological, selected for current message):
+const CHAT_WINDOW_CONTEXT_BLOCK = `${markInboundContextLabel("Conversation context (chronological, selected for current message):")}
 #10 2026-07-02T12:00:00Z Alice: prior generated context
 #11 2026-07-02T12:01:00Z Bob: more generated context`;
 
-const CHAT_HISTORY_PROSE_BLOCK = `Chat history since last reply:
+const CHAT_HISTORY_PROSE_BLOCK = `${markInboundContextLabel("Chat history since last reply:")}
 #1001 sam.rivera: did anyone see the game last night
 #1002 lee.chen: yeah it was wild`;
 
@@ -82,7 +83,7 @@ describe("stripInboundMetadata", () => {
   });
 
   it("strips explicit bot mention notes with conversation info", () => {
-    const input = `Conversation info:
+    const input = `${markInboundContextLabel("Conversation info:")}
 \`\`\`json
 {
   "explicitly_mentioned_bot": true,
@@ -125,7 +126,7 @@ Actual user message`;
       "Chat history since last reply:",
     ];
     for (const sentinel of sentinels) {
-      const input = `${sentinel}\n\`\`\`json\n{"x": 1}\n\`\`\`\n\nUser message`;
+      const input = `${markInboundContextLabel(sentinel)}\n\`\`\`json\n{"x": 1}\n\`\`\`\n\nUser message`;
       expect(stripInboundMetadata(input)).toBe("User message");
     }
   });
@@ -241,7 +242,7 @@ Hello from user`;
   });
 
   it("ignores metadata blocks whose json decodes to a non-object", () => {
-    const input = `Sender:
+    const input = `${markInboundContextLabel("Sender:")}
 \`\`\`json
 ["not","an","object"]
 \`\`\`
@@ -267,7 +268,7 @@ describe("timestamp prefix stripping", () => {
   });
 
   it("strips timestamp prefix and inbound metadata blocks together", () => {
-    const input = `[Wed 2026-03-11 23:51 PDT] Conversation info:
+    const input = `[Wed 2026-03-11 23:51 PDT] ${markInboundContextLabel("Conversation info:")}
 \`\`\`json
 {"message_id":"msg-1","sender":"+1555"}
 \`\`\`
@@ -277,7 +278,7 @@ Hello`;
   });
 
   it("strips a timestamp prefix that remains after removing metadata blocks", () => {
-    const input = `Sender:
+    const input = `${markInboundContextLabel("Sender:")}
 \`\`\`json
 {"label":"OpenClaw UI"}
 \`\`\`
@@ -299,7 +300,7 @@ describe("extractInboundSenderLabel", () => {
   });
 
   it("prefers nested conversation sender name", () => {
-    const input = `Conversation info:
+    const input = `${markInboundContextLabel("Conversation info:")}
 \`\`\`json
 {
   "sender": {
@@ -315,7 +316,7 @@ Hello from user`;
   });
 
   it("extracts nested phone-only conversation sender", () => {
-    const input = `Conversation info:
+    const input = `${markInboundContextLabel("Conversation info:")}
 \`\`\`json
 {
   "sender": {

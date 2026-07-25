@@ -7,6 +7,7 @@ import type {
   Usage,
 } from "openclaw/plugin-sdk/llm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { markInboundContextLabel } from "../auto-reply/reply/inbound-context-marker.js";
 import { OPENCLAW_TRANSCRIPT_ARTIFACT_API } from "../shared/transcript-only-openclaw-assistant.js";
 import {
   expectOpenAIResponsesStrictSanitizeCall,
@@ -1501,7 +1502,7 @@ describe("sanitizeSessionHistory", () => {
         {
           type: "text",
           text: [
-            "Conversation info:",
+            markInboundContextLabel("Conversation info:"),
             "```json",
             '{"chat_id":"channel:123","sender":"OpenClaw"}',
             "```",
@@ -1536,7 +1537,7 @@ describe("sanitizeSessionHistory", () => {
 
   it("drops metadata-only assistant replay turns before provider validation", async () => {
     const metadataOnlyText = [
-      "Conversation info:",
+      markInboundContextLabel("Conversation info:"),
       "```json",
       '{"chat_id":"channel:123","sender":"OpenClaw"}',
       "```",

@@ -1,4 +1,5 @@
 import { formatContextJsonBlock } from "../../../auto-reply/reply/channel-prompt-context.js";
+import { markInboundContextLabel } from "../../../auto-reply/reply/inbound-context-marker.js";
 import {
   hasInterSessionUserProvenance,
   INTER_SESSION_PROMPT_PREFIX_BASE,
@@ -22,7 +23,7 @@ export type CurrentUserTimestampMatch = {
 // Mirrors LEADING_TIMESTAMP_PREFIX_RE in strip-inbound-meta.ts so sender
 // projection never displaces or duplicates a cache-stable timestamp envelope.
 const LEADING_TIMESTAMP_ENVELOPE_RE = /^\[[A-Za-z]{3} \d{4}-\d{2}-\d{2} \d{2}:\d{2}[^\]]*\] */;
-const CONVERSATION_INFO_LABEL = "Conversation info:";
+const CONVERSATION_INFO_LABEL = markInboundContextLabel("Conversation info:");
 
 export function splitLeadingTimestampEnvelope(text: string): {
   body: string;

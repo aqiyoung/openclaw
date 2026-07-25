@@ -700,47 +700,27 @@ function cleanMemorySearchResults(results: MemorySearchResult[]): Array<{
 // ============================================================================
 
 /**
- * Explicit sentinel strings used by `sanitizeForMemoryCapture` and
- * `looksLikeEnvelopeSludge` to locate injected blocks. This is the full set of
- * fenced/plain labels `buildInboundUserContextPrefix` emits (canonical source:
- * src/auto-reply/reply/strip-inbound-meta.ts, extended here with the fenced
- * labels core recognizes structurally). Duplicated because extensions must not
- * import core internals.
- *
- * We match ONLY these known labels, never an arbitrary `<heading>:` + fence.
- * Matching any heading ate ordinary user content shaped like a heading plus
- * JSON (e.g. `Preferences:` / `Config:`). The one label the producer does not
- * fix — a plugin `ChannelStructuredContext` entry emits an arbitrary `${label}:`
- * — is instead caught by its JSON payload via `ENVELOPE_JSON_LINE_RE`; that is
- * the accepted tradeoff for never stripping user text.
+ * Provenance marker appended to every OpenClaw-injected inbound context header
+ * by `buildInboundUserContextPrefix`. `sanitizeForMemoryCapture` and
+ * `looksLikeEnvelopeSludge` key on this marker rather than on label text, so
+ * detection is label-agnostic (arbitrary plugin `ChannelStructuredContext`
+ * labels are covered) and never collides with a user's own `<heading>:` + JSON.
+ * The marker glyph is duplicated inline in the regexes below because extensions
+ * must not import core internals; keep byte-identical with
+ * `src/auto-reply/reply/inbound-context-marker.ts`.
  */
-const INBOUND_META_SENTINELS = [
-  "Conversation info:",
-  "Sender:",
-  "Thread starter:",
-  "Reply chain of current user message (nearest first):",
-  "Reply target of current user message:",
-  "Replied message:",
-  "Forwarded message context:",
-  "Location:",
-  "Structured object:",
-  "Conversation context (chronological, selected for current message):",
-  "Current local chat window (chronological, before current message):",
-  "Nearby reply target window (chronological, around replied-to message):",
-  "Chat history since last reply:",
-] as const;
-// One escaped alternation, reused by every sentinel matcher below.
-const INBOUND_META_SENTINEL_ALTERNATION = INBOUND_META_SENTINELS.map((sentinel) =>
-  sentinel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-).join("|");
-const INBOUND_META_SENTINEL_LINE_RE = new RegExp(
-  `^(?:${INBOUND_META_SENTINEL_ALTERNATION})[^\\n]*$`,
-  "m",
-);
-const INBOUND_META_SENTINEL_EXACT_LINE_RE = new RegExp(
-  `^(?:${INBOUND_META_SENTINEL_ALTERNATION})[ \\t]*$`,
-  "m",
-);
+// A context header line: any line whose trimmed text ends with the marker.
+const MARKER_HEADER_LINE_RE = /^[^\n]*⟦openclaw:ctx⟧[ \t]*$/m;
+// A marker header immediately followed by its ```json fenced payload.
+const MARKER_JSON_BLOCK_RE =
+  /^[^\n]*⟦openclaw:ctx⟧[ \t]*\n[ \t]*```json[ \t]*\n[\s\S]*?\n[ \t]*```[ \t]*\n?/gm;
+// A leading chronological-window marker header (`... (chronological, ...): ⟦marker⟧`).
+// Scoped to the chronological window blocks only: those carry the "keep the real
+// inbound envelope inside the window" handling in stripLeadingChronologicalContextBlocks.
+// Other prose headers (chat history, thread starter) defer to the current-message
+// marker via the sanitize pass-loop, so they must NOT match here.
+const LEADING_CHRONOLOGICAL_MARKER_HEADER_RE =
+  /^\s*[^\n]*chronological[^\n]*⟦openclaw:ctx⟧[ \t]*(?:\n|$)/;
 
 const MESSAGE_TOOL_DELIVERY_HINT_RE = new RegExp(
   `^\\s*(?:${MESSAGE_TOOL_DELIVERY_HINTS.map((hint) =>
@@ -763,24 +743,6 @@ const CURRENT_MESSAGE_MARKERS = [
 
 const ACTIVE_TURN_RECOVERY_RE = /active-turn-recovery/i;
 
-/**
- * Line-anchored patterns matching a KNOWN inbound-meta block header injected by
- * `buildInboundUserContextPrefix`, distinguished from user text by both the
- * known label (`INBOUND_META_SENTINELS`) and the required ```json fence on the
- * following line. Anchoring label and fence to their own lines avoids flagging a
- * user message that quotes a label phrase mid-sentence, and restricting to the
- * known set avoids stripping a user's own `<heading>:` + JSON.
- */
-const INBOUND_META_LABEL_RE = new RegExp(
-  `^(?:${INBOUND_META_SENTINEL_ALTERNATION})[ \\t]*(?=\\n[ \\t]*\`\`\`json[ \\t]*$)`,
-  "m",
-);
-const INBOUND_META_LABEL_JSON_BLOCK_RE = new RegExp(
-  `^(?:${INBOUND_META_SENTINEL_ALTERNATION})[ \\t]*\\n[ \\t]*\`\`\`json[ \\t]*\\n[\\s\\S]*?\\n[ \\t]*\`\`\`[ \\t]*\\n?`,
-  "gm",
-);
-const LEADING_CHRONOLOGICAL_CONTEXT_LABEL_RE =
-  /^\s*[^\n]{1,100}\(chronological,[^\n)]{1,80}\):[ \t]*(?:\n|$)/;
 const BRACKETED_PREFIX_RE = /\[[^\]\n]{1,500}\]\s/g;
 const LEADING_CURRENT_MESSAGE_CONTEXT_RE = /^\s*Current message:[ \t]*(?:\n|$)/;
 const LEADING_CURRENT_MESSAGE_REPLY_LINE_RE = /^\s*\[Replying to:[^\n]{0,1000}\]\s*\n/;
@@ -790,11 +752,13 @@ const CONTEXT_HEADER_RE = /^Context:[ \t]*$/m;
 
 /**
  * Matches JSON blobs that look like OpenClaw transport envelope metadata.
- * Allows `{` on its own line so pretty-printed JSON (the `JSON.stringify(..., null, 2)`
- * output produced by `formatContextJsonBlock` in core) is also caught when it
- * leaks outside its ```json fence. Key list mirrors envelope identifiers used
- * by `buildInboundUserContextPrefix` and stays narrow to avoid false-positives
- * on legitimate user JSON with bare keys like "conversation" or "sender".
+ * Orthogonal to the header marker: it catches a bare envelope payload by its
+ * compound keys even when no marker header precedes it (e.g. a fragment that
+ * leaked outside its ```json fence). Allows `{` on its own line so pretty-printed
+ * JSON (`formatContextJsonBlock`'s `JSON.stringify(..., null, 2)` output) is also
+ * caught. Key list mirrors envelope identifiers used by
+ * `buildInboundUserContextPrefix` and stays narrow to avoid false-positives on
+ * legitimate user JSON with bare keys like "conversation" or "sender".
  */
 const ENVELOPE_JSON_LINE_RE =
   /^\s*\{\s*(?:\n\s*)?"(?:chat_id|message_id|reply_to_id|sender_id|conversation_label|conversation_info|sender_name|channel_id|channel_type|group_subject|group_channel|group_space|topic_id|thread_label)"\s*:/m;
@@ -915,7 +879,7 @@ export function looksLikeEnvelopeSludge(text: string): boolean {
   // Generic line-anchored sentinel match; precompiled at module scope so the
   // hot-path callers (capture gating, recall filtering) do not pay a regex
   // compile per invocation.
-  if (INBOUND_META_SENTINEL_LINE_RE.test(text) || INBOUND_META_LABEL_RE.test(text)) {
+  if (MARKER_HEADER_LINE_RE.test(text)) {
     return true;
   }
 
@@ -946,7 +910,7 @@ export function looksLikeEnvelopeSludge(text: string): boolean {
     return true;
   }
 
-  // Check for JSON blobs that look like envelope metadata
+  // Check for JSON blobs that look like envelope metadata (payload-based, header-independent).
   if (ENVELOPE_JSON_LINE_RE.test(text)) {
     return true;
   }
@@ -1146,10 +1110,10 @@ function stripLeadingInboundEnvelope(
 
 function stripLeadingChronologicalContextBlocks(text: string): string {
   let cleaned = text;
-  let remainingPasses = INBOUND_META_SENTINELS.length;
+  let remainingPasses = 16;
   while (remainingPasses > 0) {
     remainingPasses -= 1;
-    const match = cleaned.match(LEADING_CHRONOLOGICAL_CONTEXT_LABEL_RE);
+    const match = cleaned.match(LEADING_CHRONOLOGICAL_MARKER_HEADER_RE);
     if (!match) {
       return cleaned;
     }
@@ -1218,93 +1182,47 @@ export function sanitizeForMemoryCapture(text: string): string {
   // generic label coverage so current reply-chain, location, and plugin-owned
   // structured-context labels do not make `shouldCapture` reject the useful
   // user body that follows.
-  const afterJsonMetaBlocks = cleaned.replace(INBOUND_META_LABEL_JSON_BLOCK_RE, "");
+  const afterJsonMetaBlocks = cleaned.replace(MARKER_JSON_BLOCK_RE, "");
   strippedInjectedContext ||= afterJsonMetaBlocks !== cleaned;
   cleaned = afterJsonMetaBlocks;
 
   // First strip legacy/inline sentinel+code-fence blocks; each replace removes
   // the entire block including its sentinel header so iteration order does not
   // matter.
-  for (const sentinel of INBOUND_META_SENTINELS) {
-    const escapedSentinel = sentinel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const blockRe = new RegExp(
-      `${escapedSentinel}\\s*\\n\\s*\`\`\`json\\s*\\n[\\s\\S]*?\\n\\s*\`\`\`\\s*\\n?`,
-      "g",
-    );
-    const afterSentinelBlock = cleaned.replace(blockRe, "");
-    strippedInjectedContext ||= afterSentinelBlock !== cleaned;
-    cleaned = afterSentinelBlock;
-  }
   // Plain chat-window context blocks are untrusted history lines rather than
   // JSON metadata. When they lead the prompt, keep only the following real
   // inbound envelope; if no envelope follows, drop the context block entirely.
   const afterChronologicalContext = stripLeadingChronologicalContextBlocks(cleaned);
   strippedInjectedContext ||= afterChronologicalContext !== cleaned;
   cleaned = afterChronologicalContext;
-  // For labels/sentinels that survived the code-fence strip (plain-text body,
-  // no JSON fence), act on the earliest line-anchored metadata header each
-  // pass. A bounded retry cap rules out pathological input from spinning
+  // For context headers that survived the code-fence strip (plain-text body,
+  // no JSON fence — chat history/window), act on the earliest marker header
+  // each pass. A bounded retry cap rules out pathological input from spinning
   // forever.
-  for (let pass = 0; pass < INBOUND_META_SENTINELS.length + 1; pass += 1) {
-    let earliestMetaIndex = -1;
-    let earliestMetaRe: RegExp | null = null;
-    let stripPlainTextBody = false;
-    const labelMatch = cleaned.match(INBOUND_META_LABEL_RE);
-    if (labelMatch?.index !== undefined) {
-      earliestMetaIndex = labelMatch.index;
-      earliestMetaRe = INBOUND_META_LABEL_RE;
-      stripPlainTextBody = true;
-    }
-    const exactLineMatch = cleaned.match(INBOUND_META_SENTINEL_EXACT_LINE_RE);
-    if (
-      exactLineMatch?.index !== undefined &&
-      (earliestMetaIndex === -1 || exactLineMatch.index < earliestMetaIndex)
-    ) {
-      earliestMetaIndex = exactLineMatch.index;
-      earliestMetaRe = INBOUND_META_SENTINEL_EXACT_LINE_RE;
-      stripPlainTextBody = true;
-    }
-    for (const sentinel of INBOUND_META_SENTINELS) {
-      const escapedSentinel = sentinel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const trailerRe = new RegExp(`^${escapedSentinel}`, "m");
-      const trailerMatch = cleaned.match(trailerRe);
-      if (
-        trailerMatch?.index !== undefined &&
-        (earliestMetaIndex === -1 || trailerMatch.index < earliestMetaIndex)
-      ) {
-        earliestMetaIndex = trailerMatch.index;
-        earliestMetaRe = new RegExp(`^${escapedSentinel}.*$`, "gm");
-        stripPlainTextBody = false;
-      }
-    }
-    if (earliestMetaRe === null) {
+  for (let pass = 0; pass < 16; pass += 1) {
+    const headerMatch = cleaned.match(MARKER_HEADER_LINE_RE);
+    if (headerMatch?.index === undefined) {
       break;
     }
-    const before = cleaned.slice(0, earliestMetaIndex);
+    const before = cleaned.slice(0, headerMatch.index);
     if (before.trim().length > 0) {
-      // User content exists before the earliest sentinel -- truncate here to
-      // drop every metadata block that follows (chat history, thread starter,
-      // etc.). No further sentinel passes are needed because the trailing
-      // text is gone.
+      // User content precedes the earliest context header -- truncate here so
+      // every trailing context block (chat history, thread starter, etc.) is
+      // dropped. No further passes are needed once the trailing text is gone.
       cleaned = before;
       break;
     }
-    // Metadata header is at the very beginning. Fenced metadata was already
-    // removed above; malformed plain-text bodies are context sludge unless a
-    // current-message boundary names the real user body.
-    if (stripPlainTextBody) {
-      const lineEnd = cleaned.indexOf("\n");
-      const afterHeader = lineEnd === -1 ? "" : cleaned.slice(lineEnd + 1);
-      if (!afterHeader.trimStart().startsWith("```json")) {
-        const afterPlainTextMetadata = stripLeadingPlainTextMetadataBody(afterHeader);
-        strippedInjectedContext ||= afterPlainTextMetadata !== cleaned;
-        cleaned = afterPlainTextMetadata;
-        continue;
-      }
-    }
-    const afterMetaHeader = cleaned.replace(earliestMetaRe, "");
-    strippedInjectedContext ||= afterMetaHeader !== cleaned;
-    cleaned = afterMetaHeader;
+    // Header sits at the very beginning. Fenced blocks were already removed
+    // above, so this is a prose-body context header; drop the header line and
+    // its plain-text body. A stray fenced block the block regex missed keeps
+    // only its header removed so the next pass can retry.
+    const lineEnd = cleaned.indexOf("\n");
+    const afterHeader = lineEnd === -1 ? "" : cleaned.slice(lineEnd + 1);
+    const afterPlainTextMetadata = afterHeader.trimStart().startsWith("```json")
+      ? afterHeader
+      : stripLeadingPlainTextMetadataBody(afterHeader);
+    strippedInjectedContext ||= afterPlainTextMetadata !== cleaned;
+    cleaned = afterPlainTextMetadata;
   }
 
   // Active-memory context can be prepended before the real user prompt; strip

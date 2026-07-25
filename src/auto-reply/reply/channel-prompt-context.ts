@@ -1,8 +1,13 @@
-/** Appends untrusted metadata to prompt text with an instruction-safe label. */
+/** Appends channel-supplied prompt context to the user-role body under a plain label. */
 import { truncateUtf16Safe } from "../../utils.js";
 import { normalizeInboundTextNewlines } from "./inbound-text.js";
 
-/** Appends untrusted context entries without treating them as commands or instructions. */
+/**
+ * The `Context:` header is a plain label, not a guardrail: trust guidance travels
+ * with each entry instead (`buildChannelMetadata` wraps entries in
+ * `wrapExternalContent`, whose SECURITY NOTICE carries the do-not-obey clause).
+ * Do not reintroduce trust wording here — a user-role label is forgeable.
+ */
 export function appendChannelPromptContext(base: string, channelPromptContext?: string[]): string {
   if (!Array.isArray(channelPromptContext) || channelPromptContext.length === 0) {
     return base;

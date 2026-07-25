@@ -3,6 +3,10 @@ import Testing
 
 @Suite("ChatMarkdownPreprocessor")
 struct ChatMarkdownPreprocessorTests {
+    // Provenance marker OpenClaw appends to every injected inbound-context header.
+    // Detection keys on this suffix, not label text. Keep byte-identical with
+    // ChatMarkdownPreprocessor.inboundContextMarker / inbound-context-marker.ts.
+    static let ctx = "\u{27E6}openclaw:ctx\u{27E7}"
     @Test func extractsDataURLImages() {
         let base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////GQAJ+wP/2hN8NwAAAABJRU5ErkJggg=="
         let markdown = """
@@ -53,7 +57,7 @@ struct ChatMarkdownPreprocessorTests {
 
     @Test func stripsInboundUntrustedContextBlocks() {
         let markdown = """
-        Conversation info:
+        Conversation info: \(Self.ctx)
         ```json
         {
           "message_id": "123",
@@ -61,7 +65,7 @@ struct ChatMarkdownPreprocessorTests {
         }
         ```
 
-        Sender:
+        Sender: \(Self.ctx)
         ```json
         {
           "label": "Razor"
@@ -78,7 +82,7 @@ struct ChatMarkdownPreprocessorTests {
 
     @Test func stripsSingleConversationInfoBlock() {
         let text = """
-        Conversation info:
+        Conversation info: \(Self.ctx)
         ```json
         {"x": 1}
         ```
@@ -103,7 +107,7 @@ struct ChatMarkdownPreprocessorTests {
 
         for sentinel in sentinels {
             let markdown = """
-            \(sentinel)
+            \(sentinel) \(Self.ctx)
             ```json
             {"x": 1}
             ```
@@ -113,6 +117,36 @@ struct ChatMarkdownPreprocessorTests {
             let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
             #expect(result.cleaned == "User content")
         }
+    }
+
+    @Test func stripsArbitraryMarkedStructuredContextLabel() {
+        // Detection is label-agnostic: an arbitrary plugin structured-context label
+        // still strips because it carries the provenance marker.
+        let markdown = """
+        Some Custom Plugin Label: \(Self.ctx)
+        ```json
+        {"x": 1}
+        ```
+
+        User content
+        """
+        let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
+        #expect(result.cleaned == "User content")
+    }
+
+    @Test func preservesUnmarkedLookAlikeHeader() {
+        // A user heading that mirrors a context label but lacks the marker is the
+        // user's own content and must survive untouched.
+        let markdown = """
+        Conversation info:
+        ```json
+        {"x": 1}
+        ```
+
+        User content
+        """
+        let result = ChatMarkdownPreprocessor.preprocess(markdown: markdown)
+        #expect(result.cleaned == markdown.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     @Test func preservesNonMetadataJsonFence() {
