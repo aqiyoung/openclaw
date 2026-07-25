@@ -56,25 +56,6 @@ function visitChannelEntries(
   }
 }
 
-function moveKey(
-  owner: Record<string, unknown> | null | undefined,
-  legacyKey: string,
-  canonicalKey: string,
-  path: string,
-  changes: string[],
-): void {
-  if (!owner || !Object.hasOwn(owner, legacyKey)) {
-    return;
-  }
-  if (owner[canonicalKey] === undefined) {
-    owner[canonicalKey] = owner[legacyKey];
-    changes.push(`Moved ${path}.${legacyKey} → ${path}.${canonicalKey}.`);
-  } else {
-    changes.push(`Removed ${path}.${legacyKey} (${path}.${canonicalKey} already set).`);
-  }
-  delete owner[legacyKey];
-}
-
 const TIER_EVAL_RETIRED_ROOT_PATHS = [
   ["cloudWorkers", "profiles", "*", "lifetime"],
   ["meta", "lastTouchedAt"],
@@ -247,20 +228,6 @@ function migrateCliBackendSessionArgs(
       );
     }
     delete backend.sessionArg;
-  }
-}
-
-function moveMcpWorkingDirectory(raw: Record<string, unknown>, changes: string[]): void {
-  for (const [ownerPath, servers] of [
-    ["mcp.servers", getRecord(getRecord(raw.mcp)?.servers)],
-    ["nodeHost.mcp.servers", getRecord(getRecord(getRecord(raw.nodeHost)?.mcp)?.servers)],
-  ] as const) {
-    if (!servers) {
-      continue;
-    }
-    for (const [serverId, value] of Object.entries(servers)) {
-      moveKey(getRecord(value), "workingDirectory", "cwd", `${ownerPath}.${serverId}`, changes);
-    }
   }
 }
 
@@ -527,7 +494,6 @@ export function migrateTierEvalTranche(raw: Record<string, unknown>, changes: st
   let stripped = false;
   stripTtsPersonaPrompts(raw, changes);
   stripped = migratePresenceEnabled(raw, changes) || stripped;
-  moveMcpWorkingDirectory(raw, changes);
   migrateChannelAliases(raw, changes);
   const session = getRecord(raw.session);
   if (session && Object.hasOwn(session, "idleMinutes")) {
