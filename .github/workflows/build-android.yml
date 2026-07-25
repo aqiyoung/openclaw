@@ -90,6 +90,8 @@ jobs:
               :app:assembleThirdPartyDebug --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
           fi
           echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+          echo "=== KOTLIN COMPILATION ERRORS ==="
+          grep -i "error:\|unresolved\|cannot find\|not found\|e: " /tmp/build.log | head -30 || echo "No errors found"
 
       - name: Fail if build failed
         if: steps.build_step.outputs.exit_code != '0'
