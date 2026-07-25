@@ -18,7 +18,7 @@ import type {
 
 export const DISCORD_EMPTY_VISIBLE_REPLY_WARNING = "⚠️ Command produced no visible reply.";
 
-export function isDiscordUnknownInteraction(error: unknown): boolean {
+function isDiscordUnknownInteraction(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
   }
