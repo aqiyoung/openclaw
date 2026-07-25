@@ -6,7 +6,7 @@
 import * as os from "node:os";
 import { isAbsolute, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
-import { pathExistsSync } from "@openclaw/fs-safe/advanced";
+import { pathExistsSync } from "../../../infra/fs-safe.js";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 const NARROW_NO_BREAK_SPACE = "\u202F";

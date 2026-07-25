@@ -5,8 +5,6 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { readRegularFile } from "@openclaw/fs-safe/advanced";
-import { DEFAULT_ROOT_MAX_BYTES } from "@openclaw/fs-safe/root";
 import {
   callGatewayTool,
   listNodes,
@@ -19,6 +17,7 @@ import {
 } from "openclaw/plugin-sdk/channel-actions";
 import { readFiniteNumberParam, readPositiveIntegerParam } from "openclaw/plugin-sdk/param-readers";
 import type { AnyAgentTool, OpenClawConfig } from "openclaw/plugin-sdk/plugin-entry";
+import { readRegularFile } from "openclaw/plugin-sdk/security-runtime";
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 import { validateSupportedA2UIJsonl } from "./a2ui-jsonl.js";
 import { normalizeCanvasSnapshotFileExtension, parseCanvasSnapshotPayload } from "./cli-helpers.js";
@@ -33,6 +32,8 @@ type CanvasToolOptions = {
 type CanvasImageSanitizationLimits = {
   maxDimensionPx?: number;
 };
+
+export const CANVAS_JSONL_MAX_BYTES = 16 * 1024 * 1024;
 
 function readGatewayCallOptions(params: Record<string, unknown>) {
   return {
@@ -81,7 +82,7 @@ async function readJsonlFromPath(jsonlPath: string, workspaceDir?: string): Prom
     throw new Error("jsonlPath outside workspace");
   }
   return (
-    await readRegularFile({ filePath: resolvedReal, maxBytes: DEFAULT_ROOT_MAX_BYTES })
+    await readRegularFile({ filePath: resolvedReal, maxBytes: CANVAS_JSONL_MAX_BYTES })
   ).buffer.toString("utf8");
 }
 

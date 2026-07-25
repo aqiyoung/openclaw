@@ -2,9 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
-import { pathExists } from "@openclaw/fs-safe/advanced";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/plugin-entry";
 import { resolveSecretPlanTargetByPath } from "openclaw/plugin-sdk/secret-ref-runtime";
+import { pathExists } from "openclaw/plugin-sdk/security-runtime";
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/temp-path";
 import { parseVaultSecretId } from "../vault-secret-id.js";
 

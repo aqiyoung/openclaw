@@ -1,9 +1,9 @@
 // Canvas doctor contract migrates documents from configured host roots into core storage.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { pathExists } from "@openclaw/fs-safe/advanced";
 import { resolvePluginConfigObject } from "openclaw/plugin-sdk/plugin-config-runtime";
 import type { PluginDoctorStateMigration } from "openclaw/plugin-sdk/runtime-doctor";
+import { pathExists } from "openclaw/plugin-sdk/security-runtime";
 import {
   asOptionalRecord as readRecord,
   readStringValue as readString,

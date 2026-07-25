@@ -1,5 +1,4 @@
 // Creates temporary OpenClaw directories for runtime scratch work.
-import { resolveSecureTempRoot } from "@openclaw/fs-safe/temp";
 
 /** Preferred shared OpenClaw temp root on POSIX systems when ownership and permissions are safe. */
 export const DEFAULT_POSIX_TMP_ROOT = "/tmp/openclaw";
@@ -23,11 +22,41 @@ export type ResolvePreferredOpenClawTmpDirOptions = {
   warn?: (message: string) => void;
 };
 
+type ResolveSecureTempRoot = typeof import("@openclaw/fs-safe/temp").resolveSecureTempRoot;
+
+let resolveSecureTempRootRuntime: ResolveSecureTempRoot | undefined;
+
+function loadResolveSecureTempRoot(): ResolveSecureTempRoot {
+  if (resolveSecureTempRootRuntime) {
+    return resolveSecureTempRootRuntime;
+  }
+  // Keep this module browser-import safe: fs-safe's temp barrel owns Node-only
+  // workspaces, so load it only when the Node runtime actually resolves a temp root.
+  const getBuiltinModule = (
+    process as NodeJS.Process & {
+      getBuiltinModule?: (id: string) => unknown;
+    }
+  ).getBuiltinModule;
+  if (typeof getBuiltinModule !== "function") {
+    throw new Error("Node module loading is unavailable for secure temp-root resolution");
+  }
+  const moduleNamespace = getBuiltinModule("module") as {
+    createRequire?: (id: string) => NodeJS.Require;
+  };
+  if (typeof moduleNamespace.createRequire !== "function") {
+    throw new Error("Node createRequire is unavailable for secure temp-root resolution");
+  }
+  const require = moduleNamespace.createRequire(import.meta.url);
+  const fsSafeTemp = require("@openclaw/fs-safe/temp") as typeof import("@openclaw/fs-safe/temp");
+  resolveSecureTempRootRuntime = fsSafeTemp.resolveSecureTempRoot;
+  return resolveSecureTempRootRuntime;
+}
+
 /** Resolves a safe OpenClaw temp root, falling back to user-scoped os.tmpdir paths when needed. */
 export function resolvePreferredOpenClawTmpDir(
   options: ResolvePreferredOpenClawTmpDirOptions = {},
 ): string {
-  return resolveSecureTempRoot({
+  return loadResolveSecureTempRoot()({
     ...options,
     preferredDir: DEFAULT_POSIX_TMP_ROOT,
     fallbackPrefix: "openclaw",

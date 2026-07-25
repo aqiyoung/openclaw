@@ -1,6 +1,5 @@
 import { readFileSync, statSync } from "node:fs";
 import { win32 } from "node:path";
-import { isNodeError } from "@openclaw/fs-safe/path";
 import { z } from "zod";
 import {
   DEFAULT_SANDBOX_BASELINE,
@@ -353,4 +352,8 @@ function formatError(err: unknown): string {
     return err.message;
   }
   return String(err);
+}
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && "code" in err;
 }

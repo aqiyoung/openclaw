@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import { mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { ContainerConfig } from "@microsoft/mxc-sdk";
-import { isNodeError } from "@openclaw/fs-safe/path";
 import { runCommandBuffered } from "openclaw/plugin-sdk/process-runtime";
 import { resolvePreferredOpenClawTmpDir } from "openclaw/plugin-sdk/sandbox";
 import type {
@@ -140,6 +139,10 @@ function realpathForPotentialPath(value: string): string {
     }
     return path.join(realpathForPotentialPath(parent), path.basename(resolved));
   }
+}
+
+function isNodeError(err: unknown): err is NodeJS.ErrnoException {
+  return err instanceof Error && "code" in err;
 }
 
 function buildMxcLauncherOptions(config: MxcConfig, usePty: boolean): MxcLauncherOptions {

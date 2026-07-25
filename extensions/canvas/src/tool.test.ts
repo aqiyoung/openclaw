@@ -2,9 +2,8 @@
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_ROOT_MAX_BYTES } from "@openclaw/fs-safe/root";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCanvasTool } from "./tool.js";
+import { CANVAS_JSONL_MAX_BYTES, createCanvasTool } from "./tool.js";
 
 const VALID_A2UI_V08_JSONL = [
   JSON.stringify({
@@ -87,7 +86,7 @@ describe("Canvas tool", () => {
     await mkdir(workspaceDir);
     await writeFile(
       path.join(workspaceDir, "events.jsonl"),
-      Buffer.alloc(DEFAULT_ROOT_MAX_BYTES + 1),
+      Buffer.alloc(CANVAS_JSONL_MAX_BYTES + 1),
     );
     const tool = createCanvasTool({ workspaceDir });
 
@@ -96,7 +95,7 @@ describe("Canvas tool", () => {
         action: "a2ui_push",
         jsonlPath: "events.jsonl",
       }),
-    ).rejects.toThrow(`exceeds ${DEFAULT_ROOT_MAX_BYTES} bytes`);
+    ).rejects.toThrow(`exceeds ${CANVAS_JSONL_MAX_BYTES} bytes`);
     expect(mocks.callGatewayTool).not.toHaveBeenCalled();
   });
 

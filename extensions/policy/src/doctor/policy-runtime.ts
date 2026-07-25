@@ -1,6 +1,5 @@
 import os from "node:os";
 import { basename, isAbsolute, resolve } from "node:path";
-import { isNotFoundPathError } from "@openclaw/fs-safe/path";
 import JSON5 from "json5";
 import type { HealthCheckContext, HealthFinding } from "openclaw/plugin-sdk/health";
 import { createLazyRuntimeModule } from "openclaw/plugin-sdk/lazy-runtime";
@@ -128,6 +127,10 @@ function resolveWorkspacePath(ctx: HealthCheckContext, fileName: string): string
     return fileName;
   }
   return resolve(ctx.cwd ?? process.cwd(), fileName);
+}
+
+function isNotFoundPathError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "code" in err && err.code === "ENOENT";
 }
 
 export function parseExecApprovalsFile(

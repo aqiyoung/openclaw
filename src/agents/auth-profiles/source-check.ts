@@ -3,7 +3,7 @@
  * These checks intentionally avoid loading secret-bearing credential payloads.
  */
 import fs from "node:fs";
-import { tryReadJsonSync } from "@openclaw/fs-safe/json";
+import { tryReadJsonSync } from "../../infra/json-files.js";
 import { evaluateStoredCredentialEligibility } from "./credential-state.js";
 import {
   resolveAuthStatePath,
