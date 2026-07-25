@@ -1,9 +1,9 @@
-import type { MarkdownIR } from "openclaw/plugin-sdk/text-chunking";
+import type { MarkdownIRWithBlockMetadata } from "./text-styles-shared.js";
 
 export function sourceContainerPrefixLength(
   line: string,
   lineIndex: number,
-  ir: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
   sourceLineStarts: number[],
   sourceLines: string[],
   blockquoteDepth: number,
@@ -21,7 +21,7 @@ export function sourceContainerPrefixLength(
 export function sourceContainerProjection(
   line: string,
   lineIndex: number,
-  ir: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
   sourceLineStarts: number[],
   sourceLines: string[],
   blockquoteDepth: number,

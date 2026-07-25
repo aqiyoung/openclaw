@@ -88,6 +88,9 @@ type MarkdownListItemMarker = {
   depth?: number;
   start?: number;
   end?: number;
+};
+
+type MarkdownListItemMetadata = {
   /** Rendered content owned by this item after its native marker. */
   contentStart?: number;
   contentEnd?: number;
@@ -101,7 +104,9 @@ type MarkdownListItemMarker = {
   sourceEndLine?: number;
 };
 
-export type MarkdownBlockSpan = {
+type MarkdownListItemWithMetadata = MarkdownListItemMarker & MarkdownListItemMetadata;
+
+type MarkdownBlockSpan = {
   kind: "blockquote" | "code_block" | "heading" | "thematic_break";
   start: number;
   end: number;
@@ -123,6 +128,9 @@ export type MarkdownIR = {
   links: MarkdownLinkSpan[];
   annotations?: MarkdownAnnotationSpan[];
   listItems?: MarkdownListItemMarker[];
+};
+
+type MarkdownIRWithMetadata = MarkdownIR & {
   /** Parser-owned block metadata, attached without changing legacy serialization. */
   blocks?: MarkdownBlockSpan[];
 };
@@ -185,8 +193,8 @@ type RenderState = RenderTarget & {
   horizontalRuleText: string;
   preserveSourceBlockSpacing: boolean;
   headingLineEnd: number | undefined;
-  listItems: MarkdownListItemMarker[];
-  openListItems: MarkdownListItemMarker[];
+  listItems: MarkdownListItemWithMetadata[];
+  openListItems: MarkdownListItemWithMetadata[];
   listItemsOpenedByLine: Map<number, number>;
   nextListId: number;
   blocks: MarkdownBlockSpan[];
@@ -203,18 +211,6 @@ type RenderState = RenderTarget & {
   sourceLines: string[];
 };
 
-type ListItemMetadata = Pick<
-  MarkdownListItemMarker,
-  | "contentStart"
-  | "contentEnd"
-  | "markerOnly"
-  | "sourceMarker"
-  | "sourceContent"
-  | "sourceIndent"
-  | "sourceStartLine"
-  | "sourceEndLine"
->;
-
 function defineMetadata<T extends object, K extends keyof T>(target: T, key: K, value: T[K]): void {
   if (value === undefined) {
     return;
@@ -229,8 +225,9 @@ function defineMetadata<T extends object, K extends keyof T>(target: T, key: K, 
 
 function attachListItemMetadata(
   item: MarkdownListItemMarker,
-  metadata: ListItemMetadata,
-): MarkdownListItemMarker {
+  metadata: MarkdownListItemMetadata,
+): MarkdownListItemWithMetadata {
+  const itemWithMetadata = item as MarkdownListItemWithMetadata;
   for (const key of [
     "contentStart",
     "contentEnd",
@@ -241,14 +238,14 @@ function attachListItemMetadata(
     "sourceStartLine",
     "sourceEndLine",
   ] as const) {
-    defineMetadata(item, key, metadata[key]);
+    defineMetadata(itemWithMetadata, key, metadata[key]);
   }
-  return item;
+  return itemWithMetadata;
 }
 
 function attachBlockMetadata(ir: MarkdownIR, blocks: MarkdownBlockSpan[]): MarkdownIR {
   if (blocks.length > 0) {
-    defineMetadata(ir, "blocks", blocks);
+    defineMetadata(ir as MarkdownIRWithMetadata, "blocks", blocks);
   }
   return ir;
 }
@@ -571,7 +568,10 @@ function appendNestedListSeparator(state: RenderState) {
   }
 }
 
-function appendListPrefix(state: RenderState, isTask: boolean): MarkdownListItemMarker | undefined {
+function appendListPrefix(
+  state: RenderState,
+  isTask: boolean,
+): MarkdownListItemWithMetadata | undefined {
   const stack = state.env.listStack;
   const top = stack[stack.length - 1];
   if (!top) {
@@ -609,7 +609,7 @@ function recordTaskMarker(state: RenderState, content: string): void {
 
 function recordListSourceMetadata(
   state: RenderState,
-  item: MarkdownListItemMarker,
+  item: MarkdownListItemWithMetadata,
   token: MarkdownToken,
 ): void {
   if (!token.map) {
@@ -1447,8 +1447,9 @@ function sliceListMarker(
 }
 
 export function sliceMarkdownIR(ir: MarkdownIR, start: number, end: number): MarkdownIR {
+  const metadataIR = ir as MarkdownIRWithMetadata;
   const annotations = sliceAnnotationSpans(ir.annotations ?? [], start, end);
-  const listItems = (ir.listItems ?? []).flatMap((item) => {
+  const listItems = ((ir.listItems ?? []) as MarkdownListItemWithMetadata[]).flatMap((item) => {
     const listMarker = item.listMarker ? sliceListMarker(item.listMarker, start, end) : undefined;
     const taskMarker = item.taskMarker ? sliceListMarker(item.taskMarker, start, end) : undefined;
     const content =
@@ -1482,7 +1483,7 @@ export function sliceMarkdownIR(ir: MarkdownIR, start: number, end: number): Mar
         ]
       : [];
   });
-  const blocks = (ir.blocks ?? []).flatMap((block) => {
+  const blocks = (metadataIR.blocks ?? []).flatMap((block) => {
     if (block.start === block.end) {
       const containsPoint =
         start === end ? block.start === start : block.start >= start && block.start < end;

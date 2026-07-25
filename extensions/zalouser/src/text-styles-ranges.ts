@@ -1,9 +1,13 @@
-import type { MarkdownIR } from "openclaw/plugin-sdk/text-chunking";
-import { projectOffset, type StructuralStyle, type TextEdit } from "./text-styles-shared.js";
+import {
+  projectOffset,
+  type MarkdownIRWithBlockMetadata,
+  type StructuralStyle,
+  type TextEdit,
+} from "./text-styles-shared.js";
 import { TextStyle, type Style } from "./zca-constants.js";
 
 export function collectStructuralStyles(
-  ir: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
   offsets: number[],
   projectedText: string,
 ): StructuralStyle[] {
@@ -365,7 +369,11 @@ function mapEditedOffset(
   return offset + delta;
 }
 
-export function restoreTrailingNewlines(text: string, source: string, ir: MarkdownIR): string {
+export function restoreTrailingNewlines(
+  text: string,
+  source: string,
+  ir: MarkdownIRWithBlockMetadata,
+): string {
   const sourceLines = source.split("\n");
   let lastContentLine = sourceLines.length - 1;
   while (

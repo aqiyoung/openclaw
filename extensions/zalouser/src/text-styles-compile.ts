@@ -1,5 +1,11 @@
-import type { MarkdownIR } from "openclaw/plugin-sdk/text-chunking";
-import { projectOffset, UNICODE_SEPARATOR_PATTERN, type TextEdit } from "./text-styles-shared.js";
+import {
+  normalizeCodeBlockLeadingWhitespace,
+  projectOffset,
+  UNICODE_SEPARATOR_PATTERN,
+  type MarkdownBlockMetadata,
+  type MarkdownIRWithBlockMetadata,
+  type TextEdit,
+} from "./text-styles-shared.js";
 import {
   blockquoteTabResidual,
   markdownSourceColumn,
@@ -10,8 +16,8 @@ import { sourceAtxIsMarkerOnly } from "./text-styles-source.js";
 import { TextStyle } from "./zca-constants.js";
 
 export function collectBlockEdits(
-  ir: MarkdownIR,
-  sourceIR: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
+  sourceIR: MarkdownIRWithBlockMetadata,
   offsets: number[],
   projectedText: string,
   source: string,
@@ -307,8 +313,8 @@ export function collectBlockEdits(
 }
 
 function renderUnclosedCodeBlock(
-  block: NonNullable<MarkdownIR["blocks"]>[number],
-  sourceIR: MarkdownIR,
+  block: MarkdownBlockMetadata,
+  sourceIR: MarkdownIRWithBlockMetadata,
   sourceLines: string[],
   sourceLineStarts: number[],
   payload: string,
@@ -334,8 +340,8 @@ function renderUnclosedCodeBlock(
 }
 
 function collectSourceSpacingEdits(
-  ir: MarkdownIR,
-  sourceIR: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
+  sourceIR: MarkdownIRWithBlockMetadata,
   offsets: number[],
   text: string,
   source: string,
@@ -455,7 +461,7 @@ function normalizeCodeBlock(
   text: string,
   origin: "fenced" | "indented" | undefined,
   trimTerminalNewline: boolean,
-  ir: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
   sourceLines: string[],
   sourceLineStarts: number[],
   sourceStartLine: number | undefined,
@@ -488,10 +494,4 @@ function normalizeCodeBlock(
     })
     .join("\n");
   return trimTerminalNewline && normalized.endsWith("\n") ? normalized.slice(0, -1) : normalized;
-}
-
-function normalizeCodeBlockLeadingWhitespace(line: string): string {
-  return line.replace(/^[ \t]+/, (leadingWhitespace) =>
-    leadingWhitespace.replace(/\t/g, "\u00A0\u00A0\u00A0\u00A0").replace(/ /g, "\u00A0"),
-  );
 }

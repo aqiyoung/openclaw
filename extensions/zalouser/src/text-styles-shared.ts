@@ -1,4 +1,36 @@
+import type { MarkdownIR } from "openclaw/plugin-sdk/text-chunking";
 import { TextStyle, type Style } from "./zca-constants.js";
+
+export type MarkdownBlockMetadata = {
+  kind: "blockquote" | "code_block" | "heading" | "thematic_break";
+  start: number;
+  end: number;
+  depth: number;
+  blockquoteDepth?: number;
+  codeOrigin?: "fenced" | "indented";
+  codeClosed?: boolean;
+  headingLevel?: number;
+  headingOrigin?: "atx" | "setext";
+  language?: string;
+  sourceStartLine?: number;
+  sourceEndLine?: number;
+};
+
+export type MarkdownIRWithBlockMetadata = Omit<MarkdownIR, "listItems"> & {
+  blocks?: MarkdownBlockMetadata[];
+  listItems?: Array<
+    NonNullable<MarkdownIR["listItems"]>[number] & {
+      contentStart?: number;
+      contentEnd?: number;
+      markerOnly?: true;
+      sourceMarker?: { start: number; end: number };
+      sourceContent?: { start: number; end: number };
+      sourceIndent?: number;
+      sourceStartLine?: number;
+      sourceEndLine?: number;
+    }
+  >;
+};
 
 export type InlineStyle = (typeof TextStyle)[keyof typeof TextStyle];
 
@@ -62,4 +94,10 @@ export const UNICODE_SEPARATOR_PATTERN =
 
 export function projectOffset(offsets: number[], offset: number): number {
   return offsets[Math.max(0, Math.min(offset, offsets.length - 1))] ?? offsets.at(-1) ?? 0;
+}
+
+export function normalizeCodeBlockLeadingWhitespace(line: string): string {
+  return line.replace(/^[ \t]+/, (leadingWhitespace) =>
+    leadingWhitespace.replace(/\t/g, "\u00A0\u00A0\u00A0\u00A0").replace(/ /g, "\u00A0"),
+  );
 }

@@ -1,5 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { markdownToIR, sliceMarkdownIR } from "./ir.js";
+import {
+  markdownToIR as parseMarkdownToIR,
+  sliceMarkdownIR as sliceParsedMarkdownIR,
+  type MarkdownIR,
+} from "./ir.js";
+
+type BlockMetadata = {
+  kind: "blockquote" | "code_block" | "heading" | "thematic_break";
+  start: number;
+  end: number;
+  depth: number;
+  blockquoteDepth?: number;
+  codeOrigin?: "fenced" | "indented";
+  codeClosed?: boolean;
+  headingLevel?: number;
+  headingOrigin?: "atx" | "setext";
+  language?: string;
+  sourceStartLine?: number;
+  sourceEndLine?: number;
+};
+
+type MarkdownIRWithMetadata = MarkdownIR & {
+  blocks?: BlockMetadata[];
+  listItems?: Array<
+    NonNullable<MarkdownIR["listItems"]>[number] & {
+      contentStart?: number;
+      contentEnd?: number;
+      markerOnly?: true;
+      sourceMarker?: { start: number; end: number };
+      sourceContent?: { start: number; end: number };
+      sourceIndent?: number;
+      sourceStartLine?: number;
+      sourceEndLine?: number;
+    }
+  >;
+};
+
+function markdownToIR(...args: Parameters<typeof parseMarkdownToIR>): MarkdownIRWithMetadata {
+  return parseMarkdownToIR(...args) as MarkdownIRWithMetadata;
+}
+
+function sliceMarkdownIR(
+  ...args: Parameters<typeof sliceParsedMarkdownIR>
+): MarkdownIRWithMetadata {
+  return sliceParsedMarkdownIR(...args) as MarkdownIRWithMetadata;
+}
 
 describe("markdownToIR block metadata", () => {
   it("records fenced and indented code origins without changing rendered text", () => {

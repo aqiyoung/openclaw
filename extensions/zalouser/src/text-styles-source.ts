@@ -1,6 +1,6 @@
-import { markdownToIR, type MarkdownIR } from "openclaw/plugin-sdk/text-chunking";
+import { markdownToIR } from "openclaw/plugin-sdk/text-chunking";
 import { protectLiteral, protectLocalInlineSyntax } from "./text-styles-inline.js";
-import type { TokenRegistry } from "./text-styles-shared.js";
+import type { MarkdownIRWithBlockMetadata, TokenRegistry } from "./text-styles-shared.js";
 import {
   sourceBlockquotePrefixLength,
   sourceContainerProjection,
@@ -34,8 +34,8 @@ export function restoreLeadingBlankLines(
 }
 
 export function stripUnsupportedHeadingStyles(
-  ir: MarkdownIR,
-  sourceIR: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
+  sourceIR: MarkdownIRWithBlockMetadata,
   source: string,
 ): void {
   const sourceLines = source.split("\n");
@@ -80,7 +80,7 @@ function sourceAtxHasClosingRun(line: string, level: number): boolean {
   return /^[ \t]+#+[ \t]*$/u.test(line.slice(Math.max(0, markerOffset) + marker.length));
 }
 
-export function parseSharedIR(source: string): MarkdownIR {
+export function parseSharedIR(source: string): MarkdownIRWithBlockMetadata {
   return markdownToIR(source, {
     autolink: false,
     enableHtmlUnderline: true,
@@ -89,12 +89,12 @@ export function parseSharedIR(source: string): MarkdownIR {
     linkify: false,
     preserveSourceBlockSpacing: true,
     tableMode: "off",
-  });
+  }) as MarkdownIRWithBlockMetadata;
 }
 
 export function protectInlineSyntaxOutsideCode(
   source: string,
-  ir: MarkdownIR,
+  ir: MarkdownIRWithBlockMetadata,
   registry: TokenRegistry,
 ): string {
   const sourceLines = source.split("\n");
