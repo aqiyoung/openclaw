@@ -4066,6 +4066,7 @@ class ChatController internal constructor(
       if (row.ownerAgentId == null && retryOwnerAgentId == null) return@launch
       // requeueForRetry refreshes createdAt and requires this gateway's Failed state. The
       // compare-and-set keeps stale gateway or double Retry taps from reviving an in-flight row.
+      val currentSessionKey = normalizeRequestedSessionKey(_sessionKey.value)
       val requeued =
         runCatching {
           outbox.requeueForRetryIfCurrent(
@@ -4078,6 +4079,7 @@ class ChatController internal constructor(
             gatedEpoch = gatedEpoch,
             ownerAgentId = retryOwnerAgentId,
             replacementId = UUID.randomUUID().toString(),
+            targetSessionKey = currentSessionKey,
           )
         }.getOrDefault(0)
       publishOutbox()

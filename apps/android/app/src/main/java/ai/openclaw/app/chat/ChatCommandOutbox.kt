@@ -267,6 +267,7 @@ interface ChatCommandOutbox {
     nowMs: Long,
     gatedEpoch: Long?,
     ownerAgentId: String? = null,
+    targetSessionKey: String? = null,
   ): Int
 
   /** Retries only the failure version displayed to the user and may mint a fresh client id. */
@@ -280,7 +281,8 @@ interface ChatCommandOutbox {
     gatedEpoch: Long?,
     ownerAgentId: String? = null,
     replacementId: String? = null,
-  ): Int = requeueForRetry(gatewayId, id, nowMs, gatedEpoch, ownerAgentId)
+    targetSessionKey: String? = null,
+  ): Int = requeueForRetry(gatewayId, id, nowMs, gatedEpoch, ownerAgentId, targetSessionKey = targetSessionKey)
 
   suspend fun delete(id: String)
 
@@ -930,6 +932,7 @@ class RoomChatCommandOutbox internal constructor(
     nowMs: Long,
     gatedEpoch: Long?,
     ownerAgentId: String?,
+    targetSessionKey: String? = null,
   ): Int {
     val gateway = scopedGatewayId(gatewayId) ?: return 0
     val current = load(gateway).firstOrNull { it.id == id } ?: return 0
@@ -942,6 +945,7 @@ class RoomChatCommandOutbox internal constructor(
       nowMs = nowMs,
       gatedEpoch = gatedEpoch,
       ownerAgentId = ownerAgentId,
+      targetSessionKey = targetSessionKey,
     )
   }
 
@@ -955,6 +959,7 @@ class RoomChatCommandOutbox internal constructor(
     gatedEpoch: Long?,
     ownerAgentId: String?,
     replacementId: String?,
+    targetSessionKey: String? = null,
   ): Int {
     val gateway = scopedGatewayId(gatewayId) ?: return 0
     val dao = database.outboxDao()
@@ -975,7 +980,8 @@ class RoomChatCommandOutbox internal constructor(
         normalizedOutboxOwnerAgentId(ownerAgentId)
           ?: normalizedOutboxOwnerAgentId(target.ownerAgentId)
           ?: return@withTransaction 0
-      val scope = ChatOutboxScope(target.sessionKey, owner)
+      val resolvedSessionKey = targetSessionKey?.trim()?.takeIf { it.isNotEmpty() } ?: target.sessionKey
+      val scope = ChatOutboxScope(resolvedSessionKey, owner)
       ensureBranchScopeLocked(gateway, scope)
       val branchEpoch = checkNotNull(readBranchStateLocked(gateway, scope)).epoch
       val wasBranchParked = target.lastError?.contains(OUTBOX_BRANCH_PARK_MARKER) == true
@@ -983,20 +989,39 @@ class RoomChatCommandOutbox internal constructor(
       val requestedReplacement = replacementId?.trim()?.takeIf { it.isNotEmpty() }
       val nextId = if (needsFreshIdentity) requestedReplacement ?: UUID.randomUUID().toString() else id
       var createdAt = maxOf(nowMs, (dao.maxCreatedAt(gateway) ?: Long.MIN_VALUE) + 1)
-      database.openHelper.writableDatabase.execSQL(
-        "UPDATE outbox_commands SET id = ?, status = ?, retryCount = 0, lastError = NULL, " +
-          "createdAtMs = ?, gatedEpoch = ?, ownerAgentId = ? WHERE id = ? AND gatewayId = ? AND status = ?",
-        arrayOf<Any?>(
-          nextId,
-          ChatOutboxStatus.Queued.dbValue,
-          createdAt,
-          gatedEpoch,
-          owner.ifEmpty { null },
-          id,
-          gateway,
-          ChatOutboxStatus.Failed.dbValue,
-        ),
-      )
+      val sessionChanged = resolvedSessionKey != target.sessionKey
+      if (sessionChanged) {
+        database.openHelper.writableDatabase.execSQL(
+          "UPDATE outbox_commands SET id = ?, status = ?, retryCount = 0, lastError = NULL, " +
+            "createdAtMs = ?, gatedEpoch = ?, ownerAgentId = ?, sessionKey = ? WHERE id = ? AND gatewayId = ? AND status = ?",
+          arrayOf<Any?>(
+            nextId,
+            ChatOutboxStatus.Queued.dbValue,
+            createdAt,
+            gatedEpoch,
+            owner.ifEmpty { null },
+            resolvedSessionKey,
+            id,
+            gateway,
+            ChatOutboxStatus.Failed.dbValue,
+          ),
+        )
+      } else {
+        database.openHelper.writableDatabase.execSQL(
+          "UPDATE outbox_commands SET id = ?, status = ?, retryCount = 0, lastError = NULL, " +
+            "createdAtMs = ?, gatedEpoch = ?, ownerAgentId = ? WHERE id = ? AND gatewayId = ? AND status = ?",
+          arrayOf<Any?>(
+            nextId,
+            ChatOutboxStatus.Queued.dbValue,
+            createdAt,
+            gatedEpoch,
+            owner.ifEmpty { null },
+            id,
+            gateway,
+            ChatOutboxStatus.Failed.dbValue,
+          ),
+        )
+      }
       val changed =
         database.openHelper.writableDatabase
           .query("SELECT changes()")
