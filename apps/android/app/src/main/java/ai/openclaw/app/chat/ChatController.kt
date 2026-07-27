@@ -350,7 +350,7 @@ class ChatController internal constructor(
   // Session switches clear visible run state. Keep the owning projection separately so an
   // acknowledged run can be restored when its chat returns instead of leaking into another chat.
   private val pendingRunProjectionsByRunId = ConcurrentHashMap<String, PendingRunProjection>()
-  private val pendingRunTimeoutMs = 120_000L
+  private val pendingRunTimeoutMs = 300_000L
   private val recoveryHistoryRetryDelayMs = 750L
   private var recoveryHistoryReconciliationGeneration = -1L
   private var recoveryHistoryReconciliationJob: Job? = null
@@ -5262,7 +5262,19 @@ class ChatController internal constructor(
     }
   }
 
+  // Retries allowed when history refresh fails (network blip/Gateway busy) before
+  // we give up and surface a false timeout to the user. Prevents mid-turn kills.
+  private val TIMEOUT_REFRESH_MAX_RETRIES = 3
+  private val TIMEOUT_REFRESH_RETRY_DELAY_MS = 5_000L
+
   private fun armPendingRunTimeout(runId: String) {
+    armPendingRunTimeout(runId, attempt = 0)
+  }
+
+  private fun armPendingRunTimeout(
+    runId: String,
+    attempt: Int,
+  ) {
     pendingRunTimeoutJobs[runId]?.cancel()
     pendingRunTimeoutJobs[runId] =
       scope.launch {
@@ -5300,6 +5312,13 @@ class ChatController internal constructor(
           // The newer current-session load owns reconciliation but has not applied
           // yet. Defer expiry; its snapshot or the next watchdog decides the run.
           armPendingRunTimeout(runId)
+          return@launch
+        }
+        if (currentSession && historyResult == HistoryRefreshResult.Failed && attempt < TIMEOUT_REFRESH_MAX_RETRIES) {
+          // History refresh failed (network/Gateway hiccup). Don't kill the run yet —
+          // retry after a short delay. This prevents false timeouts on long turns.
+          delay(TIMEOUT_REFRESH_RETRY_DELAY_MS)
+          armPendingRunTimeout(runId, attempt + 1)
           return@launch
         }
         val replyStillUnresolved = unresolvedRepliesByRunId.containsKey(runId)
