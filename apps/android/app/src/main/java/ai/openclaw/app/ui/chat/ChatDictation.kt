@@ -6,10 +6,10 @@ import ai.openclaw.app.ui.design.ClawTheme
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.content.pm.PackageManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.content.pm.PackageManager
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
