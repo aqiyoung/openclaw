@@ -6,6 +6,7 @@ import ai.openclaw.app.ui.design.ClawTheme
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.content.pm.PackageManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -90,7 +91,7 @@ internal class AndroidChatDictationRecognizer(
 ) : ChatDictationRecognizer {
   private val appContext = context.applicationContext
   override val isAvailable: Boolean =
-    runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(appContext) }.getOrDefault(false)
+    appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)
   private var generation = 0L
   private var recognizer: SpeechRecognizer? = null
 
@@ -102,7 +103,7 @@ internal class AndroidChatDictationRecognizer(
       onEvent(ChatDictationRecognitionEvent.Error(SpeechRecognizer.ERROR_SERVER_DISCONNECTED))
       return
     }
-    val active = SpeechRecognizer.createOnDeviceSpeechRecognizer(appContext)
+    val active = SpeechRecognizer.createSpeechRecognizer(appContext)
     active.setRecognitionListener(
       object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
