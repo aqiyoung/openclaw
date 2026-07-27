@@ -652,7 +652,8 @@ private class DeferredChatCommandOutbox(
     nowMs: Long,
     gatedEpoch: Long?,
     ownerAgentId: String?,
-  ): Int = ready().commandOutbox.requeueForRetry(gatewayId, id, nowMs, gatedEpoch, ownerAgentId)
+    targetSessionKey: String?,
+  ): Int = ready().commandOutbox.requeueForRetry(gatewayId, id, nowMs, gatedEpoch, ownerAgentId, targetSessionKey)
 
   override suspend fun requeueForRetryIfCurrent(
     gatewayId: String,
@@ -664,6 +665,7 @@ private class DeferredChatCommandOutbox(
     gatedEpoch: Long?,
     ownerAgentId: String?,
     replacementId: String?,
+    targetSessionKey: String?,
   ): Int =
     ready()
       .commandOutbox
@@ -677,6 +679,7 @@ private class DeferredChatCommandOutbox(
         gatedEpoch,
         ownerAgentId,
         replacementId,
+        targetSessionKey,
       )
 
   override suspend fun delete(id: String) = ready().commandOutbox.delete(id)

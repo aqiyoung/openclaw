@@ -267,7 +267,7 @@ interface ChatCommandOutbox {
     nowMs: Long,
     gatedEpoch: Long?,
     ownerAgentId: String? = null,
-    targetSessionKey: String? = null,
+    targetSessionKey: String?,
   ): Int
 
   /** Retries only the failure version displayed to the user and may mint a fresh client id. */
@@ -281,7 +281,7 @@ interface ChatCommandOutbox {
     gatedEpoch: Long?,
     ownerAgentId: String? = null,
     replacementId: String? = null,
-    targetSessionKey: String? = null,
+    targetSessionKey: String?,
   ): Int = requeueForRetry(gatewayId, id, nowMs, gatedEpoch, ownerAgentId, targetSessionKey = targetSessionKey)
 
   suspend fun delete(id: String)
@@ -932,7 +932,7 @@ class RoomChatCommandOutbox internal constructor(
     nowMs: Long,
     gatedEpoch: Long?,
     ownerAgentId: String?,
-    targetSessionKey: String? = null,
+    targetSessionKey: String?,
   ): Int {
     val gateway = scopedGatewayId(gatewayId) ?: return 0
     val current = load(gateway).firstOrNull { it.id == id } ?: return 0
@@ -959,7 +959,7 @@ class RoomChatCommandOutbox internal constructor(
     gatedEpoch: Long?,
     ownerAgentId: String?,
     replacementId: String?,
-    targetSessionKey: String? = null,
+    targetSessionKey: String?,
   ): Int {
     val gateway = scopedGatewayId(gatewayId) ?: return 0
     val dao = database.outboxDao()
