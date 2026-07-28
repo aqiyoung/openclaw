@@ -694,16 +694,20 @@ class TalkModeManager internal constructor(
         val transcript = cleared.transcript
 
         if (transcript.isEmpty()) {
-          return@withContext finishClearedPushToTalk(captureId, cleared, status = "empty")
+          setStatus(if (_isEnabled.value) nativeText("Listening") else nativeText("Ready"))
+          resumeRealtimeCaptureAfterPushToTalk(captureId)
+          return@withContext finishPushToTalk(
+            TalkPttStopPayload(captureId = captureId, transcript = null, status = "empty"),
+            cleared.completion,
+          )
         }
 
         if (!isConnected()) {
-          return@withContext finishClearedPushToTalk(
-            captureId,
-            cleared,
-            status = "offline",
-            transcript = transcript,
-            statusText = nativeText("Gateway not connected"),
+          setStatus(nativeText("Gateway not connected"))
+          resumeRealtimeCaptureAfterPushToTalk(captureId)
+          return@withContext finishPushToTalk(
+            TalkPttStopPayload(captureId = captureId, transcript = transcript, status = "offline"),
+            cleared.completion,
           )
         }
 
@@ -723,15 +727,8 @@ class TalkModeManager internal constructor(
             }
           }
         // Cancellation can win before a lazy coroutine enters its body, in which
-        // case its Main-confined finally block never runs. Clear only the exact
-        // owner here, then resume its microphone on Main if the parent is live.
-        finishingJob.invokeOnCompletion {
-          if (clearFinishingPushToTalk(captureId, finishingJob)) {
-            scope.launch(Dispatchers.Main.immediate) {
-              resumeRealtimeCaptureAfterPushToTalk(captureId)
-            }
-          }
-        }
+        // case its finally block never runs. Completion still releases ownership.
+        finishingJob.invokeOnCompletion { clearFinishingPushToTalk(captureId, finishingJob) }
         // Publish the job before it can run so stop() cannot clear ownership while
         // an untracked finalizer still uses shared chat and playback state.
         synchronized(finishingPttLock) {
@@ -751,11 +748,15 @@ class TalkModeManager internal constructor(
       withContext(NonCancellable + Dispatchers.Main) {
         val cleared = clearPushToTalkRecognition(captureId)
         if (cleared != null) {
-          finishClearedPushToTalk(
-            captureId,
-            cleared,
-            status = "cancelled",
-            transcript = cleared.transcript.ifEmpty { null },
+          setStatus(if (_isEnabled.value) nativeText("Listening") else nativeText("Ready"))
+          resumeRealtimeCaptureAfterPushToTalk(captureId)
+          finishPushToTalk(
+            TalkPttStopPayload(
+              captureId = captureId,
+              transcript = cleared.transcript.ifEmpty { null },
+              status = "cancelled",
+            ),
+            cleared.completion,
           )
         }
       }
@@ -773,7 +774,12 @@ class TalkModeManager internal constructor(
       val cleared =
         clearPushToTalkRecognition(captureId)
           ?: return@withContext TalkPttStopPayload(captureId = captureId, transcript = null, status = "idle")
-      finishClearedPushToTalk(captureId, cleared, status = "cancelled")
+      setStatus(if (_isEnabled.value) nativeText("Listening") else nativeText("Ready"))
+      resumeRealtimeCaptureAfterPushToTalk(captureId)
+      finishPushToTalk(
+        TalkPttStopPayload(captureId = captureId, transcript = null, status = "cancelled"),
+        cleared.completion,
+      )
     }
 
   /** Starts a bounded one-shot PTT turn that auto-stops on silence or timeout. */
@@ -2482,33 +2488,17 @@ class TalkModeManager internal constructor(
     return payload
   }
 
-  private fun finishClearedPushToTalk(
-    captureId: String,
-    cleared: ClearedPushToTalkCapture,
-    status: String,
-    transcript: String? = null,
-    statusText: NativeText = if (_isEnabled.value) nativeText("Listening") else nativeText("Ready"),
-  ): TalkPttStopPayload {
-    setStatus(statusText)
-    resumeRealtimeCaptureAfterPushToTalk(captureId)
-    return finishPushToTalk(
-      TalkPttStopPayload(captureId = captureId, transcript = transcript, status = status),
-      cleared.completion,
-    )
-  }
-
   private fun clearFinishingPushToTalk(
     captureId: String,
     job: Job,
-  ): Boolean =
+  ) {
     synchronized(finishingPttLock) {
-      if (finishingPttCaptureId != captureId || finishingPttJob !== job) {
-        return@synchronized false
+      if (finishingPttCaptureId == captureId && finishingPttJob === job) {
+        finishingPttCaptureId = null
+        finishingPttJob = null
       }
-      finishingPttCaptureId = null
-      finishingPttJob = null
-      true
     }
+  }
 
   private fun buildPrompt(transcript: String): String {
     val lines =
@@ -3133,7 +3123,9 @@ class TalkModeManager internal constructor(
       // Recheck after dispatch so a listener queued before PTT cannot reclaim
       // the microphone while the full PTT turn still owns it.
       if (stopRequested || !shouldAllowSpeechInterrupt()) return@post
-      if (!SpeechRecognizer.isRecognitionAvailable(context)) return@post
+      if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        Log.w(tag, "SpeechInterrupt: isRecognitionAvailable returned false, attempting anyway")
+      }
       try {
         if (recognizer == null) {
           recognizer = SpeechRecognizer.createSpeechRecognizer(context).also { it.setRecognitionListener(listener) }
@@ -3191,12 +3183,33 @@ class TalkModeManager internal constructor(
         if (stopRequested) return
         _isListening.value = false
         _inputLevel.value = 0f
-        val pushToTalkActive = activePttCaptureId != null
-        if (pushToTalkActive) {
+        if (activePttCaptureId != null) {
           pttReleaseCompletion?.let {
             it.complete(Unit)
             return
           }
+          if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+            setStatus(nativeText("Microphone permission required"))
+            return
+          }
+          setStatus(
+            when (error) {
+              SpeechRecognizer.ERROR_AUDIO -> nativeText("Audio error")
+              SpeechRecognizer.ERROR_CLIENT -> nativeText("Client error")
+              SpeechRecognizer.ERROR_NETWORK -> nativeText("Network error")
+              SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> nativeText("Network timeout")
+              SpeechRecognizer.ERROR_NO_MATCH -> nativeText("Listening (PTT)")
+              SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> nativeText("Recognizer busy")
+              SpeechRecognizer.ERROR_SERVER -> nativeText("Server error")
+              SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> nativeText("Listening (PTT)")
+              else -> nativeText("Speech error (\$error)", error)
+            },
+          )
+          schedulePushToTalkRestart(
+            delayMs = 600L,
+            advanceRung = pttRecognitionRung !is PushToTalkRecognitionRung.RestartingSingleSession,
+          )
+          return
         }
         if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
           setStatus(nativeText("Microphone permission required"))
@@ -3209,21 +3222,13 @@ class TalkModeManager internal constructor(
             SpeechRecognizer.ERROR_CLIENT -> nativeText("Client error")
             SpeechRecognizer.ERROR_NETWORK -> nativeText("Network error")
             SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> nativeText("Network timeout")
-            SpeechRecognizer.ERROR_NO_MATCH,
-            SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
-            -> if (pushToTalkActive) nativeText("Listening (PTT)") else nativeText("Listening")
+            SpeechRecognizer.ERROR_NO_MATCH -> nativeText("Listening")
             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> nativeText("Recognizer busy")
             SpeechRecognizer.ERROR_SERVER -> nativeText("Server error")
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> nativeText("Listening")
             else -> nativeText("Speech error (\$error)", error)
           },
         )
-        if (pushToTalkActive) {
-          schedulePushToTalkRestart(
-            delayMs = 600L,
-            advanceRung = pttRecognitionRung !is PushToTalkRecognitionRung.RestartingSingleSession,
-          )
-          return
-        }
         scheduleRestart(delayMs = 600)
       }
 

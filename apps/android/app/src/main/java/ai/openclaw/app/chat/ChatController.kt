@@ -54,8 +54,6 @@ import java.util.concurrent.atomic.AtomicLong
 // Bounds one-shot search list fetches like the primary session list.
 internal const val SESSION_LIST_FETCH_LIMIT = 200
 private val QUESTION_REFRESH_RETRY_DELAYS_MS = longArrayOf(1_000L, 2_000L, 4_000L)
-private val SWARM_REFRESH_RETRY_DELAYS_MS = longArrayOf(1_000L, 2_000L, 4_000L)
-private const val SESSION_EDITOR_MAX_BASE64_CHARS = ((OUTBOX_MAX_COMMAND_ATTACHMENT_BYTES + 2) / 3) * 4
 
 internal fun chatOutboxQueueFailureText(): NativeText = ChatController.queueFailureText()
 
@@ -289,30 +287,6 @@ class ChatController internal constructor(
   private val _sessions = MutableStateFlow<List<ChatSessionEntry>>(emptyList())
   val sessions: StateFlow<List<ChatSessionEntry>> = _sessions.asStateFlow()
 
-  private val _swarmGroups = MutableStateFlow<List<ChatSwarmGroup>>(emptyList())
-  val swarmGroups: StateFlow<List<ChatSwarmGroup>> = _swarmGroups.asStateFlow()
-
-  private data class SwarmRefreshLease(
-    val parentKey: String,
-    val cacheScope: ChatCacheScope,
-    val requestSequence: Long,
-  )
-
-  private data class SwarmProjectionSnapshot(
-    val parentKey: String,
-    val cacheScope: ChatCacheScope,
-    val requestSequence: Long,
-    val sessions: List<ChatSessionEntry>,
-  )
-
-  private val swarmActivityTracker = ChatSwarmActivityTracker()
-  private val swarmLock = Any()
-  private var swarmSessions: List<ChatSessionEntry> = emptyList()
-  private val swarmRequestSequence = AtomicLong(0)
-  private var swarmRefreshJob: Job? = null
-  private var swarmSessionKey: String? = null
-  private var swarmEnabled = false
-
   private val _sessionBranches = MutableStateFlow<List<SessionBranch>>(emptyList())
   val sessionBranches: StateFlow<List<SessionBranch>> = _sessionBranches.asStateFlow()
 
@@ -376,7 +350,7 @@ class ChatController internal constructor(
   // Session switches clear visible run state. Keep the owning projection separately so an
   // acknowledged run can be restored when its chat returns instead of leaking into another chat.
   private val pendingRunProjectionsByRunId = ConcurrentHashMap<String, PendingRunProjection>()
-  private val pendingRunTimeoutMs = 120_000L
+  private val pendingRunTimeoutMs = 300_000L
   private val recoveryHistoryRetryDelayMs = 750L
   private var recoveryHistoryReconciliationGeneration = -1L
   private var recoveryHistoryReconciliationJob: Job? = null
@@ -497,7 +471,6 @@ class ChatController internal constructor(
     _modelCatalog.value = emptyList()
     chatMetadataAgentId = null
     chatMetadataLoadState = ChatMetadataLoadState.Unloaded
-    disableSwarmProgress()
     clearLiveHistoryMarker()
     synchronized(pendingRuns) {
       disconnectedPendingRunIds.addAll(pendingRuns)
@@ -508,7 +481,9 @@ class ChatController internal constructor(
       clearOptimisticMessages = false,
       preserveDisconnectedOwnership = true,
     )
-    clearLiveRunUi()
+    pendingToolCallsById.clear()
+    publishPendingToolCalls()
+    _streamingAssistantText.value = null
     // Older gateways cannot restate plan state, so reconnect retains it until
     // recovery proves another run, a terminal state, or an explicit empty snapshot.
     _historyLoading.value = false
@@ -610,12 +585,13 @@ class ChatController internal constructor(
   /** Invalidates and clears gateway-bound UI state before a target switch can race old responses. */
   fun onGatewayScopeChanging(retireRunState: Boolean = false) {
     retireMainSessionReadiness()
-    disableSwarmProgress()
     synchronized(gatewayScopeApplyLock) {
       if (retireRunState) {
         restoreRunStateOnReconnect = false
         clearPendingRuns()
-        clearLiveRunUi()
+        pendingToolCallsById.clear()
+        publishPendingToolCalls()
+        _streamingAssistantText.value = null
       }
       clearPlanSteps()
       appliedMainSessionKey = "main"
@@ -1125,10 +1101,7 @@ class ChatController internal constructor(
           false
         }
       if (!historyApplied || !branchApplied) recoverOutboxAfterSessionMutationRefreshFailure(snapshot, mutationLease)
-      SessionRewindResult(
-        editorText = editorText,
-        editorAttachments = parseSessionEditorAttachments(root?.get("editorAttachments")),
-      )
+      SessionRewindResult(editorText)
     } catch (err: CancellationException) {
       withContext(NonCancellable) {
         recoverOutboxAfterSessionMutationRefreshFailure(snapshot, mutationLease)
@@ -1152,7 +1125,7 @@ class ChatController internal constructor(
   suspend fun forkSessionAtEntry(
     sessionKey: String,
     entryId: String,
-  ): SessionForkResult? {
+  ): Pair<String, String?>? {
     val entry = entryId.trim().takeIf { it.isNotEmpty() } ?: return null
     val snapshot = currentSessionActionSnapshot(sessionKey) ?: return null
     if (!canPerformMessageSessionAction(snapshot)) return null
@@ -1185,11 +1158,7 @@ class ChatController internal constructor(
         fetchSessionsForCurrentWindow()
         return null
       }
-      SessionForkResult(
-        sessionKey = createdKey,
-        editorText = root?.get("editorText").asStringOrNull(),
-        editorAttachments = parseSessionEditorAttachments(root?.get("editorAttachments")),
-      )
+      createdKey to root?.get("editorText").asStringOrNull()
     } catch (err: CancellationException) {
       withContext(NonCancellable) {
         cancelOutboxSessionMutation(snapshot, mutationLease)
@@ -2148,7 +2117,6 @@ class ChatController internal constructor(
     val selectionChanged = _sessionKey.value != key || _sessionOwnerAgentId.value != owner
     if (selectionChanged) {
       chatSelectionGeneration.incrementAndGet()
-      resetSwarmProgress(key)
       sessionBranchesRefreshGeneration.incrementAndGet()
       sessionBranchSwitchGeneration.incrementAndGet()
       sessionBranchSwitchClaimed.set(false)
@@ -2158,12 +2126,6 @@ class ChatController internal constructor(
     }
     _sessionKey.value = key
     _sessionOwnerAgentId.value = owner
-    _sessions.value =
-      reconcileGlobalObserverDigestOwner(
-        _sessions.value,
-        activeAgentId = owner ?: resolveAgentIdForSessionKey(key),
-        adoptOwnerless = false,
-      )
     applyThinkingMetadata(_sessions.value.firstOrNull { it.key == key })
     _selectedModelRef.value = null
     lastHandledTerminalRunId = null
@@ -2173,13 +2135,14 @@ class ChatController internal constructor(
       _modelCatalog.value = emptyList()
       chatMetadataAgentId = null
       chatMetadataLoadState = ChatMetadataLoadState.Unloaded
-      disableSwarmProgress(key)
     }
     updateErrorText(null)
     _healthOk.value = false
     clearLiveHistoryMarker()
     clearPendingRuns()
-    clearLiveRunUi()
+    pendingToolCallsById.clear()
+    publishPendingToolCalls()
+    _streamingAssistantText.value = null
     clearPlanSteps()
     _sessionId.value = null
     _historyLoading.value = markLoading
@@ -2499,7 +2462,9 @@ class ChatController internal constructor(
             settleProjectedRun(actualRunId)
             if (ack.isTerminalSuccess) {
               if (isCapturedOwnerCurrent()) {
-                clearLiveRunUi()
+                pendingToolCallsById.clear()
+                publishPendingToolCalls()
+                _streamingAssistantText.value = null
                 clearPlanSteps()
                 refreshCurrentHistoryBestEffort(runIdsToReconcile = setOf(actualRunId))
               }
@@ -2508,7 +2473,9 @@ class ChatController internal constructor(
               // Terminal timeout/error means the gateway did not accept a runnable turn.
               // Surface failed acceptance instead of letting a cleared composer look successful.
               if (isCapturedOwnerCurrent()) {
-                clearLiveRunUi()
+                pendingToolCallsById.clear()
+                publishPendingToolCalls()
+                _streamingAssistantText.value = null
                 clearPlanSteps()
                 updateLocalizedErrorText(nativeText("Chat failed before the run started; try again."))
               }
@@ -2859,9 +2826,9 @@ class ChatController internal constructor(
       "seqGap" -> {
         // Missed events may include deltas or the terminal state of a pending run;
         // retain local ownership until the recovery snapshot can reconcile it.
-        resetSwarmProgress()
-        if (isSwarmEnabled()) refreshSwarmSessions()
-        clearLiveRunUi()
+        pendingToolCallsById.clear()
+        publishPendingToolCalls()
+        _streamingAssistantText.value = null
         refreshQuestions()
         refreshHistoryForRecovery()
       }
@@ -3377,9 +3344,6 @@ class ChatController internal constructor(
         )
       }
 
-      if (isSwarmEnabled()) {
-        refreshSwarmSessions()
-      }
       if (!ownsReconnectRecovery) {
         pollHealthIfNeeded(force = forceHealth)
       }
@@ -3714,11 +3678,7 @@ class ChatController internal constructor(
           requestCacheScope == currentCacheScope() &&
           requestOwnerIsCurrent()
         ) {
-          _sessions.value =
-            reconcileGlobalObserverDigestOwner(
-              cachedSessions.map { session -> session.copy(ownerAgentId = requestAgentId) },
-              activeAgentId = requestAgentId,
-            )
+          _sessions.value = cachedSessions.map { session -> session.copy(ownerAgentId = requestAgentId) }
         }
       }
     }
@@ -3867,19 +3827,16 @@ class ChatController internal constructor(
   private suspend fun fetchChatMetadata() {
     val requestCacheScope = currentCacheScope()
     val agentId = resolveAgentIdForSessionKey(_sessionKey.value) ?: return
-    var shouldRefreshSwarm = false
-    var shouldDisableSwarm = false
     try {
       val params =
         buildJsonObject {
           put("agentId", JsonPrimitive(agentId))
         }
       val res = requestGatewayBound(requestCacheScope?.gatewayId, "chat.metadata", params.toString())
-      val root = json.parseToJsonElement(res).asObjectOrNull()
-      val metadataSwarmEnabled = root?.get("swarmEnabled").asBooleanOrNull() == true
       synchronized(gatewayScopeApplyLock) {
         if (requestCacheScope == currentCacheScope() && agentId == resolveAgentIdForSessionKey(_sessionKey.value)) {
           _commands.value = parseChatCommands(json, res)
+          val root = json.parseToJsonElement(res).asObjectOrNull()
           val models = parseGatewayModels(root?.get("models") as? JsonArray)
           _modelCatalog.value = models
           // chat.metadata cannot distinguish a valid empty catalog from its timeout fallback.
@@ -3891,9 +3848,6 @@ class ChatController internal constructor(
               else -> ChatMetadataLoadState.RetryEmptyCatalog
             }
           chatMetadataAgentId = agentId
-          synchronized(swarmLock) { swarmEnabled = metadataSwarmEnabled }
-          shouldRefreshSwarm = metadataSwarmEnabled
-          shouldDisableSwarm = !metadataSwarmEnabled
         }
       }
     } catch (_: Throwable) {
@@ -3903,176 +3857,8 @@ class ChatController internal constructor(
           _modelCatalog.value = emptyList()
           chatMetadataAgentId = null
           chatMetadataLoadState = ChatMetadataLoadState.Unloaded
-          synchronized(swarmLock) { swarmEnabled = false }
-          shouldDisableSwarm = true
         }
       }
-    }
-    when {
-      shouldRefreshSwarm -> refreshSwarmSessions()
-      shouldDisableSwarm -> resetSwarmProgress()
-    }
-  }
-
-  private fun disableSwarmProgress(sessionKey: String = _sessionKey.value) {
-    synchronized(swarmLock) { swarmEnabled = false }
-    resetSwarmProgress(sessionKey)
-  }
-
-  private fun resetSwarmProgress(sessionKey: String = _sessionKey.value) {
-    synchronized(swarmLock) {
-      swarmRefreshJob?.cancel()
-      swarmRefreshJob = null
-      swarmRequestSequence.incrementAndGet()
-      swarmSessionKey = sessionKey
-      swarmActivityTracker.clear()
-      swarmSessions = emptyList()
-      _swarmGroups.value = emptyList()
-    }
-  }
-
-  private fun isSwarmEnabled(): Boolean = synchronized(swarmLock) { swarmEnabled }
-
-  private fun observeSwarmEvent(payload: JsonObject): Boolean {
-    if (!isSwarmEnabled()) return false
-    val parentKey = _sessionKey.value
-    if (!chatSwarmEventBelongsToParent(payload) { candidate -> sameOutboxSession(candidate, parentKey) }) return false
-    val observed = synchronized(swarmLock) { swarmActivityTracker.observe(payload) }
-    if (!observed) return false
-    val source = payload["session"].asObjectOrNull() ?: payload
-    val kind = (if ("kind" in payload) payload["kind"] else source["kind"]).asStringOrNull()?.trim()
-    if (kind == "phase" || kind == "log") {
-      publishSwarmGroups()
-    } else {
-      scheduleSwarmRefresh()
-    }
-    return true
-  }
-
-  private fun publishSwarmGroups(expectedLease: SwarmRefreshLease? = null) {
-    val snapshot =
-      synchronized(swarmLock) {
-        if (expectedLease != null && !isSwarmRefreshLeaseCurrentLocked(expectedLease)) return
-        val projectionCacheScope = expectedLease?.cacheScope ?: currentCacheScope() ?: return
-        SwarmProjectionSnapshot(
-          parentKey = _sessionKey.value,
-          cacheScope = projectionCacheScope,
-          requestSequence = swarmRequestSequence.get(),
-          sessions = swarmActivityTracker.decorate(swarmSessions),
-        )
-      }
-    val groups =
-      buildChatSwarmGroups(snapshot.sessions) { candidate -> sameOutboxSession(candidate, snapshot.parentKey) }
-    synchronized(swarmLock) {
-      if (
-        !swarmEnabled ||
-        snapshot.cacheScope != currentCacheScope() ||
-        snapshot.requestSequence != swarmRequestSequence.get() ||
-        !sameOutboxSession(snapshot.parentKey, _sessionKey.value)
-      ) {
-        return
-      }
-      _swarmGroups.value = groups
-    }
-  }
-
-  private fun scheduleSwarmRefresh() {
-    scheduleSwarmRefresh(delayMs = 250)
-  }
-
-  private fun refreshSwarmSessions() {
-    scheduleSwarmRefresh(delayMs = 0)
-  }
-
-  private fun scheduleSwarmRefresh(delayMs: Long) {
-    synchronized(swarmLock) {
-      if (!swarmEnabled) return
-      val requestCacheScope = currentCacheScope() ?: return
-      val lease =
-        SwarmRefreshLease(
-          parentKey = _sessionKey.value,
-          cacheScope = requestCacheScope,
-          requestSequence = swarmRequestSequence.incrementAndGet(),
-        )
-      swarmRefreshJob?.cancel()
-      swarmRefreshJob =
-        scope.launch {
-          if (delayMs > 0) delay(delayMs)
-          fetchSwarmSessions(lease, attempt = 0)
-        }
-    }
-  }
-
-  private fun isSwarmRefreshLeaseCurrent(lease: SwarmRefreshLease): Boolean = synchronized(swarmLock) { isSwarmRefreshLeaseCurrentLocked(lease) }
-
-  private fun isSwarmRefreshLeaseCurrentLocked(lease: SwarmRefreshLease): Boolean =
-    swarmEnabled &&
-      lease.requestSequence == swarmRequestSequence.get() &&
-      lease.cacheScope == currentCacheScope() &&
-      sameOutboxSession(lease.parentKey, _sessionKey.value)
-
-  private suspend fun fetchSwarmSessions(
-    lease: SwarmRefreshLease,
-    attempt: Int,
-  ) {
-    if (!isSwarmRefreshLeaseCurrent(lease)) return
-    val rows =
-      try {
-        collectChatSwarmChildSessions { offset ->
-          if (!isSwarmRefreshLeaseCurrent(lease)) throw CancellationException()
-          val params =
-            buildJsonObject {
-              put("includeGlobal", JsonPrimitive(false))
-              put("includeUnknown", JsonPrimitive(false))
-              put("configuredAgentsOnly", JsonPrimitive(true))
-              put("spawnedBy", JsonPrimitive(lease.parentKey))
-              put("limit", JsonPrimitive(10_000))
-              put("offset", JsonPrimitive(offset))
-            }
-          val root =
-            json
-              .parseToJsonElement(requestGatewayBound(lease.cacheScope.gatewayId, "sessions.list", params.toString()))
-              .asObjectOrNull()
-              ?: throw IllegalStateException("invalid sessions.list response")
-          ChatSwarmSessionPage(
-            sessions = root["sessions"].asArrayOrNull().orEmpty().mapNotNull { parseSessionEntry(it.asObjectOrNull()) },
-            totalCount = root["totalCount"].asLongOrNull()?.toInt(),
-            nextOffset = root["nextOffset"].asLongOrNull()?.toInt(),
-            hasMore = root["hasMore"].asBooleanOrNull(),
-          )
-        }
-      } catch (err: CancellationException) {
-        throw err
-      } catch (_: Throwable) {
-        if (isSwarmRefreshLeaseCurrent(lease)) {
-          scheduleSwarmRetry(lease, attempt)
-        }
-        return
-      }
-    synchronized(swarmLock) {
-      if (!isSwarmRefreshLeaseCurrentLocked(lease)) return
-      if (swarmSessionKey != lease.parentKey) {
-        swarmSessionKey = lease.parentKey
-        swarmActivityTracker.clear()
-      }
-      swarmSessions = swarmActivityTracker.decorate(rows)
-    }
-    publishSwarmGroups(lease)
-  }
-
-  private fun scheduleSwarmRetry(
-    lease: SwarmRefreshLease,
-    attempt: Int,
-  ) {
-    val delayMs = SWARM_REFRESH_RETRY_DELAYS_MS.getOrNull(attempt) ?: return
-    synchronized(swarmLock) {
-      if (!isSwarmRefreshLeaseCurrentLocked(lease)) return
-      swarmRefreshJob?.cancel()
-      swarmRefreshJob =
-        scope.launch {
-          delay(delayMs)
-          fetchSwarmSessions(lease, attempt = attempt + 1)
-        }
     }
   }
 
@@ -4280,6 +4066,7 @@ class ChatController internal constructor(
       if (row.ownerAgentId == null && retryOwnerAgentId == null) return@launch
       // requeueForRetry refreshes createdAt and requires this gateway's Failed state. The
       // compare-and-set keeps stale gateway or double Retry taps from reviving an in-flight row.
+      val currentSessionKey = normalizeRequestedSessionKey(_sessionKey.value)
       val requeued =
         runCatching {
           outbox.requeueForRetryIfCurrent(
@@ -4292,6 +4079,7 @@ class ChatController internal constructor(
             gatedEpoch = gatedEpoch,
             ownerAgentId = retryOwnerAgentId,
             replacementId = UUID.randomUUID().toString(),
+            targetSessionKey = currentSessionKey,
           )
         }.getOrDefault(0)
       publishOutbox()
@@ -5142,7 +4930,9 @@ class ChatController internal constructor(
           val hasNewerRun =
             synchronized(pendingRuns) { pendingRuns.isNotEmpty() } || unresolvedRepliesByRunId.isNotEmpty()
           if (!hasNewerRun) {
-            clearLiveRunUi()
+            pendingToolCallsById.clear()
+            publishPendingToolCalls()
+            _streamingAssistantText.value = null
             clearPlanStepsFor(runId)
             updateLocalizedErrorText(
               if (state == "error") {
@@ -5174,7 +4964,9 @@ class ChatController internal constructor(
         } else {
           clearPendingRuns(clearOptimisticMessages = false)
         }
-        clearLiveRunUi()
+        pendingToolCallsById.clear()
+        publishPendingToolCalls()
+        _streamingAssistantText.value = null
         clearPlanStepsFor(runId)
         val terminalRunIds = runId?.let(::setOf) ?: unresolvedRepliesByRunId.keys.toSet()
         refreshCurrentHistoryBestEffort(
@@ -5187,11 +4979,6 @@ class ChatController internal constructor(
 
   private fun handleSessionsChangedEvent(payloadJson: String) {
     val payload = json.parseToJsonElement(payloadJson).asObjectOrNull() ?: return
-    val swarmEvent = observeSwarmEvent(payload)
-    val swarmSource = payload["session"].asObjectOrNull()
-    val swarmKindElement = if ("kind" in payload) payload["kind"] else swarmSource?.get("kind")
-    val swarmKind = swarmKindElement.asStringOrNull()?.trim()
-    if (swarmEvent && (swarmKind == "phase" || swarmKind == "log")) return
     val reason = payload["reason"].asStringOrNull()
     if (reason == "rewind" || reason == "branch-switch") {
       // Mutation events do not contain a session preview. Refresh the drawer even for a
@@ -5249,13 +5036,7 @@ class ChatController internal constructor(
 
   private fun handleSessionObserverEvent(payloadJson: String) {
     val digest = runCatching { json.decodeFromString<SessionObserverDigest>(payloadJson) }.getOrNull() ?: return
-    val selectedAgentId = _sessionOwnerAgentId.value ?: resolveAgentIdForSessionKey(_sessionKey.value)
-    _sessions.value =
-      applySessionObserverDigest(
-        _sessions.value,
-        digest,
-        activeAgentId = selectedAgentId,
-      )
+    _sessions.value = applySessionObserverDigest(_sessions.value, digest)
   }
 
   private fun scheduleSessionsChangedBranchReconciliation(
@@ -5323,9 +5104,8 @@ class ChatController internal constructor(
       return
     }
     if (eventOwner != visibleOwner) return
-    val ownedEntry = reconcileSessionObserverProjectionOwner(entry, eventOwner)
     upsertSessionEntry(
-      entry = if (ownedEntry.ownerAgentId == eventOwner) ownedEntry else ownedEntry.copy(ownerAgentId = eventOwner),
+      entry = if (entry.ownerAgentId == eventOwner) entry else entry.copy(ownerAgentId = eventOwner),
       clearedFields = parseExplicitSessionClears(eventObject),
     )
   }
@@ -5397,7 +5177,9 @@ class ChatController internal constructor(
       "error" -> {
         updateLocalizedErrorText(nativeText("Event stream interrupted; try refreshing."))
         clearPendingRuns()
-        clearLiveRunUi()
+        pendingToolCallsById.clear()
+        publishPendingToolCalls()
+        _streamingAssistantText.value = null
         clearPlanSteps()
       }
     }
@@ -5421,12 +5203,6 @@ class ChatController internal constructor(
   private fun publishPendingToolCalls() {
     _pendingToolCalls.value =
       pendingToolCallsById.values.sortedBy { it.startedAtMs }
-  }
-
-  private fun clearLiveRunUi() {
-    pendingToolCallsById.clear()
-    publishPendingToolCalls()
-    _streamingAssistantText.value = null
   }
 
   private fun clearPlanSteps() {
@@ -5488,7 +5264,19 @@ class ChatController internal constructor(
     }
   }
 
+  // Retries allowed when history refresh fails (network blip/Gateway busy) before
+  // we give up and surface a false timeout to the user. Prevents mid-turn kills.
+  private val TIMEOUT_REFRESH_MAX_RETRIES = 3
+  private val TIMEOUT_REFRESH_RETRY_DELAY_MS = 5_000L
+
   private fun armPendingRunTimeout(runId: String) {
+    armPendingRunTimeout(runId, attempt = 0)
+  }
+
+  private fun armPendingRunTimeout(
+    runId: String,
+    attempt: Int,
+  ) {
     pendingRunTimeoutJobs[runId]?.cancel()
     pendingRunTimeoutJobs[runId] =
       scope.launch {
@@ -5526,6 +5314,13 @@ class ChatController internal constructor(
           // The newer current-session load owns reconciliation but has not applied
           // yet. Defer expiry; its snapshot or the next watchdog decides the run.
           armPendingRunTimeout(runId)
+          return@launch
+        }
+        if (currentSession && historyResult == HistoryRefreshResult.Failed && attempt < TIMEOUT_REFRESH_MAX_RETRIES) {
+          // History refresh failed (network/Gateway hiccup). Don't kill the run yet —
+          // retry after a short delay. This prevents false timeouts on long turns.
+          delay(TIMEOUT_REFRESH_RETRY_DELAY_MS)
+          armPendingRunTimeout(runId, attempt + 1)
           return@launch
         }
         val replyStillUnresolved = unresolvedRepliesByRunId.containsKey(runId)
@@ -5574,7 +5369,9 @@ class ChatController internal constructor(
 
   private fun clearTransientRunUiIfIdle(preservePlan: Boolean = false) {
     if (synchronized(pendingRuns) { pendingRuns.isNotEmpty() }) return
-    clearLiveRunUi()
+    pendingToolCallsById.clear()
+    publishPendingToolCalls()
+    _streamingAssistantText.value = null
     if (!preservePlan) clearPlanSteps()
   }
 
@@ -5901,7 +5698,6 @@ class ChatController internal constructor(
       updatedAtMs = obj["updatedAt"].asLongOrNull(),
       ownerAgentId = obj["agentId"].asStringOrNull()?.trim()?.takeIf { it.isNotEmpty() },
       displayName = obj["displayName"].asStringOrNull()?.trim(),
-      derivedTitle = obj["derivedTitle"].asStringOrNull()?.trim(),
       label = obj["label"].asStringOrNull()?.trim(),
       category = obj["category"].asStringOrNull()?.trim(),
       pinned = obj["pinned"].asBooleanOrNull(),
@@ -5934,14 +5730,6 @@ class ChatController internal constructor(
           .asArrayOrNull()
           ?.mapNotNull { it.asStringOrNull()?.trim()?.takeIf(String::isNotEmpty) },
       hasActiveRunMetadata = "hasActiveRun" in obj || "activeRunIds" in obj,
-      parentSessionKey = obj["parentSessionKey"].asStringOrNull()?.trim(),
-      spawnedBy = obj["spawnedBy"].asStringOrNull()?.trim(),
-      hasActiveSubagentRun = obj["hasActiveSubagentRun"].asBooleanOrNull(),
-      subagentRunState = obj["subagentRunState"].asStringOrNull()?.trim(),
-      swarmGroupId = obj["swarmGroupId"].asStringOrNull()?.trim(),
-      swarmPhase = obj["swarmPhase"].asStringOrNull()?.trim(),
-      swarmPhaseRank = obj["swarmPhaseRank"].asLongOrNull()?.toInt(),
-      swarmLog = obj["swarmLog"].asStringOrNull()?.trim(),
       status = obj["status"].asStringOrNull()?.trim(),
       lastRunError = obj["lastRunError"].asStringOrNull()?.trim(),
       startedAt = obj["startedAt"].asLongOrNull(),
@@ -6669,30 +6457,6 @@ private fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
 
 private fun JsonElement?.asArrayOrNull(): JsonArray? = this as? JsonArray
 
-private fun parseSessionEditorAttachments(value: JsonElement?): List<SessionEditorAttachment> =
-  value.asArrayOrNull()?.mapNotNull { element ->
-    val attachment = element.asObjectOrNull() ?: return@mapNotNull null
-    val mimeType =
-      attachment["mimeType"]
-        .asStringOrNull()
-        ?.trim()
-        ?.takeIf { it.startsWith("image/", ignoreCase = true) }
-        ?: return@mapNotNull null
-    val data =
-      attachment["data"]
-        .asStringOrNull()
-        ?.takeIf { it.isNotEmpty() && it.length.toLong() <= SESSION_EDITOR_MAX_BASE64_CHARS }
-        ?: return@mapNotNull null
-    val decoded =
-      try {
-        Base64.getDecoder().decode(data)
-      } catch (_: IllegalArgumentException) {
-        return@mapNotNull null
-      }
-    if (decoded.isEmpty() || decoded.size.toLong() > OUTBOX_MAX_COMMAND_ATTACHMENT_BYTES) return@mapNotNull null
-    SessionEditorAttachment(mimeType = mimeType, data = data)
-  } ?: emptyList()
-
 private fun JsonElement?.asStringOrNull(): String? =
   when (this) {
     is JsonNull -> null
@@ -6775,14 +6539,6 @@ internal fun mergeChatSessionEntry(
     hasActiveRun = hasActiveRun,
     activeRunIds = activeRunIds,
     hasActiveRunMetadata = existing.hasActiveRunMetadata || next.hasActiveRunMetadata,
-    parentSessionKey = next.parentSessionKey ?: existing.parentSessionKey,
-    spawnedBy = next.spawnedBy ?: existing.spawnedBy,
-    hasActiveSubagentRun = next.hasActiveSubagentRun ?: existing.hasActiveSubagentRun,
-    subagentRunState = next.subagentRunState ?: existing.subagentRunState,
-    swarmGroupId = next.swarmGroupId ?: existing.swarmGroupId,
-    swarmPhase = next.swarmPhase ?: existing.swarmPhase,
-    swarmPhaseRank = next.swarmPhaseRank ?: existing.swarmPhaseRank,
-    swarmLog = next.swarmLog ?: existing.swarmLog,
     status = if (next.hasRunMetadata) next.status else existing.status,
     lastRunError = if (next.hasRunMetadata) next.lastRunError else existing.lastRunError,
     startedAt = if (next.hasRunMetadata) next.startedAt else existing.startedAt,
@@ -6796,77 +6552,20 @@ internal fun mergeChatSessionEntry(
 internal fun applySessionObserverDigest(
   sessions: List<ChatSessionEntry>,
   digest: SessionObserverDigest,
-  activeAgentId: String? = null,
 ): List<ChatSessionEntry> {
-  val digestAgentId = normalizedObserverAgentId(digest.agentId)
-  val selectedAgentId = normalizedObserverAgentId(activeAgentId)
-  val scopedSessions =
-    reconcileGlobalObserverDigestOwner(sessions, selectedAgentId, adoptOwnerless = false)
-  if (
-    digest.sessionKey == "global" &&
-    (selectedAgentId == null || digestAgentId == null || selectedAgentId != digestAgentId)
-  ) {
-    return scopedSessions
-  }
-  val index = scopedSessions.indexOfFirst { it.key == digest.sessionKey }
-  if (index < 0) return scopedSessions
-  val session = scopedSessions[index]
-  val runId = digest.runId?.trim()?.takeIf { it.isNotEmpty() } ?: return scopedSessions
+  val index = sessions.indexOfFirst { it.key == digest.sessionKey }
+  if (index < 0) return sessions
+  val session = sessions[index]
+  val runId = digest.runId?.trim()?.takeIf { it.isNotEmpty() } ?: return sessions
   val isRunning = session.hasActiveRun == true || session.status?.trim()?.lowercase() == "running"
   val matchesActiveRun = session.activeRunIds.orEmpty().any { it.trim() == runId }
-  if (!isRunning || !matchesActiveRun) return scopedSessions
+  if (!isRunning || !matchesActiveRun) return sessions
   val previous = session.observerDigest
-  if (previous?.runId == runId && !observerDigestIsNewer(digest, previous)) return scopedSessions
-  return scopedSessions.toMutableList().also {
+  if (previous?.runId == runId && !observerDigestIsNewer(digest, previous)) return sessions
+  return sessions.toMutableList().also {
     it[index] = session.copy(observerDigest = digest, hasObserverDigestMetadata = true)
   }
 }
-
-internal fun reconcileGlobalObserverDigestOwner(
-  sessions: List<ChatSessionEntry>,
-  activeAgentId: String?,
-  adoptOwnerless: Boolean = true,
-): List<ChatSessionEntry> {
-  // A missing owner is transient disconnect state, not a selection change.
-  // Callers retain the last verified offline projection until hello supplies an owner.
-  val selectedAgentId = normalizedObserverAgentId(activeAgentId) ?: return sessions
-  val index = sessions.indexOfFirst { it.key == "global" }
-  if (index < 0) return sessions
-  val session = sessions[index]
-  val digestAgentId = normalizedObserverAgentId(session.observerDigest?.agentId)
-  if (digestAgentId == selectedAgentId) return sessions
-  return sessions.toMutableList().also {
-    it[index] =
-      session.copy(
-        observerDigest =
-          if (digestAgentId == null && adoptOwnerless) {
-            session.observerDigest?.copy(agentId = selectedAgentId)
-          } else {
-            null
-          },
-        hasObserverDigestMetadata = true,
-      )
-  }
-}
-
-internal fun reconcileSessionObserverProjectionOwner(
-  session: ChatSessionEntry,
-  ownerAgentId: String?,
-): ChatSessionEntry {
-  val digest = session.observerDigest
-  if (session.key != "global" || digest == null) return session
-  val owner =
-    normalizedObserverAgentId(ownerAgentId)
-      ?: return session.copy(observerDigest = null, hasObserverDigestMetadata = false)
-  val digestOwner = normalizedObserverAgentId(digest.agentId)
-  return when (digestOwner) {
-    null -> session.copy(observerDigest = digest.copy(agentId = owner))
-    owner -> session
-    else -> session.copy(observerDigest = null, hasObserverDigestMetadata = false)
-  }
-}
-
-private fun normalizedObserverAgentId(agentId: String?): String? = agentId?.trim()?.lowercase()?.takeIf(String::isNotEmpty)
 
 private fun reconcileSessionObserverDigest(
   existing: SessionObserverDigest?,
