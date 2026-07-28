@@ -103,7 +103,8 @@ internal class AndroidChatDictationRecognizer(
       onEvent(ChatDictationRecognitionEvent.Error(SpeechRecognizer.ERROR_SERVER_DISCONNECTED))
       return
     }
-    val active = SpeechRecognizer.createSpeechRecognizer(appContext)
+    val active = runCatching { SpeechRecognizer.createOnDeviceSpeechRecognizer(appContext) }
+      .getOrElse { SpeechRecognizer.createSpeechRecognizer(appContext) }
     active.setRecognitionListener(
       object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
