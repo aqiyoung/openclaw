@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.content.pm.PackageManager
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -91,7 +90,7 @@ internal class AndroidChatDictationRecognizer(
 ) : ChatDictationRecognizer {
   private val appContext = context.applicationContext
   override val isAvailable: Boolean =
-    appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)
+    runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(appContext) }.getOrDefault(false)
   private var generation = 0L
   private var recognizer: SpeechRecognizer? = null
 
@@ -103,8 +102,7 @@ internal class AndroidChatDictationRecognizer(
       onEvent(ChatDictationRecognitionEvent.Error(SpeechRecognizer.ERROR_SERVER_DISCONNECTED))
       return
     }
-    val active = runCatching { SpeechRecognizer.createOnDeviceSpeechRecognizer(appContext) }
-      .getOrElse { SpeechRecognizer.createSpeechRecognizer(appContext) }
+    val active = SpeechRecognizer.createOnDeviceSpeechRecognizer(appContext)
     active.setRecognitionListener(
       object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
