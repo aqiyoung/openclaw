@@ -2673,22 +2673,34 @@ private fun ChatInputPill(
             Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
           }
         }
-        DropdownMenu(expanded = showAttachmentMenu, onDismissRequest = { showAttachmentMenu = false }) {
-          DropdownMenuItem(
-            text = { Text("") },
-            onClick = { showAttachmentMenu = false; onPickImages() },
-            leadingIcon = { Icon(Icons.Default.Add, null) },
-          )
-          DropdownMenuItem(
-            text = { Text("") },
-            onClick = { showAttachmentMenu = false; onPickAudioOrDocument() },
-            leadingIcon = { Icon(Icons.Default.AttachFile, null) },
-          )
-          DropdownMenuItem(
-            text = { Text("") },
-            onClick = { showAttachmentMenu = false; onPickVideo() },
-            leadingIcon = { Icon(Icons.Default.Videocam, null) },
-          )
+        if (showAttachmentMenu) {
+          Box(modifier = Modifier.padding(top = 8.dp)) {
+            Surface(
+              shape = RoundedCornerShape(ClawTheme.radii.pill),
+              color = ClawTheme.colors.surfaceRaised,
+              contentColor = ClawTheme.colors.text,
+              shadowElevation = 4.dp,
+              border = BorderStroke(1.dp, ClawTheme.colors.border),
+            ) {
+              Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(onClick = { showAttachmentMenu = false; onPickImages() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
+                  }
+                }
+                Surface(onClick = { showAttachmentMenu = false; onPickAudioOrDocument() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attach file"), modifier = Modifier.size(20.dp))
+                  }
+                }
+                Surface(onClick = { showAttachmentMenu = false; onPickVideo() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
+                  }
+                }
+              }
+            }
+          }
         }
       }
       Box(modifier = Modifier.weight(1f)) {
