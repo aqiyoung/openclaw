@@ -161,6 +161,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -2667,14 +2669,18 @@ private fun ChatInputPill(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-      Box {
+      Box(modifier = Modifier.wrapContentSize(unbounded = true, align = Alignment.TopStart)) {
         Surface(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
           Box(contentAlignment = Alignment.Center) {
             Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
           }
         }
         if (showAttachmentMenu) {
-          Box(modifier = Modifier.padding(top = 8.dp)) {
+          Popup(
+            onDismissRequest = { showAttachmentMenu = false },
+            alignment = Alignment.TopStart,
+            offset = IntOffset(0, -8),
+          ) {
             Surface(
               shape = RoundedCornerShape(ClawTheme.radii.pill),
               color = ClawTheme.colors.surfaceRaised,
