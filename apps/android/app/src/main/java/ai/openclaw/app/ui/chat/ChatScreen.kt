@@ -161,7 +161,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -2654,7 +2653,6 @@ private fun ChatInputPill(
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
-  var showAttachmentMenu by remember { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -2668,43 +2666,19 @@ private fun ChatInputPill(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-      Box {
-        Surface(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-          Box(contentAlignment = Alignment.Center) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
-          }
+      Surface(onClick = onPickImages, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
         }
-        if (showAttachmentMenu) {
-          Popup(
-            onDismissRequest = { showAttachmentMenu = false },
-            alignment = Alignment.BottomStart,
-          ) {
-            Surface(
-              shape = RoundedCornerShape(ClawTheme.radii.pill),
-              color = ClawTheme.colors.surfaceRaised,
-              contentColor = ClawTheme.colors.text,
-              shadowElevation = 4.dp,
-              border = BorderStroke(1.dp, ClawTheme.colors.border),
-            ) {
-              Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(onClick = { showAttachmentMenu = false; onPickImages() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
-                  }
-                }
-                Surface(onClick = { showAttachmentMenu = false; onPickAudioOrDocument() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attach file"), modifier = Modifier.size(20.dp))
-                  }
-                }
-                Surface(onClick = { showAttachmentMenu = false; onPickVideo() }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
-                  }
-                }
-              }
-            }
-          }
+      }
+      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
+        }
+      }
+      Surface(onClick = onPickVideo, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
         }
       }
       Box(modifier = Modifier.weight(1f)) {
