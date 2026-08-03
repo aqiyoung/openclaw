@@ -33,6 +33,8 @@ internal fun UnifiedChatShellScreen(
     ChatScreen(
       viewModel = viewModel,
       talkActive = talkModeEnabled,
+      showSidebarButton = false,
+      onOpenSidebar = {},
       onToggleTalk = {
         if (talkModeEnabled) {
           viewModel.setTalkModeEnabled(false)
