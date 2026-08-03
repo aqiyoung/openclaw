@@ -87,7 +87,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -162,7 +161,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -2670,7 +2668,7 @@ private fun ChatInputPill(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-      Box(modifier = Modifier.wrapContentSize(unbounded = true, align = Alignment.TopStart)) {
+      Box {
         Surface(onClick = { showAttachmentMenu = true }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
           Box(contentAlignment = Alignment.Center) {
             Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
@@ -2679,8 +2677,7 @@ private fun ChatInputPill(
         if (showAttachmentMenu) {
           Popup(
             onDismissRequest = { showAttachmentMenu = false },
-            alignment = Alignment.TopStart,
-            offset = IntOffset(0, -56),
+            alignment = Alignment.BottomStart,
           ) {
             Surface(
               shape = RoundedCornerShape(ClawTheme.radii.pill),
