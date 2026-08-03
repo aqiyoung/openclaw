@@ -2675,17 +2675,17 @@ private fun ChatInputPill(
         }
         DropdownMenu(expanded = showAttachmentMenu, onDismissRequest = { showAttachmentMenu = false }) {
           DropdownMenuItem(
-            text = { Text(nativeString("Attach image")) },
+            text = { Text("") },
             onClick = { showAttachmentMenu = false; onPickImages() },
             leadingIcon = { Icon(Icons.Default.Add, null) },
           )
           DropdownMenuItem(
-            text = { Text(nativeString("Attach file")) },
+            text = { Text("") },
             onClick = { showAttachmentMenu = false; onPickAudioOrDocument() },
             leadingIcon = { Icon(Icons.Default.AttachFile, null) },
           )
           DropdownMenuItem(
-            text = { Text(nativeString("Attach video")) },
+            text = { Text("") },
             onClick = { showAttachmentMenu = false; onPickVideo() },
             leadingIcon = { Icon(Icons.Default.Videocam, null) },
           )
