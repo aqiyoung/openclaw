@@ -2680,7 +2680,7 @@ private fun ChatInputPill(
           Popup(
             onDismissRequest = { showAttachmentMenu = false },
             alignment = Alignment.TopStart,
-            offset = IntOffset(0, -8),
+            offset = IntOffset(0, -56),
           ) {
             Surface(
               shape = RoundedCornerShape(ClawTheme.radii.pill),
