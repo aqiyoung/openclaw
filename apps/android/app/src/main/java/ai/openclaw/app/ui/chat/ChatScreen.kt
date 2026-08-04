@@ -2725,16 +2725,15 @@ private fun ChatInputPill(
           )
         }
       }
-      ChatComposerMicButton(
-        dictationActive = dictationActive,
-        dictationEnabled = dictationEnabled,
-        voiceNoteEnabled = recordVoiceNoteEnabled,
-        onToggleDictation = onToggleDictation,
-        onStartVoiceNote = onStartVoiceNote,
-      )
       when (resolveChatComposerTrailingAction(talkActive = talkActive, sendEnabled = sendEnabled)) {
         ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-        ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+        ChatComposerTrailingAction.StartTalk -> ChatComposerMicButton(
+          dictationActive = dictationActive,
+          dictationEnabled = dictationEnabled,
+          voiceNoteEnabled = recordVoiceNoteEnabled,
+          onToggleDictation = onToggleDictation,
+          onStartVoiceNote = onStartVoiceNote,
+        )
         ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
     }
