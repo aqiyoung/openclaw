@@ -161,6 +161,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
+
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -2653,26 +2659,22 @@ private fun ChatInputPill(
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
-  var showAttachmentSheet by remember { mutableStateOf(false) }
 
   Surface(
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
-    color = ClawTheme.colors.surfaceRaised,
+    modifier = modifier.heightIn(min = 58.dp).padding(horizontal = 0.dp),
+    shape = RoundedCornerShape(30.dp),
+    color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.22f),
     contentColor = ClawTheme.colors.text,
-    border = BorderStroke(1.dp, ClawTheme.colors.border),
+    shadowElevation = 8.dp,
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+      modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(7.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-
-      Surface(onClick = { showAttachmentSheet = true }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
-        }
-      }
+      GlassIconButton(onClick = onPickImages, icon = Icons.Default.Add, description = nativeString("Attach image"))
+      GlassIconButton(onClick = onPickAudioOrDocument, icon = Icons.Default.AttachFile, description = nativeString("Attachment"))
+      GlassIconButton(onClick = onPickVideo, icon = Icons.Default.Videocam, description = nativeString("Attach video"))
       Box(modifier = Modifier.weight(1f)) {
         ChatTextFieldValueAdapter(
           value = value,
@@ -2682,7 +2684,7 @@ private fun ChatInputPill(
           BasicTextField(
             value = textFieldValue,
             onValueChange = updateTextFieldValue,
-            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
+            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text, fontSize = 16.sp, lineHeight = 24.sp),
             cursorBrush = SolidColor(ClawTheme.colors.primary),
             minLines = 1,
             maxLines = 4,
@@ -2701,7 +2703,7 @@ private fun ChatInputPill(
             decorationBox = { innerTextField ->
               Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
-                  Text(text = nativeString("Message OpenClaw"), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+                  Text(text = nativeString("Ask OpenClaw..."), style = ClawTheme.type.body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium), color = ClawTheme.colors.textSubtle.copy(alpha = 0.6f))
                 }
                 innerTextField()
               }
@@ -2722,59 +2724,36 @@ private fun ChatInputPill(
         ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
     }
-  if (showAttachmentSheet) {
-    AttachmentSheet(
-      onPickImages = onPickImages,
-      onPickAudioOrDocument = onPickAudioOrDocument,
-      onPickVideo = onPickVideo,
-      onDismiss = { showAttachmentSheet = false },
-    )
   }
 }
 
 @Composable
-private fun AttachmentSheet(
-  onPickImages: () -> Unit,
-  onPickAudioOrDocument: () -> Unit,
-  onPickVideo: () -> Unit,
-  onDismiss: () -> Unit,
-) {
-  ModalBottomSheet(onDismissRequest = onDismiss) {
-    Column(modifier = Modifier.padding(bottom = 32.dp)) {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        Text(nativeString("Add attachment"), style = ClawTheme.type.titleSmall, modifier = Modifier.weight(1f))
-      }
-      HorizontalDivider()
-      AttachmentSheetItem(icon = Icons.Default.Add, label = nativeString("Image"), onClick = { onPickImages(); onDismiss() })
-      AttachmentSheetItem(icon = Icons.Default.AttachFile, label = nativeString("File"), onClick = { onPickAudioOrDocument(); onDismiss() })
-      AttachmentSheetItem(icon = Icons.Default.Videocam, label = nativeString("Video"), onClick = { onPickVideo(); onDismiss() })
-    }
-  }
-}
-
-@Composable
-private fun AttachmentSheetItem(
-  icon: ImageVector,
-  label: String,
+private fun GlassIconButton(
   onClick: () -> Unit,
+  icon: ImageVector,
+  description: String,
 ) {
+  val interactionSource = remember { MutableInteractionSource() }
+  val isPressed by interactionSource.collectIsPressedAsState()
+  val scale by animateFloatAsState(
+    targetValue = if (isPressed) 0.88f else 1f,
+    animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
+  )
   Surface(
     onClick = onClick,
-    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-    color = ClawTheme.colors.surface,
-    contentColor = ClawTheme.colors.text,
+    modifier = Modifier.size(40.dp).graphicsLayer(scaleX = scale, scaleY = scale),
+    shape = CircleShape,
+    color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.08f),
+    contentColor = ClawTheme.colors.text.copy(alpha = 0.85f),
+    border = BorderStroke(0.5.dp, ClawTheme.colors.border.copy(alpha = 0.15f)),
+    elevation = 0.dp,
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = ClawTheme.colors.text)
-      Text(text = label, style = ClawTheme.type.body)
+    Box(contentAlignment = Alignment.Center) {
+      Icon(
+        imageVector = icon,
+        contentDescription = description,
+        modifier = Modifier.size(22.dp),
+      )
     }
   }
 }
