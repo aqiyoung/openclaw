@@ -89,7 +89,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -2663,31 +2662,23 @@ private fun ChatInputPill(
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+      modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-      var expanded by remember { mutableStateOf(false) }
-      Surface(onClick = { expanded = true }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+      Surface(onClick = onPickImages, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach"), modifier = Modifier.size(20.dp))
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
         }
       }
-      DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = { expanded = false },
-        modifier = Modifier.background(ClawTheme.colors.surface, shape = RoundedCornerShape(ClawTheme.radii.pill)).widthIn(min = 40.dp),
-      ) {
-        Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-          Surface(onClick = { onPickImages(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp)) }
-          }
-          Surface(onClick = { onPickAudioOrDocument(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp)) }
-          }
-          Surface(onClick = { onPickVideo(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp)) }
-          }
+      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
+        }
+      }
+      Surface(onClick = onPickVideo, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
         }
       }
       Box(modifier = Modifier.weight(1f)) {
@@ -2726,15 +2717,16 @@ private fun ChatInputPill(
           )
         }
       }
+      ChatComposerMicButton(
+        dictationActive = dictationActive,
+        dictationEnabled = dictationEnabled,
+        voiceNoteEnabled = recordVoiceNoteEnabled,
+        onToggleDictation = onToggleDictation,
+        onStartVoiceNote = onStartVoiceNote,
+      )
       when (resolveChatComposerTrailingAction(talkActive = talkActive, sendEnabled = sendEnabled)) {
         ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-        ChatComposerTrailingAction.StartTalk -> ChatComposerMicButton(
-          dictationActive = dictationActive,
-          dictationEnabled = dictationEnabled,
-          voiceNoteEnabled = recordVoiceNoteEnabled,
-          onToggleDictation = onToggleDictation,
-          onStartVoiceNote = onStartVoiceNote,
-        )
+        ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
         ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
     }
