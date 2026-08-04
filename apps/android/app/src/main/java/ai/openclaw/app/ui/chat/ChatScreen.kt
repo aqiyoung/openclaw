@@ -2709,7 +2709,7 @@ private fun ChatInputPill(
             decorationBox = { innerTextField ->
               Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
-                  Text(text = nativeString("Ask OpenClaw..."), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+                  Text(text = nativeString("Message OpenClaw"), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
                 }
                 innerTextField()
               }
