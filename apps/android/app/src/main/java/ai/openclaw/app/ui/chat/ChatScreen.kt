@@ -161,13 +161,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
-
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -2662,20 +2655,32 @@ private fun ChatInputPill(
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
 
   Surface(
-    modifier = modifier.heightIn(min = 58.dp).padding(horizontal = 0.dp),
-    shape = RoundedCornerShape(30.dp),
-    color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.22f),
+    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
-    shadowElevation = 8.dp,
+    border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      GlassIconButton(onClick = onPickImages, icon = Icons.Default.Add, description = nativeString("Attach image"))
-      GlassIconButton(onClick = onPickAudioOrDocument, icon = Icons.Default.AttachFile, description = nativeString("Attachment"))
-      GlassIconButton(onClick = onPickVideo, icon = Icons.Default.Videocam, description = nativeString("Attach video"))
+      Surface(onClick = onPickImages, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
+        }
+      }
+      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
+        }
+      }
+      Surface(onClick = onPickVideo, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
+        }
+      }
       Box(modifier = Modifier.weight(1f)) {
         ChatTextFieldValueAdapter(
           value = value,
@@ -2685,7 +2690,7 @@ private fun ChatInputPill(
           BasicTextField(
             value = textFieldValue,
             onValueChange = updateTextFieldValue,
-            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text, fontSize = 16.sp, lineHeight = 24.sp),
+            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
             cursorBrush = SolidColor(ClawTheme.colors.primary),
             minLines = 1,
             maxLines = 4,
@@ -2704,7 +2709,7 @@ private fun ChatInputPill(
             decorationBox = { innerTextField ->
               Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
-                  Text(text = nativeString("Ask OpenClaw..."), style = ClawTheme.type.body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium), color = ClawTheme.colors.textSubtle.copy(alpha = 0.6f))
+                  Text(text = nativeString("Ask OpenClaw..."), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
                 }
                 innerTextField()
               }
@@ -2724,37 +2729,6 @@ private fun ChatInputPill(
         ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
         ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
-    }
-  }
-}
-
-@Composable
-private fun GlassIconButton(
-  onClick: () -> Unit,
-  icon: ImageVector,
-  description: String,
-) {
-  val interactionSource = remember { MutableInteractionSource() }
-  val isPressed by interactionSource.collectIsPressedAsState()
-  val scale by animateFloatAsState(
-    targetValue = if (isPressed) 0.88f else 1f,
-    animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
-  )
-  Surface(
-    onClick = onClick,
-    modifier = Modifier.size(40.dp).graphicsLayer(scaleX = scale, scaleY = scale),
-    shape = CircleShape,
-    color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.08f),
-    contentColor = ClawTheme.colors.text.copy(alpha = 0.85f),
-    border = BorderStroke(0.5.dp, ClawTheme.colors.border.copy(alpha = 0.15f)),
-    shadowElevation = 0.dp,
-  ) {
-    Box(contentAlignment = Alignment.Center) {
-      Icon(
-        imageVector = icon,
-        contentDescription = description,
-        modifier = Modifier.size(22.dp),
-      )
     }
   }
 }
