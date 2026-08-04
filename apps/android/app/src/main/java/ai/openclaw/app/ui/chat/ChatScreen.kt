@@ -2662,21 +2662,21 @@ private fun ChatInputPill(
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+      modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-      Surface(onClick = onPickImages, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+      Surface(onClick = onPickImages, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
           Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
         }
       }
-      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
           Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
         }
       }
-      Surface(onClick = onPickVideo, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+      Surface(onClick = onPickVideo, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
           Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
         }
@@ -2709,7 +2709,7 @@ private fun ChatInputPill(
             decorationBox = { innerTextField ->
               Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
-                  Text(text = nativeString("Message OpenClaw"), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+                  Text(text = nativeString("Ask OpenClaw..."), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
                 }
                 innerTextField()
               }
@@ -2743,7 +2743,7 @@ private fun LiveTalkButton(
     onClick = onClick,
     modifier =
       Modifier
-        .size(36.dp)
+        .size(35.dp)
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
     color = ClawTheme.colors.danger,
@@ -2928,7 +2928,7 @@ private fun SendButton(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = Modifier.size(36.dp),
+    modifier = Modifier.size(35.dp),
     shape = CircleShape,
     color = if (enabled) ClawTheme.colors.primary else ClawTheme.colors.surfacePressed,
     contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
