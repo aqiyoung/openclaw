@@ -166,6 +166,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -2746,7 +2747,7 @@ private fun GlassIconButton(
     color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.08f),
     contentColor = ClawTheme.colors.text.copy(alpha = 0.85f),
     border = BorderStroke(0.5.dp, ClawTheme.colors.border.copy(alpha = 0.15f)),
-    elevation = 0.dp,
+    shadowElevation = 0.dp,
   ) {
     Box(contentAlignment = Alignment.Center) {
       Icon(
