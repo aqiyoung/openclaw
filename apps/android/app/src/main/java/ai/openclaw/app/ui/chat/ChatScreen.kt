@@ -2653,6 +2653,7 @@ private fun ChatInputPill(
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
+  var showAttachmentSheet by remember { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -2666,19 +2667,10 @@ private fun ChatInputPill(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-      Surface(onClick = onPickImages, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+
+      Surface(onClick = { showAttachmentSheet = true }, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
-        }
-      }
-      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
-        }
-      }
-      Surface(onClick = onPickVideo, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
         }
       }
       Box(modifier = Modifier.weight(1f)) {
@@ -2729,6 +2721,60 @@ private fun ChatInputPill(
         ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
         ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
+    }
+  if (showAttachmentSheet) {
+    AttachmentSheet(
+      onPickImages = onPickImages,
+      onPickAudioOrDocument = onPickAudioOrDocument,
+      onPickVideo = onPickVideo,
+      onDismiss = { showAttachmentSheet = false },
+    )
+  }
+}
+
+@Composable
+private fun AttachmentSheet(
+  onPickImages: () -> Unit,
+  onPickAudioOrDocument: () -> Unit,
+  onPickVideo: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  ModalBottomSheet(onDismissRequest = onDismiss) {
+    Column(modifier = Modifier.padding(bottom = 32.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        Text(nativeString("Add attachment"), style = ClawTheme.type.titleSmall, modifier = Modifier.weight(1f))
+      }
+      HorizontalDivider()
+      AttachmentSheetItem(icon = Icons.Default.Add, label = nativeString("Image"), onClick = { onPickImages(); onDismiss() })
+      AttachmentSheetItem(icon = Icons.Default.AttachFile, label = nativeString("File"), onClick = { onPickAudioOrDocument(); onDismiss() })
+      AttachmentSheetItem(icon = Icons.Default.Videocam, label = nativeString("Video"), onClick = { onPickVideo(); onDismiss() })
+    }
+  }
+}
+
+@Composable
+private fun AttachmentSheetItem(
+  icon: ImageVector,
+  label: String,
+  onClick: () -> Unit,
+) {
+  Surface(
+    onClick = onClick,
+    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+    color = ClawTheme.colors.surface,
+    contentColor = ClawTheme.colors.text,
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = ClawTheme.colors.text)
+      Text(text = label, style = ClawTheme.type.body)
     }
   }
 }
