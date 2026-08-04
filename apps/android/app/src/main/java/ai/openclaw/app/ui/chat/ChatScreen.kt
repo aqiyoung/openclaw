@@ -2666,19 +2666,27 @@ private fun ChatInputPill(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Surface(onClick = onPickImages, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+      var expanded by remember { mutableStateOf(false) }
+      Surface(onClick = { expanded = true }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach"), modifier = Modifier.size(20.dp))
         }
       }
-      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
-        }
-      }
-      Surface(onClick = onPickVideo, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
+      DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false },
+        modifier = Modifier.background(ClawTheme.colors.surface, shape = RoundedCornerShape(ClawTheme.radii.pill)).widthIn(min = 40.dp),
+      ) {
+        Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+          Surface(onClick = { onPickImages(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp)) }
+          }
+          Surface(onClick = { onPickAudioOrDocument(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp)) }
+          }
+          Surface(onClick = { onPickVideo(); expanded = false }, modifier = Modifier.size(32.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+            Box(contentAlignment = Alignment.Center) { Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp)) }
+          }
         }
       }
       Box(modifier = Modifier.weight(1f)) {
