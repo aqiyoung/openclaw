@@ -2053,7 +2053,7 @@ describe("handleToolExecutionEnd timeout metadata", () => {
         content: [
           {
             type: "text",
-            text: "Command timed out after 1800 seconds.",
+            text: "命令超时，已运行 1800 秒。",
           },
         ],
         details: {

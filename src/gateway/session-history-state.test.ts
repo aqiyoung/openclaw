@@ -471,7 +471,7 @@ describe("SessionHistorySseState", () => {
 
     expect(sentinel?.message).toMatchObject({
       role: "assistant",
-      content: [{ type: "text", text: "The agent run failed before producing a reply." }],
+      content: [{ type: "text", text: "Agent 运行失败，未产生回复。" }],
       __openclaw: { seq: 2 },
     });
     expect(appendAssistantText(state, "actual fallback response", 3)).toEqual({
@@ -511,7 +511,7 @@ describe("SessionHistorySseState", () => {
       content: textContent("actual fallback response"),
     });
     expect(state.snapshot().messages[0]?.content).toEqual([
-      { type: "text", text: "The agent run failed before producing a reply." },
+      { type: "text", text: "Agent 运行失败，未产生回复。" },
     ]);
   });
 

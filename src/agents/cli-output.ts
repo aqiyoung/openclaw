@@ -1288,8 +1288,8 @@ function dispatchGeminiCliStreamingToolEvent(params: {
   }
 }
 
-const GEMINI_CLI_ERROR_EVENT_FALLBACK = "Gemini CLI emitted an error event.";
-const GEMINI_CLI_RESULT_ERROR_FALLBACK = "Gemini CLI result status was error.";
+const GEMINI_CLI_ERROR_EVENT_FALLBACK = "Gemini CLI 发出错误事件。";
+const GEMINI_CLI_RESULT_ERROR_FALLBACK = "Gemini CLI 结果状态为错误。";
 
 function isFallbackGeminiCliStreamJsonError(errorText: string): boolean {
   return (

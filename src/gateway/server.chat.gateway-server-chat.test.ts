@@ -1029,8 +1029,8 @@ describe("gateway server chat", () => {
 
       expect(collectHistoryTextValues(historyMessages)).toEqual([
         overflow
-          ? "Context overflow: this conversation is too large for the model. Try /compact, use /new to start a fresh session, or retry the command with a tighter output limit."
-          : "The agent run failed before producing a reply.",
+          ? "上下文超长：此对话内容太多，模型无法处理。请尝试 /compact，或使用 /new 开启新会话，或缩小输出限制后重试。"
+          : "Agent 运行失败，未产生回复。",
       ]);
       const wirePayload = JSON.stringify(historyMessages);
       expect(wirePayload).not.toContain("203557");

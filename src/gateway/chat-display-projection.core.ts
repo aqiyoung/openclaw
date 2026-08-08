@@ -84,9 +84,9 @@ type ChatDisplayProjectionResult = {
   streamErrorFallbackRepaired: boolean;
 };
 
-const GATEWAY_ASSISTANT_ERROR_FALLBACK_TEXT = "The agent run failed before producing a reply.";
+const GATEWAY_ASSISTANT_ERROR_FALLBACK_TEXT = "Agent 运行失败，未产生回复。";
 const GATEWAY_ASSISTANT_CONTEXT_OVERFLOW_FALLBACK_TEXT =
-  "Context overflow: this conversation is too large for the model. Try /compact, use /new to start a fresh session, or retry the command with a tighter output limit.";
+  "上下文超长：此对话内容太多，模型无法处理。请尝试 /compact，或使用 /new 开启新会话，或缩小输出限制后重试。";
 
 function normalizeErrorSignal(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";

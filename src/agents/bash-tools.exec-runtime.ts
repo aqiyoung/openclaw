@@ -451,25 +451,25 @@ function formatExecFailureReason(params: {
 }): string {
   switch (params.failureKind) {
     case "shell-command-not-found":
-      return "Command not found";
+      return "命令未找到";
     case "shell-not-executable":
-      return "Command not executable (permission denied)";
+      return "命令不可执行（权限被拒绝）";
     case "overall-timeout": {
       const timeoutText =
         typeof params.timeoutSec === "number" && params.timeoutSec > 0
-          ? `Command timed out after ${params.timeoutSec} seconds.`
-          : "Command timed out.";
-      return `${appendExecTimeoutRetryGuidance(timeoutText, params.failureKind)}\n\nIf it should keep running, start it with exec background=true or yieldMs so OpenClaw can register a pollable process session. Do not rely on shell backgrounding with a trailing &.`;
+          ? `命令超时，已运行 ${params.timeoutSec} 秒。`
+          : "命令超时。";
+      return `${appendExecTimeoutRetryGuidance(timeoutText, params.failureKind)}\n\n如果需要继续运行，请使用 exec background=true 或 yieldMs 参数启动，以便 OpenClaw 可以注册可轮询的进程会话。不要依赖在尾部添加 & 的 Shell 后台运行方式。`;
     }
     case "no-output-timeout":
       return appendExecTimeoutRetryGuidance(
-        "Command timed out waiting for output.",
+        "命令超时，等待输出超时。",
         params.failureKind,
       );
     case "signal":
-      return `Command aborted by signal ${params.exitSignal}`;
+      return `命令被信号 ${params.exitSignal} 中止`;
     case "aborted":
-      return "Command aborted before exit code was captured";
+      return "命令在获取退出码前被中止";
   }
   throw new Error("Unsupported exec failure kind");
 }

@@ -256,7 +256,7 @@ describe("installSessionToolResultGuard", () => {
       asAppendMessage({
         role: "toolResult",
         toolUseId: "call_a",
-        content: [{ type: "text", text: "a" }],
+        content: [{ type: "text", text: "[Agent 交互失败，未产生内容]" }],
         isError: false,
       }),
     );
@@ -299,7 +299,7 @@ describe("installSessionToolResultGuard", () => {
     sm.appendMessage(
       asAppendMessage({
         role: "assistant",
-        content: [{ type: "toolUse", id: "use_1", name: "f", arguments: {} }],
+        content: [{ type: "toolUse", id: "use_1", name: "[Agent 交互失败，未产生内容]", arguments: {} }],
       }),
     );
     sm.appendMessage(

@@ -986,14 +986,14 @@ describe("tool-loop-detection", () => {
         label: "failed non-executable commands",
         status: "failed",
         exitCode: 126,
-        output: "Command not executable (permission denied)",
+        output: "命令不可执行（权限被拒绝）",
         aggregated: "",
       },
       {
         label: "failed missing commands",
         status: "failed",
         exitCode: 127,
-        output: "Command not found",
+        output: "命令未找到",
         aggregated: "",
       },
     ] as const)("blocks repeated $label across changing exec arguments", (testCase) => {

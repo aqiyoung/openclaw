@@ -645,7 +645,7 @@
     <string name="native_61ffa9c8c703dd5e" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"channels"</string>
     <string name="native_62026a42b2390a87" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"已授予"</string>
     <string name="native_624fccb6586a4c4d" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"每 %1$s 分钟"</string>
-    <string name="native_6254d8ee6bcbafc8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"1 个 token"</string>
+    <string name="native_6254d8ee6bcbafc8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"1 个词元"</string>
     <string name="native_628ee59a91eaa013" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"已安装的应用"</string>
     <string name="native_62a2fed3d6e08c44" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"待处理"</string>
     <string name="native_62bacf1d615ada7e" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在准备语音留言…"</string>
@@ -1196,7 +1196,7 @@
     <string name="native_bae9264d6d972b80" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"summarize"</string>
     <string name="native_bb4f2558e4333834" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"小组件图片已保存到“下载”"</string>
     <string name="native_bbe5fc3b9ef39f99" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在启动…"</string>
-    <string name="native_bc198f2a7e49ad71" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"%1$s 个 token"</string>
+    <string name="native_bc198f2a7e49ad71" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"%1$s 个词元"</string>
     <string name="native_bc19cec293228fb8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"客户端错误"</string>
     <string name="native_bc1c94a6dfce1058" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"授予访问权限前，请验证发出请求的设备。"</string>
     <string name="native_bc6618670f3e8a17" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Bluetooth LE 麦克风"</string>

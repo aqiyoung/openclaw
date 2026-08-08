@@ -2614,7 +2614,7 @@ describe("compaction-safeguard double-compaction guard", () => {
     // a boundary entry and break the re-trigger loop.
     // buildStructuredFallbackSummary(undefined) produces a minimal structured summary
     expect(compaction.summary).toContain("## Decisions");
-    expect(compaction.summary).toContain("No prior history.");
+    expect(compaction.summary).toContain("无先前历史。");
     expect(compaction.summary).toContain("## Open TODOs");
     expect(compaction.firstKeptEntryId).toBe("entry-1");
     expect(compaction.tokensBefore).toBe(1500);
@@ -2834,7 +2834,7 @@ describe("compaction-safeguard double-compaction guard", () => {
 
     const compaction = expectCompactionResult(result);
     expect(compaction.summary).toContain("branch summary");
-    expect(compaction.summary).not.toContain("No prior history.");
+    expect(compaction.summary).not.toContain("无先前历史。");
     expect(mockSummarizeInStages).toHaveBeenCalledTimes(1);
     const summarizeCall = requireRecord(mockCallArg(mockSummarizeInStages));
     const messages = requireArray(summarizeCall.messages);
@@ -2922,7 +2922,7 @@ describe("compaction-safeguard double-compaction guard", () => {
 
       const compaction = expectCompactionResult(result);
       if (completed) {
-        expect(compaction.summary).toContain("No prior history.");
+        expect(compaction.summary).toContain("无先前历史。");
         expect(mockSummarizeInStages).not.toHaveBeenCalled();
         expect(getApiKeyAndHeadersMock).not.toHaveBeenCalled();
         return;

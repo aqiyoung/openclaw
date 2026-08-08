@@ -602,7 +602,7 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
         toolName: "exec",
         timedOut: true,
         error:
-          "Command timed out after 1800 seconds. The command was terminated, but external side effects may already have completed. Verify the resulting state before retrying. Do not automatically rerun non-idempotent commands. Use a higher timeout only when the command is known to be safe to retry.",
+          "命令超时，已运行 1800 秒。 命令被终止，但外部副作用可能已经执行完毕。请先验证结果状态再重试。不要自动重新运行非幂等命令。仅在确认命令安全时才使用更高的超时时间。",
       },
       sessionKey: "agent:main:cron:job-1",
       verboseLevel: "off",
@@ -611,7 +611,7 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
     expectSingleToolErrorPayload(payloads, {
       title: "Exec",
       detail:
-        "Command timed out after 1800 seconds. The command was terminated, but external side effects may already have completed. Verify the resulting state before retrying. Do not automatically rerun non-idempotent commands. Use a higher timeout only when the command is known to be safe to retry.",
+        "命令超时，已运行 1800 秒。 命令被终止，但外部副作用可能已经执行完毕。请先验证结果状态再重试。不要自动重新运行非幂等命令。仅在确认命令安全时才使用更高的超时时间。",
     });
   });
 
@@ -620,7 +620,7 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
       lastToolError: {
         toolName: "exec",
         timedOut: true,
-        error: "Command timed out after 1800 seconds.",
+        error: "命令超时，已运行 1800 秒。",
       },
       sessionKey: "agent:main:project-alpha",
       isCronTrigger: true,
@@ -629,7 +629,7 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
 
     expectSingleToolErrorPayload(payloads, {
       title: "Exec",
-      detail: "Command timed out after 1800 seconds.",
+      detail: "命令超时，已运行 1800 秒。",
     });
   });
 
@@ -837,14 +837,14 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
 
   it("surfaces non-timeout exec tool errors for cron sessions without raw details", () => {
     const payloads = buildPayloads({
-      lastToolError: { toolName: "exec", error: "Command not found" },
+      lastToolError: { toolName: "exec", error: "命令未找到" },
       sessionKey: "agent:main:cron:job-1",
       verboseLevel: "off",
     });
 
     expectSingleToolErrorPayload(payloads, {
       title: "Exec",
-      absentDetail: "Command not found",
+      absentDetail: "命令未找到",
     });
   });
 

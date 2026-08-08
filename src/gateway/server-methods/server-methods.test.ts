@@ -1045,7 +1045,7 @@ describe("sanitizeChatHistoryMessages", () => {
 
 describe("projectRecentChatDisplayMessages", () => {
   const safeFailureContent = [
-    { type: "text", text: "The agent run failed before producing a reply." },
+    { type: "text", text: "Agent 运行失败，未产生回复。" },
   ];
   const privateError = "private upstream at secret.internal.example failed";
   const displayErrorCases: Array<{
@@ -1284,7 +1284,7 @@ describe("projectRecentChatDisplayMessages", () => {
           content: [
             {
               type: "text",
-              text: "Context overflow: this conversation is too large for the model. Try /compact, use /new to start a fresh session, or retry the command with a tighter output limit.",
+              text: "上下文超长：此对话内容太多，模型无法处理。请尝试 /compact，或使用 /new 开启新会话，或缩小输出限制后重试。",
             },
           ],
           stopReason: "error",
@@ -1313,7 +1313,7 @@ describe("projectRecentChatDisplayMessages", () => {
     ]);
 
     expect(result[0]?.content).toEqual([
-      { type: "text", text: "The agent run failed before producing a reply." },
+      { type: "text", text: "Agent 运行失败，未产生回复。" },
     ]);
   });
 
@@ -1331,7 +1331,7 @@ describe("projectRecentChatDisplayMessages", () => {
       ]);
 
       expect(result).toEqual([
-        assistantHistoryMessage("The agent run failed before producing a reply.", {
+        assistantHistoryMessage("Agent 运行失败，未产生回复。", {
           stopReason: "error",
           timestamp: 1,
         }),
@@ -1353,7 +1353,7 @@ describe("projectRecentChatDisplayMessages", () => {
       ]);
 
       expect(result).toEqual([
-        assistantHistoryMessage("The agent run failed before producing a reply.", {
+        assistantHistoryMessage("Agent 运行失败，未产生回复。", {
           stopReason: "error",
           timestamp: 1,
         }),
@@ -1478,7 +1478,7 @@ describe("projectRecentChatDisplayMessages", () => {
 
     expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject(
-      assistantHistoryMessage("The agent run failed before producing a reply."),
+      assistantHistoryMessage("Agent 运行失败，未产生回复。"),
     );
     expect(result[1]).toMatchObject(assistantHistoryMessage("forwarded update"));
     expect(result[2]).toMatchObject(assistantHistoryMessage("actual fallback response"));
@@ -1491,7 +1491,7 @@ describe("projectRecentChatDisplayMessages", () => {
     ]);
 
     expect(result).toEqual([
-      assistantHistoryMessage("The agent run failed before producing a reply.", {
+      assistantHistoryMessage("Agent 运行失败，未产生回复。", {
         stopReason: "error",
       }),
     ]);
@@ -1505,7 +1505,7 @@ describe("projectRecentChatDisplayMessages", () => {
     ]);
 
     expect(result).toEqual([
-      assistantHistoryMessage("The agent run failed before producing a reply.", {
+      assistantHistoryMessage("Agent 运行失败，未产生回复。", {
         stopReason: "error",
         timestamp: 1,
       }),

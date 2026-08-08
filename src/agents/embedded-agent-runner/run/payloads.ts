@@ -618,7 +618,7 @@ export function buildEmbeddedRunPayloads(params: {
     : null;
   const normalizedErrorText = errorText ? normalizeTextForComparison(errorText) : null;
   const normalizedGenericBillingErrorText = normalizeTextForComparison(BILLING_ERROR_USER_MESSAGE);
-  const genericErrorText = "The AI service returned an error. Please try again.";
+  const genericErrorText = "AI 服务返回错误，请重试。";
   if (errorText) {
     replyItems.push({ text: errorText, isError: true });
   }

@@ -5,9 +5,9 @@
  */
 import type { TerminationReason } from "../process/supervisor/types.js";
 
-const EXEC_NO_OUTPUT_PLACEHOLDER = "(no output)";
+const EXEC_NO_OUTPUT_PLACEHOLDER = "（无输出）";
 const EXEC_TIMEOUT_RETRY_GUIDANCE =
-  "The command was terminated, but external side effects may already have completed. Verify the resulting state before retrying. Do not automatically rerun non-idempotent commands. Use a higher timeout only when the command is known to be safe to retry.";
+  "命令被终止，但外部副作用可能已经执行完毕。请先验证结果状态再重试。不要自动重新运行非幂等命令。仅在确认命令安全时才使用更高的超时时间。";
 
 /** Render command output with a stable placeholder for empty output. */
 export function renderExecOutputText(value: string | undefined): string {

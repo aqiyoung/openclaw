@@ -812,7 +812,7 @@ describe("runExecProcess exit outcomes", () => {
       throw new Error(`Expected shell failure, got ${outcome.status}`);
     }
     expect(outcome.failureKind).toBe("shell-command-not-found");
-    expect(outcome.reason).toBe("Command not found");
+    expect(outcome.reason).toBe("命令未找到");
   });
 });
 

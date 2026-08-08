@@ -46,7 +46,7 @@ type CompactionSummaryResult =
   | { kind: "summary"; text: string }
   | { kind: "generic-fallback"; text: string };
 
-const DEFAULT_SUMMARY_FALLBACK = "No prior history.";
+const DEFAULT_SUMMARY_FALLBACK = "无先前历史。";
 const MERGE_SUMMARIES_INSTRUCTIONS = [
   "Merge these partial summaries into a single cohesive summary.",
   "",
