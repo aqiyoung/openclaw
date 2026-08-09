@@ -2173,7 +2173,7 @@ private fun AboutSettingsScreen(
     if (showUpdateDialog && updateInfo != null) {
       if (updateInfo!!.error != null) {
         AppUpdateFailedDialog(
-          errorMessage = updateInfo!!.error ?: ""
+          errorMessage = updateInfo!!.error ?: "",
           currentVersion = BuildConfig.VERSION_NAME,
           onDismiss = { showUpdateDialog = false },
         )
