@@ -2136,12 +2136,12 @@ private fun AboutSettingsScreen(
     )
     ClawPanel {
       ClawListItem(
-        title = nativeString("Check for Updates"),
+        title = "检查更新",
         subtitle = when {
-          checkingUpdate -> nativeString("Checking latest version…")
+          checkingUpdate -> "正在检查新版本…"
           updateInfo?.hasUpdate == true -> "v${updateInfo!!.latestVersion} available"
           updateInfo != null -> nativeString("Up to date")
-          else -> nativeString("Check if a new version is available")
+          else -> "检查是否有新版本"
         },
         onClick = if (checkingUpdate) null else {
           {
@@ -2228,7 +2228,7 @@ private fun AppUpdateDialog(
       )
     },
     title = {
-      Text(text = if (info.hasUpdate) nativeString("Update Available") else nativeString("Up to date"))
+      Text(text = if (info.hasUpdate) "发现新版本" else nativeString("Up to date"))
     },
     text = {
       if (info.hasUpdate) {
@@ -2240,7 +2240,7 @@ private fun AppUpdateDialog(
           }
         }
       } else {
-        Text(text = nativeString("You're running the latest version."))
+        Text(text = "当前已是最新版本")
       }
     },
     confirmButton = {
@@ -2251,7 +2251,7 @@ private fun AppUpdateDialog(
         }) {
           Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.size(4.dp))
-          Text(nativeString("Download"))
+          Text("前往下载")
         }
       } else {
         TextButton(onClick = onDismiss) {
@@ -2262,7 +2262,7 @@ private fun AppUpdateDialog(
     dismissButton = {
       if (info.hasUpdate) {
         TextButton(onClick = onDismiss) {
-          Text(nativeString("Later"))
+          Text("稍后")
         }
       }
     },
