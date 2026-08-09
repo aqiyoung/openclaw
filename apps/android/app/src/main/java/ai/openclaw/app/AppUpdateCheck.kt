@@ -32,10 +32,10 @@ data class AppUpdateInfo(
 object AppUpdateCheck {
 
   // 指向我们 fork 的 release 页面
-  const val RELEASE_PAGE_URL = "https://github.com/threely/openclaw/releases"
+  const val RELEASE_PAGE_URL = "https://github.com/aqiyoung/openclaw/releases"
 
   private const val LATEST_RELEASE_API =
-    "https://api.github.com/repos/threely/openclaw/releases/latest"
+    "https://api.github.com/repos/aqiyoung/openclaw/releases/latest"
 
   private val client = OkHttpClient.Builder()
     .connectTimeout(8, TimeUnit.SECONDS)
