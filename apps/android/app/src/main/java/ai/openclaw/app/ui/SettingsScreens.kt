@@ -2301,6 +2301,10 @@ private fun AppUpdateFailedDialog(
         Text("当前版本 $currentVersion")
         Spacer(modifier = Modifier.height(8.dp))
         Text("无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。", style = ClawTheme.type.caption)
+        if (errorMessage.isNotBlank()) {
+          Spacer(modifier = Modifier.height(8.dp))
+          Text(errorMessage, style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
+        }
       }
     },
     confirmButton = {

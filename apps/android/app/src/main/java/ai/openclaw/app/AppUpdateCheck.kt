@@ -38,8 +38,9 @@ object AppUpdateCheck {
     "https://api.github.com/repos/aqiyoung/openclaw/releases/latest"
 
   private val client = OkHttpClient.Builder()
-    .connectTimeout(8, TimeUnit.SECONDS)
-    .readTimeout(8, TimeUnit.SECONDS)
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(15, TimeUnit.SECONDS)
+    .followRedirects(true)
     .build()
 
   private val json = Json { ignoreUnknownKeys = true }
@@ -49,6 +50,19 @@ object AppUpdateCheck {
    */
   suspend fun checkLatest(currentVersion: String): AppUpdateInfo {
     return try {
+      checkLatestImpl(currentVersion) ?: tryFallback(currentVersion)
+    } catch (e: Exception) {
+      AppUpdateInfo(
+        latestVersion = currentVersion, hasUpdate = false,
+        releaseName = null, releaseUrl = null, releaseNotes = null,
+        isCritical = false, error = e.message?.take(80) ?: "检查失败",
+      )
+    }
+  }
+
+  /** 直连 GitHub API 检查 */
+  private suspend fun checkLatestImpl(currentVersion: String): AppUpdateInfo? {
+    return try {
       val request = Request.Builder()
         .url(LATEST_RELEASE_API)
         .header("Accept", "application/vnd.github.v3+json")
@@ -56,9 +70,36 @@ object AppUpdateCheck {
         .build()
 
       val response = client.newCall(request).execute()
+      if (!response.isSuccessful) return null
       val body = response.body.string()
-      val release = json.decodeFromString<GitHubRelease>(body)
+      return parseRelease(body, currentVersion)
+    } catch (_: Exception) {
+      null
+    }
+  }
 
+  /** 直连失败时走 gh-proxy 镜像兜底 */
+  private suspend fun tryFallback(currentVersion: String): AppUpdateInfo {
+    val proxyUrl = "https://gh-proxy.com/https://api.github.com/repos/aqiyoung/openclaw/releases/latest"
+    val request = Request.Builder()
+      .url(proxyUrl)
+      .header("Accept", "application/vnd.github.v3+json")
+      .header("User-Agent", "OpenClaw-Android")
+      .build()
+
+    val response = client.newCall(request).execute()
+    val body = response.body.string()
+    return parseRelease(body, currentVersion) ?: AppUpdateInfo(
+      latestVersion = currentVersion, hasUpdate = false,
+      releaseName = null, releaseUrl = null, releaseNotes = null,
+      isCritical = false, error = "解析失败",
+    )
+  }
+
+  /** 解析 GitHub API 返回的 release 信息 */
+  private fun parseRelease(body: String, currentVersion: String): AppUpdateInfo? {
+    return try {
+      val release = json.decodeFromString<GitHubRelease>(body)
       val tagName = release.tag_name.trim()
       val latestName = tagName.removePrefix("v").removePrefix("V")
       val hasUpdate = compareVersions(latestName, currentVersion) > 0
@@ -71,12 +112,8 @@ object AppUpdateCheck {
         releaseNotes = release.body,
         isCritical = isCriticalRelease(release.body),
       )
-    } catch (e: Exception) {
-      AppUpdateInfo(
-        latestVersion = currentVersion, hasUpdate = false,
-        releaseName = null, releaseUrl = null, releaseNotes = null,
-        isCritical = false, error = e.message?.take(80) ?: "检查失败",
-      )
+    } catch (_: Exception) {
+      null
     }
   }
 
