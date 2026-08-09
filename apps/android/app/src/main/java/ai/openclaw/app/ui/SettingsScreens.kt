@@ -2228,9 +2228,10 @@ private fun AppUpdateDialog(
   val uriHandler = LocalUriHandler.current
   AlertDialog(
     onDismissRequest = onDismiss,
+    containerColor = ClawTheme.colors.surface,
     icon = {
       Icon(
-        imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
+        imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Check,
         contentDescription = null,
         tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
       )
@@ -2253,7 +2254,7 @@ private fun AppUpdateDialog(
     },
     confirmButton = {
       if (info.hasUpdate) {
-        Button(onClick = {
+        TextButton(onClick = {
           onDismiss()
           uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
         }) {
@@ -2286,9 +2287,10 @@ private fun AppUpdateFailedDialog(
   val uriHandler = LocalUriHandler.current
   AlertDialog(
     onDismissRequest = onDismiss,
+    containerColor = ClawTheme.colors.surface,
     icon = {
       Icon(
-        imageVector = Icons.Default.Cloud,
+        imageVector = Icons.Default.Info,
         contentDescription = null,
         tint = ClawTheme.colors.danger,
       )
@@ -2296,13 +2298,13 @@ private fun AppUpdateFailedDialog(
     title = { Text("检查更新失败") },
     text = {
       Column {
-        Text("当前版本 ")
+        Text("当前版本 $currentVersion")
         Spacer(modifier = Modifier.height(8.dp))
         Text("无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。", style = ClawTheme.type.caption)
       }
     },
     confirmButton = {
-      Button(onClick = {
+      TextButton(onClick = {
         onDismiss()
         uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
       }) {
