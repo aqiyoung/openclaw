@@ -55,7 +55,7 @@ object AppUpdateCheck {
         .build()
 
       val response = client.newCall(request).execute()
-      val body = response.body!!.string() ?: return noUpdate(currentVersion)
+      val body = response.body.string()
       val release = json.decodeFromString<GitHubRelease>(body)
 
       val tagName = release.tag_name.trim()
