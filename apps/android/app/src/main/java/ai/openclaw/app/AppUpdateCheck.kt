@@ -26,6 +26,7 @@ data class AppUpdateInfo(
   val releaseUrl: String?,
   val releaseNotes: String?,
   val isCritical: Boolean,
+  val error: String? = null,
 )
 
 object AppUpdateCheck {
@@ -70,8 +71,12 @@ object AppUpdateCheck {
         releaseNotes = release.body,
         isCritical = isCriticalRelease(release.body),
       )
-    } catch (_: Exception) {
-      noUpdate(currentVersion)
+    } catch (e: Exception) {
+      AppUpdateInfo(
+        latestVersion = currentVersion, hasUpdate = false,
+        releaseName = null, releaseUrl = null, releaseNotes = null,
+        isCritical = false, error = e.message?.take(80) ?: "检查失败",
+      )
     }
   }
 

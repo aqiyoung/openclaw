@@ -2171,11 +2171,19 @@ private fun AboutSettingsScreen(
       )
     }
     if (showUpdateDialog && updateInfo != null) {
-      AppUpdateDialog(
-        info = updateInfo!!,
-        currentVersion = BuildConfig.VERSION_NAME,
-        onDismiss = { showUpdateDialog = false },
-      )
+      if (updateInfo!!.error != null) {
+        AppUpdateFailedDialog(
+          errorMessage = updateInfo!!.error ?: ,
+          currentVersion = BuildConfig.VERSION_NAME,
+          onDismiss = { showUpdateDialog = false },
+        )
+      } else {
+        AppUpdateDialog(
+          info = updateInfo!!,
+          currentVersion = BuildConfig.VERSION_NAME,
+          onDismiss = { showUpdateDialog = false },
+        )
+      }
     }
     SettingsMetricPanel(
       rows =
@@ -2264,6 +2272,46 @@ private fun AppUpdateDialog(
         TextButton(onClick = onDismiss) {
           Text("稍后")
         }
+      }
+    },
+  )
+}
+
+@Composable
+private fun AppUpdateFailedDialog(
+  errorMessage: String,
+  currentVersion: String,
+  onDismiss: () -> Unit,
+) {
+  val uriHandler = LocalUriHandler.current
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    icon = {
+      Icon(
+        imageVector = Icons.Default.Cloud,
+        contentDescription = null,
+        tint = ClawTheme.colors.danger,
+      )
+    },
+    title = { Text("检查更新失败") },
+    text = {
+      Column {
+        Text("当前版本 ")
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。", style = ClawTheme.type.caption)
+      }
+    },
+    confirmButton = {
+      Button(onClick = {
+        onDismiss()
+        uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
+      }) {
+        Text("手动打开")
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) {
+        Text("关闭")
       }
     },
   )
