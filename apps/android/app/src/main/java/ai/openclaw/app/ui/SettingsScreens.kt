@@ -3,6 +3,8 @@ package ai.openclaw.app.ui
 import ai.openclaw.app.AndroidLicenseNotice
 import ai.openclaw.app.AppLanguage
 import ai.openclaw.app.AppearanceThemeMode
+import ai.openclaw.app.AppUpdateCheck
+import ai.openclaw.app.AppUpdateInfo
 import ai.openclaw.app.BuildConfig
 import ai.openclaw.app.CronEditorDraftState
 import ai.openclaw.app.GatewayAgentSummary
@@ -67,6 +69,7 @@ import ai.openclaw.app.uppercaseFirstGraphemeOrNull
 import ai.openclaw.app.voice.AudioInputDeviceOption
 import ai.openclaw.app.voice.VoiceWakePreferences
 import ai.openclaw.app.voice.audioInputDeviceOptionFromKey
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -102,6 +105,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -141,6 +145,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.FilledButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -149,6 +154,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -161,6 +167,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -2113,6 +2120,10 @@ private fun AboutSettingsScreen(
   val latestVersion = updateAvailable?.latestVersion?.takeIf { it.isNotBlank() }
   val currentGatewayVersion = updateAvailable?.currentVersion?.takeIf { it.isNotBlank() } ?: gatewayVersion
   val appLocale = LocalConfiguration.current.locales[0]
+  val scope = rememberCoroutineScope()
+  var checkingUpdate by remember { mutableStateOf(false) }
+  var updateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
+  var showUpdateDialog by remember { mutableStateOf(false) }
 
   SettingsDetailFrame(title = nativeString("About"), subtitle = nativeString("OpenClaw for Android."), icon = Icons.Default.Info, onBack = onBack) {
     AboutHeroPanel()
@@ -2123,6 +2134,49 @@ private fun AboutSettingsScreen(
       buildTimestamp = BuildConfig.BUILD_TIMESTAMP,
       locale = appLocale,
     )
+    ClawPanel {
+      ClawListItem(
+        title = nativeString("Check for Updates"),
+        subtitle = when {
+          checkingUpdate -> nativeString("Checking latest version…")
+          updateInfo?.hasUpdate == true -> "v${updateInfo!!.latestVersion} available"
+          updateInfo != null -> nativeString("Up to date")
+          else -> nativeString("Check if a new version is available")
+        },
+        onClick = if (checkingUpdate) null else {
+          {
+            checkingUpdate = true
+            scope.launch {
+              val info = AppUpdateCheck.checkLatest(BuildConfig.VERSION_NAME)
+              updateInfo = info
+              checkingUpdate = false
+              showUpdateDialog = true
+            }
+          }
+        },
+        trailing = {
+          if (checkingUpdate) {
+            androidx.compose.material3.CircularProgressIndicator(
+              modifier = Modifier.size(18.dp),
+              strokeWidth = 2.dp,
+            )
+          } else {
+            Icon(
+              imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+              contentDescription = null,
+              tint = ClawTheme.colors.textSubtle,
+            )
+          }
+        },
+      )
+    }
+    if (showUpdateDialog && updateInfo != null) {
+      AppUpdateDialog(
+        info = updateInfo!!,
+        currentVersion = BuildConfig.VERSION_NAME,
+        onDismiss = { showUpdateDialog = false },
+      )
+    }
     SettingsMetricPanel(
       rows =
         listOf(
@@ -2155,6 +2209,64 @@ private fun AboutSettingsScreen(
       textAlign = TextAlign.Center,
     )
   }
+}
+
+@Composable
+private fun AppUpdateDialog(
+  info: AppUpdateInfo,
+  currentVersion: String,
+  onDismiss: () -> Unit,
+) {
+  val uriHandler = LocalUriHandler.current
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    icon = {
+      Icon(
+        imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
+        contentDescription = null,
+        tint = if (info.isCritical) ClawTheme.colors.error else ClawTheme.colors.primary,
+      )
+    },
+    title = {
+      Text(text = if (info.hasUpdate) nativeString("Update Available") else nativeString("Up to date"))
+    },
+    text = {
+      if (info.hasUpdate) {
+        Column {
+          Text(text = "$currentVersion -> ${info.latestVersion}")
+          if (!info.releaseNotes.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(text = info.releaseNotes, style = ClawTheme.type.caption)
+          }
+        }
+      } else {
+        Text(text = nativeString("You're running the latest version."))
+      }
+    },
+    confirmButton = {
+      if (info.hasUpdate) {
+        FilledButton(onClick = {
+          onDismiss()
+          uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
+        }) {
+          Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.size(4.dp))
+          Text(nativeString("Download"))
+        }
+      } else {
+        TextButton(onClick = onDismiss) {
+          Text(nativeString("OK"))
+        }
+      }
+    },
+    dismissButton = if (info.hasUpdate) {
+      {
+        TextButton(onClick = onDismiss) {
+          Text(nativeString("Later"))
+        }
+      }
+    } else null,
+  )
 }
 
 @Composable
