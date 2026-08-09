@@ -145,7 +145,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.FilledButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -2224,7 +2224,7 @@ private fun AppUpdateDialog(
       Icon(
         imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
         contentDescription = null,
-        tint = if (info.isCritical) ClawTheme.colors.error else ClawTheme.colors.primary,
+        tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
       )
     },
     title = {
@@ -2245,7 +2245,7 @@ private fun AppUpdateDialog(
     },
     confirmButton = {
       if (info.hasUpdate) {
-        FilledButton(onClick = {
+        Button(onClick = {
           onDismiss()
           uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
         }) {
@@ -2259,13 +2259,13 @@ private fun AppUpdateDialog(
         }
       }
     },
-    dismissButton = if (info.hasUpdate) {
-      {
+    dismissButton = {
+      if (info.hasUpdate) {
         TextButton(onClick = onDismiss) {
           Text(nativeString("Later"))
         }
       }
-    } else null,
+    },
   )
 }
 
