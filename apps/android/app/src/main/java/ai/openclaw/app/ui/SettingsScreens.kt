@@ -2136,12 +2136,12 @@ private fun AboutSettingsScreen(
     )
     ClawPanel {
       ClawListItem(
-        title = "检查更新",
+        title = nativeString("Check for updates"),
         subtitle = when {
-          checkingUpdate -> "正在检查新版本…"
+          checkingUpdate -> nativeString("Checking for updates…")
           updateInfo?.hasUpdate == true -> "v${updateInfo!!.latestVersion} available"
           updateInfo != null -> nativeString("Up to date")
-          else -> "检查是否有新版本"
+          else -> nativeString("Check for a new version")
         },
         onClick = if (checkingUpdate) null else {
           {
@@ -2237,7 +2237,7 @@ private fun AppUpdateDialog(
       )
     },
     title = {
-      Text(text = if (info.hasUpdate) "发现新版本" else nativeString("Up to date"))
+      Text(text = if (info.hasUpdate) nativeString("New version found") else nativeString("Up to date"))
     },
     text = {
       if (info.hasUpdate) {
@@ -2249,7 +2249,7 @@ private fun AppUpdateDialog(
           }
         }
       } else {
-        Text(text = "当前已是最新版本")
+        Text(text = nativeString("You're up to date"))
       }
     },
     confirmButton = {
@@ -2260,7 +2260,7 @@ private fun AppUpdateDialog(
         }) {
           Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
           Spacer(modifier = Modifier.size(4.dp))
-          Text("前往下载")
+          Text(nativeString("Go to download"))
         }
       } else {
         TextButton(onClick = onDismiss) {
@@ -2271,7 +2271,7 @@ private fun AppUpdateDialog(
     dismissButton = {
       if (info.hasUpdate) {
         TextButton(onClick = onDismiss) {
-          Text("稍后")
+          Text(nativeString("Later"))
         }
       }
     },
@@ -2295,12 +2295,12 @@ private fun AppUpdateFailedDialog(
         tint = ClawTheme.colors.danger,
       )
     },
-    title = { Text("检查更新失败") },
+    title = { Text(nativeString("Update check failed")) },
     text = {
       Column {
-        Text("当前版本 $currentVersion")
+        Text(nativeString("Current version", currentVersion))
         Spacer(modifier = Modifier.height(8.dp))
-        Text("无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。", style = ClawTheme.type.caption)
+        Text(nativeString("Unable to reach the update service. Check your network or open the GitHub releases page manually."), style = ClawTheme.type.caption)
         if (errorMessage.isNotBlank()) {
           Spacer(modifier = Modifier.height(8.dp))
           Text(errorMessage, style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
@@ -2312,12 +2312,12 @@ private fun AppUpdateFailedDialog(
         onDismiss()
         uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
       }) {
-        Text("手动打开")
+        Text(nativeString("Open manually"))
       }
     },
     dismissButton = {
       TextButton(onClick = onDismiss) {
-        Text("关闭")
+        Text(nativeString("Close"))
       }
     },
   )

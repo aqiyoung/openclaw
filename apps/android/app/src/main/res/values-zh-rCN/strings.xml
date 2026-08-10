@@ -1645,4 +1645,16 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw 将此手机变成简洁的移动命令界面，用于管理会话、语音、提供商和 Gateway。"</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"最新优先"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"下个周期"</string>
+    <string name="native_be66c90f614c0d3b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"检查更新"</string>
+    <string name="native_5c48dfa6c8fa5808" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在检查新版本…"</string>
+    <string name="native_fdc2b1dd653355c8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"检查是否有新版本"</string>
+    <string name="native_252bd4493c03edb5" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"发现新版本"</string>
+    <string name="native_fd8fa601a22b5d5c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"当前已是最新版本"</string>
+    <string name="native_882abb636c4f1d5d" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"前往下载"</string>
+    <string name="native_0bf5643f7c361582" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"稍后"</string>
+    <string name="native_c41865ebca4d5633" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"检查更新失败"</string>
+    <string name="native_d6ece9e592b6130b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。"</string>
+    <string name="native_61555ef4d82a7012" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"手动打开"</string>
+    <string name="native_b43c1cd2451fc7df" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"关闭"</string>
+    <string name="native_7367789b1be7b018" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"当前版本"</string>
 </resources>

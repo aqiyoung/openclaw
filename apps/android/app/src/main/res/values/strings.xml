@@ -1645,4 +1645,16 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw turns this phone into a clean mobile command surface for threads, voice, providers, and Gateway."</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Newest first"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Next Cycle"</string>
+    <string name="native_be66c90f614c0d3b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Check for updates"</string>
+    <string name="native_5c48dfa6c8fa5808" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Checking for updates…"</string>
+    <string name="native_fdc2b1dd653355c8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Check for a new version"</string>
+    <string name="native_252bd4493c03edb5" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"New version found"</string>
+    <string name="native_fd8fa601a22b5d5c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"You're up to date"</string>
+    <string name="native_882abb636c4f1d5d" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Go to download"</string>
+    <string name="native_0bf5643f7c361582" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Later"</string>
+    <string name="native_c41865ebca4d5633" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Update check failed"</string>
+    <string name="native_d6ece9e592b6130b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Unable to reach the update service. Check your network or open the GitHub releases page manually."</string>
+    <string name="native_61555ef4d82a7012" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Open manually"</string>
+    <string name="native_b43c1cd2451fc7df" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Close"</string>
+    <string name="native_7367789b1be7b018" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Current version"</string>
 </resources>
