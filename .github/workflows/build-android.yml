@@ -71,12 +71,12 @@ jobs:
           OPENCLAW_BUILD_TIMESTAMP: ${{ steps.timestamp.outputs.value }}
         run: |
           if [[ "${{ steps.keystore.outputs.has_signing }}" == "true" ]]; then
-            node scripts/run-android-gradle.mjs \
+            node scripts/run-android-gradle.mts \
               -PopenclawBuildCommit="$OPENCLAW_BUILD_COMMIT" \
               -PopenclawBuildTimestamp="$OPENCLAW_BUILD_TIMESTAMP" \
               :app:assembleThirdPartyRelease --no-daemon --stacktrace
           else
-            node scripts/run-android-gradle.mjs \
+            node scripts/run-android-gradle.mts \
               :app:assembleThirdPartyDebug --no-daemon --stacktrace
           fi
       - name: Locate and verify APK
