@@ -1,4 +1,5 @@
 import { asOptionalRecord } from "@openclaw/normalization-core/record-coerce";
+import { normalizeLowercaseStringOrEmpty as normalizeErrorSignal } from "@openclaw/normalization-core/string-coerce";
 import { isContextOverflowError } from "../agents/embedded-agent-helpers/context-overflow.js";
 import { STREAM_ERROR_FALLBACK_TEXT } from "../agents/stream-message-shared.js";
 import {
@@ -87,10 +88,6 @@ type ChatDisplayProjectionResult = {
 const GATEWAY_ASSISTANT_ERROR_FALLBACK_TEXT = "Agent 运行失败，未产生回复。";
 const GATEWAY_ASSISTANT_CONTEXT_OVERFLOW_FALLBACK_TEXT =
   "上下文超长：此对话内容太多，模型无法处理。请尝试 /compact，或使用 /new 开启新会话，或缩小输出限制后重试。";
-
-function normalizeErrorSignal(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
 
 function isContextOverflowErrorSignal(value: unknown): boolean {
   if (typeof value !== "string") {
