@@ -1645,6 +1645,7 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw turns this phone into a clean mobile command surface for threads, voice, providers, and Gateway."</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Newest first"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Next Cycle"</string>
+    <string name="native_dd8300c5a661df48" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Agent run failed before producing a reply."</string>
     <string name="native_be66c90f614c0d3b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Check for updates"</string>
     <string name="native_5c48dfa6c8fa5808" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Checking for updates…"</string>
     <string name="native_fdc2b1dd653355c8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Check for a new version"</string>

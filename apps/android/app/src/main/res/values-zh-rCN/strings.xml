@@ -1645,6 +1645,7 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw 将此手机变成简洁的移动命令界面，用于管理会话、语音、提供商和 Gateway。"</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"最新优先"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"下个周期"</string>
+    <string name="native_dd8300c5a661df48" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Agent 运行失败，未产生回复。"</string>
     <string name="native_be66c90f614c0d3b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"检查更新"</string>
     <string name="native_5c48dfa6c8fa5808" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在检查新版本…"</string>
     <string name="native_fdc2b1dd653355c8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"检查是否有新版本"</string>

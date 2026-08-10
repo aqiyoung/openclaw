@@ -1630,6 +1630,7 @@ internal val nativeStringResourceIds: Map<String, Int> =
     "·" to R.string.native_a137f17a19a09cbe,
     "· \$phrase" to R.string.native_13aa9aaad10f0e15,
     "← Back" to R.string.native_aceb696a04c19971,
+    "Agent run failed before producing a reply." to R.string.native_dd8300c5a661df48,
     "✦" to R.string.native_3191b52693ec28b4,
     "📎 \${attachment.fileName}" to R.string.native_d62dcf758efe63e0,
     "Check for updates" to R.string.native_be66c90f614c0d3b,

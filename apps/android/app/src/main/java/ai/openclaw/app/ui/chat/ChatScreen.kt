@@ -2949,6 +2949,7 @@ internal fun userFacingChatError(
     lower.contains("not connected") && gatewayConnected -> nativeString("Chat is still checking Gateway health.")
     lower.contains("not connected") -> nativeString("Gateway is offline. Fix the connection below or copy diagnostics.")
     lower.contains("unauthorized") || lower.contains("auth") -> nativeString("Gateway authentication needs attention.")
+    lower.contains("agent run failed") || lower.contains("failed before producing") || lower.contains("did not produce") -> nativeString("Agent run failed before producing a reply.")
     else -> error
   }
 }
