@@ -1,10 +1,12 @@
 {
   "tag": "v2026.8.14.0",
   "versionName": "2026.8.14",
-  "versionCode": 2026081401,
+  "versionCode": 202681400,
   "releaseName": "v2026.8.14.0",
   "apk": {
-    "arm64-v8a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.8.14.0/openclaw-2026.8.14-thirdParty-release.apk"
+    "arm64-v8a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.8.14.0/openclaw-2026.8.14-thirdParty-release-arm64-v8a.apk",
+    "armeabi-v7a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.8.14.0/openclaw-2026.8.14-thirdParty-release-armeabi-v7a.apk",
+    "x86_64": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.8.14.0/openclaw-2026.8.14-thirdParty-release-x86_64.apk"
   },
   "releaseUrl": "https://github.com/aqiyoung/openclaw/releases/tag/v2026.8.14.0",
   "critical": false,
