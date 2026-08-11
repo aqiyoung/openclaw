@@ -1,5 +1,7 @@
 package ai.openclaw.app
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -16,6 +18,10 @@ import java.util.concurrent.TimeUnit
  *
  * 任一层 403/超时/拿到 HTML 都静默跳过试下一层, 不会因代理偶尔抽风而整体失败.
  * 全部失败才返回 error (UI 显示"检查更新失败"), 并把每层失败原因带回便于真机诊断.
+ *
+ * ⚠️ 所有网络调用必须在 IO 线程执行 (Dispatchers.IO), 否则 Android 抛 NetworkOnMainThreadException.
+ *   Compose 的 rememberCoroutineScope().launch{} 默认跑在 Main 线程,
+ *   所以 checkLatest 内部用 withContext(Dispatchers.IO) 包裹全部 HTTP 操作.
  */
 @Serializable
 data class GitHubRelease(
@@ -74,8 +80,11 @@ object AppUpdateCheck {
    * 检查是否有新版本。
    * 可达路径: GitHub API(gh-proxy→直连) → jsDelivr @meta(gh-proxy→直连, cache-buster)。
    * 任一层成功即返回; 全部失败返回 error 并把每层失败原因带回 (便于真机诊断)。
+   *
+   * ⚠️ 全部网络操作在 Dispatchers.IO 执行, 避免 NetworkOnMainThreadException
+   *     (Compose 默认 scope.launch 跑在 Main 线程, OkHttp 同步 execute() 必须切线程).
    */
-  suspend fun checkLatest(currentVersion: String): AppUpdateInfo {
+  suspend fun checkLatest(currentVersion: String): AppUpdateInfo = withContext(Dispatchers.IO) {
     val failures = mutableListOf<String>()
 
     // ── 1) GitHub API: 代理链 (gh-proxy 优先, 直连兜底) ──
@@ -95,7 +104,7 @@ object AppUpdateCheck {
           resp.body.string()
         } ?: continue
         val info = parseRelease(body, currentVersion)
-        if (info != null) return info
+        if (info != null) return@withContext info
         failures.add("API $url → 解析失败 (无 tag_name / 非法 JSON)")
       } catch (e: Exception) {
         failures.add("API $url → ${e.message ?: e.javaClass.simpleName}")
@@ -120,7 +129,7 @@ object AppUpdateCheck {
           resp.body.string()
         } ?: continue
         val info = parseMeta(body, currentVersion)
-        if (info != null) return info
+        if (info != null) return@withContext info
         failures.add("META $url → 解析失败 (无 tag / 非法 JSON)")
       } catch (e: Exception) {
         failures.add("META $url → ${e.message ?: e.javaClass.simpleName}")
@@ -129,7 +138,7 @@ object AppUpdateCheck {
 
     // 全部失败: 把每层失败原因带出来, 便于真机诊断 (对齐 sanyelive failures 列表).
     val detail = if (failures.isNotEmpty()) "\n" + failures.joinToString("\n") else ""
-    return AppUpdateInfo(
+    AppUpdateInfo(
       latestVersion = currentVersion, hasUpdate = false,
       releaseName = null, releaseUrl = null, releaseNotes = null,
       isCritical = false,
