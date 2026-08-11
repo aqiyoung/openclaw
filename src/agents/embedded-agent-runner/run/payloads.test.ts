@@ -596,7 +596,7 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
     });
   });
 
-  it("surfaces exec tool errors for cron sessions even when verbose mode is off", () => {
+  it("keeps timed-out cron exec failures compact when verbose mode is off", () => {
     const payloads = buildPayloads({
       lastToolError: {
         toolName: "exec",
@@ -610,12 +610,12 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
 
     expectSingleToolErrorPayload(payloads, {
       title: "Exec",
-      detail:
+      absentDetail:
         "命令超时，已运行 1800 秒。 命令被终止，但外部副作用可能已经执行完毕。请先验证结果状态再重试。不要自动重新运行非幂等命令。仅在确认命令安全时才使用更高的超时时间。",
     });
   });
 
-  it("surfaces timed-out exec tool errors for cron-triggered custom session keys", () => {
+  it("keeps timed-out cron-trigger exec failures compact", () => {
     const payloads = buildPayloads({
       lastToolError: {
         toolName: "exec",
@@ -629,11 +629,11 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
 
     expectSingleToolErrorPayload(payloads, {
       title: "Exec",
-      detail: "命令超时，已运行 1800 秒。",
+      absentDetail: "命令超时，已运行 1800 秒。",
     });
   });
 
-  it("surfaces heartbeat exec tool output details when the task run fails", () => {
+  it("keeps heartbeat exec commands and paths private without full verbosity", () => {
     const payloads = buildPayloads({
       lastToolError: {
         toolName: "exec",
@@ -646,8 +646,8 @@ describe("buildEmbeddedRunPayloads tool-error warnings", () => {
     });
 
     expectSingleToolErrorPayload(payloads, {
-      title: "show last 20 lines",
-      detail: "No such file or directory",
+      title: "Exec",
+      absentDetail: "/home/user/.openclaw/workspace/memory/2026-06-04.md",
     });
   });
 

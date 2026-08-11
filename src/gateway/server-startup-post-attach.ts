@@ -27,7 +27,6 @@ import {
   projectUpdateAvailable,
   type GatewayUpdateAvailableEventPayload,
 } from "./events.js";
-import { STARTUP_UNAVAILABLE_GATEWAY_METHODS } from "./methods/core-descriptors.js";
 import type { GatewayBroadcastToConnIdsFn } from "./server-broadcast-types.js";
 import type { GatewayControlUiRootLifecycle } from "./server-control-ui-root.js";
 import type { GatewayRecoveryRuntime } from "./server-instance-runtime.types.js";
@@ -54,11 +53,11 @@ const SKIP_STARTUP_MODEL_PREWARM_ENV = "OPENCLAW_SKIP_STARTUP_MODEL_PREWARM";
 type Awaitable<T> = T | Promise<T>;
 
 const loadMainSessionRestartRecoveryModule = createLazyRuntimeModule(
-  () => import("../agents/main-session-restart-recovery.js"),
+  () => import("../agents/main-session-recovery/main-session-restart-recovery.js"),
 );
 // Startup only needs orphan marking; keep resume and delivery runtime out of the pre-channel path.
 const loadMainSessionRestartRecoveryMarkingModule = createLazyRuntimeModule(
-  () => import("../agents/main-session-restart-recovery-marking.js"),
+  () => import("../agents/main-session-recovery/main-session-restart-recovery-marking.js"),
 );
 
 const loadAgentDefaultsModule = createLazyRuntimeModule(() => import("../agents/defaults.js"));
@@ -1076,7 +1075,7 @@ export async function startGatewayPostAttachRuntime(
       error: (msg: string) => void;
     };
     logChannels: { info: (msg: string) => void; error: (msg: string) => void };
-    unavailableGatewayMethods: Set<string>;
+    unlockStartupMethods: () => void;
     loadStartupPlugins?: () => Awaitable<{
       pluginRegistry: PluginRegistry;
       gatewayMethods: string[];
@@ -1310,16 +1309,15 @@ export async function startGatewayPostAttachRuntime(
           params.log.warn(`main-session restart recovery failed to schedule: ${String(err)}`);
         }
         try {
-          const { scheduleSubagentRegistrySweep } = await import("../agents/subagent-registry.js");
+          const { scheduleSubagentRegistrySweep } =
+            await import("../agents/subagents/registry/subagent-registry.js");
           scheduleSubagentRegistrySweep();
         } catch (err) {
           params.log.warn(`subagent restart recovery failed to schedule: ${String(err)}`);
         }
         // Capture the orphan-recovery cutoff before new startup-gated agent
         // work can create sessions that the recovery scan must leave alone.
-        for (const method of STARTUP_UNAVAILABLE_GATEWAY_METHODS) {
-          params.unavailableGatewayMethods.delete(method);
-        }
+        params.unlockStartupMethods();
         if (!pluginServicesReported) {
           reportPluginServices(result.pluginServices);
         }
@@ -1458,5 +1456,4 @@ export const testing = {
   shouldSkipStartupModelPrewarm,
   stopPostReadySidecarsAfterCloseStarted,
 };
-export { testing as __testing };
 /* oxlint-disable max-lines -- TODO: split this grandfathered oversized file. */
