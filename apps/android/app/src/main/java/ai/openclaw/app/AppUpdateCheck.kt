@@ -9,13 +9,13 @@ import java.util.concurrent.TimeUnit
 /**
  * OpenClaw Android 更新检查 —— 与 sanyelive / FeiNiuMusic 统一的引擎.
  *
- * 三层可达 (对齐三仓共用的 app_update_core.dart):
+ * 可达路径 (对齐三仓共用的 app_update_core.dart):
  *   1) GitHub API 经 gh-proxy.com 代理 (国内/移动宽带直连 api.github.com 被墙, 代理是唯一可达路径)
  *   2) GitHub API 直连 (兜底, 覆盖 VPN/海外)
- *   3) jsDelivr @meta 分支 version.json (最后防线, 国内 CDN, 无需认证)
+ *   3) jsDelivr @meta 分支 version.json (最后防线, 国内 CDN, 经 gh-proxy 包裹 + cache-buster)
  *
  * 任一层 403/超时/拿到 HTML 都静默跳过试下一层, 不会因代理偶尔抽风而整体失败.
- * 全部失败才返回 error (UI 显示"检查更新失败").
+ * 全部失败才返回 error (UI 显示"检查更新失败"), 并把每层失败原因带回便于真机诊断.
  */
 @Serializable
 data class GitHubRelease(
@@ -71,13 +71,13 @@ object AppUpdateCheck {
   private val json = Json { ignoreUnknownKeys = true }
 
   /**
-   * 检查是否有新版本。三层依次尝试：
-   *   1) GitHub API 经 gh-proxy 代理
-   *   2) GitHub API 直连
-   *   3) jsDelivr @meta 兜底
-   * 全部失败才返回 error (UI 显示"检查更新失败")。
+   * 检查是否有新版本。
+   * 可达路径: GitHub API(gh-proxy→直连) → jsDelivr @meta(gh-proxy→直连, cache-buster)。
+   * 任一层成功即返回; 全部失败返回 error 并把每层失败原因带回 (便于真机诊断)。
    */
   suspend fun checkLatest(currentVersion: String): AppUpdateInfo {
+    val failures = mutableListOf<String>()
+
     // ── 1) GitHub API: 代理链 (gh-proxy 优先, 直连兜底) ──
     for (prefix in PROXY_PREFIXES) {
       val url = if (prefix.isEmpty()) LATEST_RELEASE_API else "$prefix$LATEST_RELEASE_API"
@@ -88,44 +88,52 @@ object AppUpdateCheck {
           .header("User-Agent", "OpenClaw-Android")
           .build()
         val body = client.newCall(request).execute().use { resp ->
-          if (!resp.isSuccessful) return@use null
+          if (!resp.isSuccessful) {
+            failures.add("API $url → HTTP ${resp.code}")
+            return@use null
+          }
           resp.body.string()
         } ?: continue
         val info = parseRelease(body, currentVersion)
         if (info != null) return info
-      } catch (_: Exception) {
-        // 静默跳过, 试下一条
+        failures.add("API $url → 解析失败 (无 tag_name / 非法 JSON)")
+      } catch (e: Exception) {
+        failures.add("API $url → ${e.message ?: e.javaClass.simpleName}")
       }
     }
 
-    // ── 2) jsDelivr @meta 兜底 (国内 CDN) ──
-    try {
-      val request = Request.Builder()
-        .url(META_URL)
-        .header("User-Agent", "OpenClaw-Android")
-        .header("Accept", "application/json")
-        .build()
-      val body = client.newCall(request).execute().use { resp ->
-        if (!resp.isSuccessful) return@use null
-        resp.body.string()
-      } ?: return AppUpdateInfo(
-        latestVersion = currentVersion, hasUpdate = false,
-        releaseName = null, releaseUrl = null, releaseNotes = null,
-        isCritical = false,
-        error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。",
-      )
-      val info = parseMeta(body, currentVersion)
-      if (info != null) return info
-    } catch (_: Exception) {
-      // 静默跳过
+    // ── 2) jsDelivr @meta 兜底 (国内 CDN, 经 gh-proxy 包裹 + cache-buster, 对齐 sanyelive) ──
+    val cacheBuster = System.currentTimeMillis()
+    for (prefix in PROXY_PREFIXES) {
+      val url = "${prefix}${META_URL}?_t=$cacheBuster"
+      try {
+        val request = Request.Builder()
+          .url(url)
+          .header("User-Agent", "OpenClaw-Android")
+          .header("Accept", "application/json")
+          .build()
+        val body = client.newCall(request).execute().use { resp ->
+          if (!resp.isSuccessful) {
+            failures.add("META $url → HTTP ${resp.code}")
+            return@use null
+          }
+          resp.body.string()
+        } ?: continue
+        val info = parseMeta(body, currentVersion)
+        if (info != null) return info
+        failures.add("META $url → 解析失败 (无 tag / 非法 JSON)")
+      } catch (e: Exception) {
+        failures.add("META $url → ${e.message ?: e.javaClass.simpleName}")
+      }
     }
 
-    // 全部失败
+    // 全部失败: 把每层失败原因带出来, 便于真机诊断 (对齐 sanyelive failures 列表).
+    val detail = if (failures.isNotEmpty()) "\n" + failures.joinToString("\n") else ""
     return AppUpdateInfo(
       latestVersion = currentVersion, hasUpdate = false,
       releaseName = null, releaseUrl = null, releaseNotes = null,
       isCritical = false,
-      error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。",
+      error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。${detail}",
     )
   }
 
