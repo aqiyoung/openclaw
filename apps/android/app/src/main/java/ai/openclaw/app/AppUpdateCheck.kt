@@ -7,36 +7,34 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 /**
- * 检查 OpenClaw Android 是否有新版本可更新。
+ * OpenClaw Android 更新检查 —— 与 sanyelive / FeiNiuMusic 统一的引擎.
  *
- * 采用双轨检查策略（2026-08-11 修复）:
+ * 三层可达 (对齐三仓共用的 app_update_core.dart):
+ *   1) GitHub API 经 gh-proxy.com 代理 (国内/移动宽带直连 api.github.com 被墙, 代理是唯一可达路径)
+ *   2) GitHub API 直连 (兜底, 覆盖 VPN/海外)
+ *   3) jsDelivr @meta 分支 version.json (最后防线, 国内 CDN, 无需认证)
  *
- * 1. **主路径 — jsDelivr CDN** (静态文件, 国内节点, 无速率限制):
- *    https://cdn.jsdelivr.net/gh/aqiyoung/openclaw@main/apps/android/version.json
- *    返回 { "version": "2026.8.12", "versionCode": 2026081201 }
- *
- * 2. **兜底 — GitHub Releases API** (经代理链尝试):
- *    依次尝试各代理前缀 + 直连。每条都校验响应 (非200/HTML/解析失败静默跳过)。
- *    全部失败才返回 error。
- *
- * 为什么不用纯 GitHub API:
- *   - api.github.com 在国内被墙或严重限速 (60次/h 未认证)
- *   - 常见 GitHub 代理 (gh-proxy.com / ghfast.top 等) 频繁失效/关停
- *   - jsDelivr 是 npm/GitHub 官方 CDN, 稳定性远高于个人代理服务
+ * 任一层 403/超时/拿到 HTML 都静默跳过试下一层, 不会因代理偶尔抽风而整体失败.
+ * 全部失败才返回 error (UI 显示"检查更新失败").
  */
-
-@Serializable
-data class VersionJson(
-  val version: String = "",
-  val versionCode: Int = 0,
-)
-
 @Serializable
 data class GitHubRelease(
   val tag_name: String = "",
   val name: String? = null,
   val body: String? = null,
   val html_url: String? = null,
+)
+
+@Serializable
+data class MetaVersion(
+  val tag: String = "",
+  val versionName: String? = null,
+  val versionCode: Int = 0,
+  val releaseName: String? = null,
+  val apk: Map<String, String>? = null,
+  val releaseUrl: String? = null,
+  val critical: Boolean = false,
+  val notes: String? = null,
 )
 
 data class AppUpdateInfo(
@@ -54,83 +52,34 @@ object AppUpdateCheck {
   /** fork 的 Release 页面 */
   const val RELEASE_PAGE_URL = "https://github.com/aqiyoung/openclaw/releases"
 
-  /** 主路径: jsDelivr CDN 托管的 version.json */
-  private const val JSDELIVR_VERSION_URL =
-    "https://cdn.jsdelivr.net/gh/aqiyoung/openclaw@main/apps/android/version.json"
+  /** 代理前缀链: gh-proxy.com 优先, 空串 = 直连兜底 (对齐 sanyelive app_update_core). */
+  private val PROXY_PREFIXES = listOf("https://gh-proxy.com/", "")
 
-  /** 兜底: GitHub Releases API 原始地址 */
   private const val LATEST_RELEASE_API =
     "https://api.github.com/repos/aqiyoung/openclaw/releases/latest"
 
-  /** GitHub API 代理前缀链 (按优先级排列; 当前大多已失效, 保留以备恢复) */
-  private val API_PROXY_PREFIXES = listOf(
-    "https://mirror.ghproxy.com/",
-    "https://gh-proxy.com/",
-    "", // 直连 (最后手段)
-  )
+  /** 最后防线: jsDelivr @meta 分支托管的 version.json (国内 CDN, 无需认证). */
+  private const val META_URL =
+    "https://cdn.jsdelivr.net/gh/aqiyoung/openclaw@meta/version.json"
 
   private val client = OkHttpClient.Builder()
-    .connectTimeout(12, TimeUnit.SECONDS)
-    .readTimeout(12, TimeUnit.SECONDS)
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(15, TimeUnit.SECONDS)
     .followRedirects(true)
     .build()
 
   private val json = Json { ignoreUnknownKeys = true }
 
   /**
-   * 检查是否有新版本。
-   *
-   * 先走 jsDelivr CDN (快、稳、国内可达); 失败再逐条试 GitHub API 代理链;
-   * 全部失败才返回 error。
+   * 检查是否有新版本。三层依次尝试：
+   *   1) GitHub API 经 gh-proxy 代理
+   *   2) GitHub API 直连
+   *   3) jsDelivr @meta 兜底
+   * 全部失败才返回 error (UI 显示"检查更新失败")。
    */
   suspend fun checkLatest(currentVersion: String): AppUpdateInfo {
-    // ── 路径 1: jsDelivr CDN (主) ──
-    try {
-      val info = checkViaJsDelivr(currentVersion)
-      if (info != null) return info
-    } catch (e: Exception) {
-      // jsDelivr 失败, 继续走 API 兜底
-    }
-
-    // ── 路径 2: GitHub API 代理链 (兜底) ──
-    return tryCheckViaApi(currentVersion)
-  }
-
-  // ──── 路径 1: jsDelivr CDN ────
-
-  private fun checkViaJsDelivr(currentVersion: String): AppUpdateInfo? {
-    val request = Request.Builder()
-      .url(JSDELIVR_VERSION_URL)
-      .header("User-Agent", "OpenClaw-Android")
-      .build()
-
-    val body = client.newCall(request).execute().use { resp ->
-      if (!resp.isSuccessful) return null
-      resp.body.string()
-    }
-
-    val trimmed = body.trim()
-    if (trimmed.isEmpty() || trimmed.startsWith("<")) return null
-
-    val vj = try { json.decodeFromString<VersionJson>(trimmed) } catch (_: Exception) { return null }
-    val latestName = vj.version.trim().removePrefix("v").removePrefix("V")
-    if (latestName.isEmpty()) return null
-
-    val hasUpdate = compareVersions(latestName, currentVersion) > 0
-    return AppUpdateInfo(
-      latestVersion = latestName,
-      hasUpdate = hasUpdate,
-      releaseName = "v$latestName",
-      releaseUrl = RELEASE_PAGE_URL,
-      releaseNotes = null, // jsDelivr 不提供 release notes
-      isCritical = false,
-    )
-  }
-
-  // ──── 路径 2: GitHub API 代理链 (兜底) ────
-
-  private fun tryCheckViaApi(currentVersion: String): AppUpdateInfo {
-    for (prefix in API_PROXY_PREFIXES) {
+    // ── 1) GitHub API: 代理链 (gh-proxy 优先, 直连兜底) ──
+    for (prefix in PROXY_PREFIXES) {
       val url = if (prefix.isEmpty()) LATEST_RELEASE_API else "$prefix$LATEST_RELEASE_API"
       try {
         val request = Request.Builder()
@@ -139,20 +88,44 @@ object AppUpdateCheck {
           .header("User-Agent", "OpenClaw-Android")
           .build()
         val body = client.newCall(request).execute().use { resp ->
-          if (!resp.isSuccessful) continue
+          if (!resp.isSuccessful) return@use null
           resp.body.string()
-        }
+        } ?: continue
         val info = parseRelease(body, currentVersion)
         if (info != null) return info
       } catch (_: Exception) {
         // 静默跳过, 试下一条
       }
     }
+
+    // ── 2) jsDelivr @meta 兜底 (国内 CDN) ──
+    try {
+      val request = Request.Builder()
+        .url(META_URL)
+        .header("User-Agent", "OpenClaw-Android")
+        .header("Accept", "application/json")
+        .build()
+      val body = client.newCall(request).execute().use { resp ->
+        if (!resp.isSuccessful) return@use null
+        resp.body.string()
+      } ?: return AppUpdateInfo(
+        latestVersion = currentVersion, hasUpdate = false,
+        releaseName = null, releaseUrl = null, releaseNotes = null,
+        isCritical = false,
+        error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。",
+      )
+      val info = parseMeta(body, currentVersion)
+      if (info != null) return info
+    } catch (_: Exception) {
+      // 静默跳过
+    }
+
     // 全部失败
     return AppUpdateInfo(
       latestVersion = currentVersion, hasUpdate = false,
       releaseName = null, releaseUrl = null, releaseNotes = null,
-      isCritical = false, error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。",
+      isCritical = false,
+      error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。",
     )
   }
 
@@ -163,13 +136,13 @@ object AppUpdateCheck {
     return try {
       val release = json.decodeFromString<GitHubRelease>(trimmed)
       val tagName = release.tag_name.trim()
+      if (tagName.isEmpty()) return null
       val latestName = tagName.removePrefix("v").removePrefix("V")
       val hasUpdate = compareVersions(latestName, currentVersion) > 0
-
       AppUpdateInfo(
         latestVersion = latestName,
         hasUpdate = hasUpdate,
-        releaseName = release.name,
+        releaseName = release.name ?: tagName,
         releaseUrl = release.html_url ?: RELEASE_PAGE_URL,
         releaseNotes = release.body,
         isCritical = isCriticalRelease(release.body),
@@ -179,7 +152,28 @@ object AppUpdateCheck {
     }
   }
 
-  // ──── 工具方法 ────
+  /** 解析 jsDelivr @meta version.json; HTML / 非法 JSON 返回 null */
+  private fun parseMeta(body: String, currentVersion: String): AppUpdateInfo? {
+    val trimmed = body.trim()
+    if (trimmed.isEmpty() || trimmed.startsWith("<")) return null
+    return try {
+      val meta = json.decodeFromString<MetaVersion>(trimmed)
+      val tag = meta.tag.trim()
+      if (tag.isEmpty()) return null
+      val latestName = tag.removePrefix("v").removePrefix("V")
+      val hasUpdate = compareVersions(latestName, currentVersion) > 0
+      AppUpdateInfo(
+        latestVersion = latestName,
+        hasUpdate = hasUpdate,
+        releaseName = meta.releaseName ?: tag,
+        releaseUrl = meta.releaseUrl ?: RELEASE_PAGE_URL,
+        releaseNotes = meta.notes,
+        isCritical = meta.critical,
+      )
+    } catch (_: Exception) {
+      null
+    }
+  }
 
   /** 比较版本号，a > b 返回正数 */
   private fun compareVersions(a: String, b: String): Int {
