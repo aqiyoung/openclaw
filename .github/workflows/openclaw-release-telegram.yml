@@ -1,0 +1,38 @@
+name: Release → Telegram
+
+# openclaw 的发版流水线（android-release.yml）很复杂（签名 / attestation / 审批 / immutable assets），
+# 这里不碰它，改为在 Release 正式发布（published）时单独触发一条轻量 Telegram 通知。
+# 参照 sanyelive release.yml 的 sendMessage 调用方式 + 同样的 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 机密约定。
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 推送发版通知到 Telegram
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -e
+          TAG="${{ github.event.release.tag_name }}"
+          URL="${{ github.event.release.html_url }}"
+          PROXY="https://gh-proxy.com/"
+          {
+            echo "📦 OpenClaw $TAG 已发布"
+            echo ""
+            echo "Release：${URL}"
+            echo "Android APK：前往 Release 资产（OpenClaw-Android-*）下载"
+            echo "（国内可经代理访问：${PROXY}${URL}）"
+          } > /tmp/msg.txt
+          cat /tmp/msg.txt
+          curl -f -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT:-460212872}" \
+            --data-urlencode "text=$(cat /tmp/msg.txt)" \
+            || echo "::error::Telegram 推送失败 — 检查 TELEGRAM_BOT_TOKEN 是否有效、chat_id 是否与你 /start 过该 bot"
