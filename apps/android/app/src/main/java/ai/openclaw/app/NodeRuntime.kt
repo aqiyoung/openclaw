@@ -1119,8 +1119,6 @@ class NodeRuntime private constructor(
   val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
   private val _gatewayControlPage = MutableStateFlow<GatewayControlPage?>(null)
   val gatewayControlPage: StateFlow<GatewayControlPage?> = _gatewayControlPage.asStateFlow()
-  private val _desktopObserveAvailable = MutableStateFlow(false)
-  val desktopObserveAvailable: StateFlow<Boolean> = _desktopObserveAvailable.asStateFlow()
   private val _nodeConnected = MutableStateFlow(false)
   val nodeConnected: StateFlow<Boolean> = _nodeConnected.asStateFlow()
   private val _nodeCapabilityApproval = MutableStateFlow<GatewayNodeCapabilityApproval>(GatewayNodeCapabilityApproval.Loading)
@@ -2916,14 +2914,6 @@ class NodeRuntime private constructor(
     _serverName.value = "OpenClaw Gateway"
     _remoteAddress.value = "Mac Studio on local network"
     _gatewayVersion.value = BuildConfig.VERSION_NAME
-    replaceGatewayMethods(setOf(GatewayMethod.DesktopObserve.rawValue))
-    _gatewayControlPage.value =
-      GatewayControlPage(
-        baseUrl = AndroidScreenshotFixture.controlUiBaseUrl,
-        token = null,
-        password = null,
-        tlsFingerprintSha256 = null,
-      )
     updateGatewayDefaultAgentId("main")
     _gatewayAgents.value = AndroidScreenshotFixture.agents
     _modelCatalog.value = AndroidScreenshotFixture.models
@@ -5065,7 +5055,6 @@ class NodeRuntime private constructor(
   suspend fun patchChatSession(
     key: String,
     ownerAgentId: String? = null,
-    expectedSessionId: String? = null,
     label: String? = null,
     clearLabel: Boolean = false,
     category: String? = null,
@@ -5077,7 +5066,6 @@ class NodeRuntime private constructor(
     chat.patchSession(
       key = key,
       ownerAgentId = ownerAgentId,
-      expectedSessionId = expectedSessionId,
       label = label,
       clearLabel = clearLabel,
       category = category,
@@ -6372,7 +6360,7 @@ class NodeRuntime private constructor(
     publishGatewayData(gatewayScope) {
       _clawHubSkillSearchState.value =
         _clawHubSkillSearchState.value.copy(
-          reviewingSlug = skill.reference,
+          reviewingSlug = skill.slug,
           installReview = null,
           acknowledgeSlug = null,
           acknowledgeVersion = null,
@@ -6381,7 +6369,7 @@ class NodeRuntime private constructor(
         )
     }
     try {
-      val response = requestGatewayData(gatewayScope, "skills.detail", clawHubDetailParams(skill.reference))
+      val response = requestGatewayData(gatewayScope, "skills.detail", clawHubDetailParams(skill.slug))
       val review = parseClawHubInstallReview(response, skill, json)
       publishGatewayData(gatewayScope) {
         if (clawHubSkillReviewSeq.get() == reviewSeq) {
@@ -6391,7 +6379,7 @@ class NodeRuntime private constructor(
               installReview = review,
               errorText =
                 if (review == null) {
-                  "ClawHub did not return an installable version for ${skill.reference}."
+                  "ClawHub did not return an installable version for ${skill.slug}."
                 } else {
                   null
                 },
@@ -6407,7 +6395,7 @@ class NodeRuntime private constructor(
             _clawHubSkillSearchState.value.copy(
               reviewingSlug = null,
               errorText =
-                nativeString("Could not load ClawHub details for \${skill.reference}.", skill.reference),
+                nativeString("Could not load ClawHub details for \${skill.slug}.", skill.slug),
             )
         }
       }
@@ -7533,7 +7521,6 @@ class NodeRuntime private constructor(
     synchronized(gatewayMethodsLock) {
       gatewayApprovalRpcFamily = selectGatewayApprovalRpcFamily(methods)
       _clawHubSkillMethodsAvailable.value = supportsClawHubSkillManagement(methods)
-      _desktopObserveAvailable.value = GatewayMethod.DesktopObserve.rawValue in methods
       systemAgentChatSupported.value = GatewayMethod.OpenclawChat.rawValue in methods
       gatewayMethodsEpoch += 1
     }
@@ -8541,7 +8528,6 @@ internal fun manualGatewayEndpoint(entry: GatewayRegistryEntry): GatewayEndpoint
     host = normalizedHost,
     port = normalizedPort,
     tlsEnabled = entry.tls,
-    contextPath = entry.contextPath,
   )
 }
 
@@ -8557,7 +8543,6 @@ internal fun gatewayRegistryEntry(
       host = endpoint.host,
       port = endpoint.port,
       tls = endpoint.tlsEnabled,
-      contextPath = endpoint.contextPath,
       lastConnectedAtMs = existing?.lastConnectedAtMs ?: 0L,
     )
   } else {

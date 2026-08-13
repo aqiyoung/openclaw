@@ -599,21 +599,15 @@ private fun ClawHubSkillSearchPanel(
   if (state.results.isNotEmpty()) {
     ClawListPanel(items = state.results) { skill ->
       val installed =
-        skill.version?.let { version -> isClawHubSkillInstalled(installedSkills, skill.reference, version) }
-          ?: isClawHubSkillInstalled(installedSkills, skill.reference)
-      val subtitleParts =
-        listOfNotNull(
-          skill.summary,
-          skill.reference,
-          skill.version?.let { nativeString("Version \$it", it) },
-        )
+        skill.version?.let { version -> isClawHubSkillInstalled(installedSkills, skill.slug, version) }
+          ?: isClawHubSkillInstalled(installedSkills, skill.slug)
       ClawDetailRow(
         title = skill.displayName,
-        subtitle = subtitleParts.joinToString(" · "),
+        subtitle = listOfNotNull(skill.summary, skill.version?.let { nativeString("Version \$it", it) }).joinToString(" · "),
         leading = { ClawTextBadge(text = skillBadge(skill.displayName)) },
         trailing = {
-          val reviewing = state.reviewingSlug == skill.reference
-          val installing = isClawHubSkillOperationActive(state.installingSlugs, skill.reference)
+          val reviewing = state.reviewingSlug == skill.slug
+          val installing = isClawHubSkillOperationActive(state.installingSlugs, skill.slug)
           ClawSecondaryButton(
             text =
               when {

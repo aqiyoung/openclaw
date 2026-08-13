@@ -47,7 +47,6 @@ class AndroidScreenshotModeTest {
     assertEquals(HomeDestination.Chat, AndroidScreenshotScene.Chat.homeDestination)
     assertEquals(HomeDestination.Chat, AndroidScreenshotScene.Swarm.homeDestination)
     assertEquals(HomeDestination.Settings, AndroidScreenshotScene.Settings.homeDestination)
-    assertEquals(HomeDestination.Settings, AndroidScreenshotScene.Desktop.homeDestination)
     assertEquals(HomeDestination.Settings, AndroidScreenshotScene.VoiceWake.homeDestination)
   }
 
@@ -81,13 +80,5 @@ class AndroidScreenshotModeTest {
 
     assertEquals(AndroidScreenshotScene.VoiceWake, scene)
     assertEquals(SettingsRoute.Voice, scene.settingsRoute)
-  }
-
-  @Test
-  fun desktopSceneTargetsDesktopSettings() {
-    val scene = AndroidScreenshotScene.fromRawValue("desktop")
-
-    assertEquals(AndroidScreenshotScene.Desktop, scene)
-    assertEquals(SettingsRoute.Desktop, scene.settingsRoute)
   }
 }

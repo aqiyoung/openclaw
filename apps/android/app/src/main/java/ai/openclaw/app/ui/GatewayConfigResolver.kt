@@ -1,7 +1,6 @@
 package ai.openclaw.app.ui
 
 import ai.openclaw.app.gateway.isLocalCleartextGatewayHost
-import ai.openclaw.app.gateway.normalizeGatewayContextPath
 import ai.openclaw.app.i18n.NativeText
 import ai.openclaw.app.i18n.nativeString
 import ai.openclaw.app.i18n.nativeText
@@ -21,7 +20,6 @@ internal data class GatewayEndpointConfig(
   val port: Int,
   val tls: Boolean,
   val displayUrl: String,
-  val contextPath: String = "",
 )
 
 /** Effective transport shown by manual gateway forms before they connect. */
@@ -47,7 +45,6 @@ internal data class GatewayConnectConfig(
   val bootstrapToken: String,
   val token: String,
   val password: String,
-  val contextPath: String = "",
 )
 
 /** How a connection attempt may update credentials already owned by the runtime. */
@@ -139,7 +136,6 @@ internal fun resolveGatewayConnectConfig(
       host = parsed.host,
       port = parsed.port,
       tls = parsed.tls,
-      contextPath = parsed.contextPath,
       bootstrapToken = setupBootstrapToken,
       token = sharedToken,
       password = sharedPassword,
@@ -155,7 +151,6 @@ internal fun resolveGatewayConnectConfig(
     host = parsed.host,
     port = parsed.port,
     tls = parsed.tls,
-    contextPath = parsed.contextPath,
     bootstrapToken = bootstrapToken,
     token = token,
     password = password,
@@ -211,11 +206,7 @@ internal fun resolveGatewayConnectPlan(
   return GatewayConnectPlan(config, action)
 }
 
-private fun GatewayEndpointConfig.sameEndpoint(config: GatewayConnectConfig): Boolean =
-  host.equals(config.host, ignoreCase = true) &&
-    port == config.port &&
-    tls == config.tls &&
-    contextPath == config.contextPath
+private fun GatewayEndpointConfig.sameEndpoint(config: GatewayConnectConfig): Boolean = host.equals(config.host, ignoreCase = true) && port == config.port && tls == config.tls
 
 /** Parses an endpoint string and returns only the valid connection config. */
 internal fun parseGatewayEndpoint(rawInput: String): GatewayEndpointConfig? = parseGatewayEndpointResult(rawInput).config
@@ -230,9 +221,6 @@ internal fun parseGatewayEndpointResult(rawInput: String): GatewayEndpointParseR
     runCatching { URI(normalized) }
       .getOrNull()
       ?: return GatewayEndpointParseResult(error = GatewayEndpointValidationError.INVALID_URL)
-  if (uri.rawUserInfo != null || uri.rawQuery != null || uri.rawFragment != null) {
-    return GatewayEndpointParseResult(error = GatewayEndpointValidationError.INVALID_URL)
-  }
   val host =
     uri.host
       ?.trim()
@@ -259,31 +247,22 @@ internal fun parseGatewayEndpointResult(rawInput: String): GatewayEndpointParseR
   val defaultPort = if (tls) 443 else 18789
   val displayPort = if (tls) 443 else 80
   val port = gatewayPort(uri.port, defaultPort) ?: return GatewayEndpointParseResult(error = GatewayEndpointValidationError.INVALID_URL)
-  val contextPath = normalizeGatewayContextPath(uri.rawPath)
-  val displayPath = contextPath
   val displayHost = if (host.contains(":")) "[$host]" else host
   val displayUrl =
     if (port == displayPort && defaultPort == displayPort) {
-      "${if (tls) "https" else "http"}://$displayHost$displayPath"
+      "${if (tls) "https" else "http"}://$displayHost"
     } else {
-      "${if (tls) "https" else "http"}://$displayHost:$port$displayPath"
+      "${if (tls) "https" else "http"}://$displayHost:$port"
     }
 
   return GatewayEndpointParseResult(
-    config =
-      GatewayEndpointConfig(
-        host = host,
-        port = port,
-        tls = tls,
-        displayUrl = displayUrl,
-        contextPath = contextPath,
-      ),
+    config = GatewayEndpointConfig(host = host, port = port, tls = tls, displayUrl = displayUrl),
   )
 }
 
 /** Decodes base64url setup-code payloads produced by gateway onboarding. */
 internal fun decodeGatewaySetupCode(rawInput: String): GatewaySetupCode? {
-  val trimmed = stripPairingSetupUrlPrefix(rawInput.trim())
+  val trimmed = rawInput.trim()
   if (trimmed.isEmpty()) return null
 
   val padded =
@@ -533,12 +512,3 @@ private fun jsonField(
   val value = (obj[key] as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
   return value.ifEmpty { null }
 }
-
-private const val PAIRING_SETUP_URL_PREFIX = "oc-pair://"
-
-private fun stripPairingSetupUrlPrefix(raw: String): String =
-  if (raw.startsWith(PAIRING_SETUP_URL_PREFIX, ignoreCase = true)) {
-    raw.substring(PAIRING_SETUP_URL_PREFIX.length)
-  } else {
-    raw
-  }
