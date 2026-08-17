@@ -111,7 +111,12 @@ fun ChatMarkdown(
 ) {
   val blocks = remember(text, isStreaming) { segmentChatMarkdown(text, isStreaming) }
   val inlineStyles =
-    InlineStyles(inlineCodeBg = mobileCodeBg, inlineCodeColor = mobileCodeText, linkColor = mobileAccent, baseCallout = mobileCallout)
+    InlineStyles(
+      inlineCodeBg = ClawTheme.colors.codeBg,
+      inlineCodeColor = ClawTheme.colors.codeText,
+      linkColor = ClawTheme.colors.accent,
+      baseCallout = ClawTheme.type.body,
+    )
 
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     for (block in blocks) {
@@ -399,7 +404,7 @@ private fun RenderTableBlock(
       Modifier
         .fillMaxWidth()
         .horizontalScroll(scrollState)
-        .border(1.dp, mobileTextSecondary.copy(alpha = 0.25f)),
+        .border(1.dp, ClawTheme.colors.textMuted.copy(alpha = 0.25f)),
   ) {
     for (row in rows) {
       Row(
@@ -409,11 +414,11 @@ private fun RenderTableBlock(
           val cell = row.cells.getOrNull(index) ?: AnnotatedString("")
           Text(
             text = cell,
-            style = if (row.isHeader) mobileCaption1.copy(fontWeight = FontWeight.SemiBold) else inlineStyles.baseCallout,
+            style = if (row.isHeader) ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold) else inlineStyles.baseCallout,
             color = textColor,
             modifier =
               Modifier
-                .border(1.dp, mobileTextSecondary.copy(alpha = 0.22f))
+                .border(1.dp, ClawTheme.colors.textMuted.copy(alpha = 0.22f))
                 .padding(horizontal = 8.dp, vertical = 6.dp)
                 .width(160.dp),
           )
@@ -730,8 +735,8 @@ private fun InlineBase64Image(
     Text(
       text = nativeString("Image unavailable"),
       modifier = Modifier.padding(vertical = 2.dp),
-      style = mobileCaption1,
-      color = mobileTextSecondary,
+      style = ClawTheme.type.caption,
+      color = ClawTheme.colors.textMuted,
     )
   }
 }
