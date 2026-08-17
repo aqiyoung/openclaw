@@ -63,7 +63,6 @@ import ai.openclaw.app.ui.design.agentAvatarSource
 import ai.openclaw.app.ui.gatewayDiagnosticsEndpoint
 import ai.openclaw.app.ui.gatewayStatusForDisplay
 import ai.openclaw.app.ui.localizedUppercase
-import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.relativeSessionTime
 import ai.openclaw.app.ui.rememberSystemAnimationsEnabled
 import android.os.SystemClock
@@ -1895,7 +1894,7 @@ private fun ChatUserMessageText(
   if (preview != null && !expanded) {
     Text(
       text = preview,
-      style = mobileCallout,
+      style = ClawTheme.type.body,
       color = ClawTheme.colors.text,
     )
   } else {
@@ -1917,7 +1916,7 @@ private fun ChatUserMessageText(
     ) {
       Text(
         text = toggleLabel,
-        style = mobileCallout.copy(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold),
+        style = ClawTheme.type.body.copy(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold),
         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
       )
     }

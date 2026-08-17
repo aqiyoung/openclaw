@@ -99,12 +99,11 @@ class AndroidScreenshotFixtureTest {
 
   @Test
   fun providesDeterministicChatHistory() {
-    val messages =
+    val history =
       json
         .parseToJsonElement(AndroidScreenshotFixture.request("chat.history", null))
-        .jsonObject["messages"]
-        ?.jsonArray
-        .orEmpty()
+        .jsonObject
+    val messages = history["messages"]?.jsonArray.orEmpty()
 
     assertEquals(
       listOf(
@@ -118,8 +117,8 @@ class AndroidScreenshotFixtureTest {
         listOf("user", "Summarize the open review feedback for me.", "1783555140000"),
         listOf(
           "assistant",
-          "The main thread asks for a regression test around session restore, and the second one wants the new " +
-            "config key documented before merge. Both are small; I can draft patches for each if you want.",
+          "The release check is ready:\n\n```kotlin\nval ready = lint && tests\n```\n\n" +
+            "Review https://openclaw.ai before tagging.",
           "1783555200000",
         ),
         listOf("user", "Draft a short status update for the team.", "1783555260000"),

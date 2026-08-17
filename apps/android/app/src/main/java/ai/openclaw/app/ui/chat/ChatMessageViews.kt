@@ -154,8 +154,8 @@ private fun ChatLinkPreview(
     Surface(
       onClick = { expanded = true },
       shape = RoundedCornerShape(8.dp),
-      color = mobileCardSurface,
-      border = BorderStroke(1.dp, mobileBorder),
+      color = ClawTheme.colors.surfaceRaised,
+      border = BorderStroke(1.dp, ClawTheme.colors.border),
     ) {
       Row(
         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -164,8 +164,8 @@ private fun ChatLinkPreview(
       ) {
         Text(
           text = nativeString("Preview · \$domain", domain),
-          style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold),
-          color = mobileTextSecondary,
+          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold),
+          color = ClawTheme.colors.textMuted,
           modifier = Modifier.weight(1f),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -173,7 +173,7 @@ private fun ChatLinkPreview(
         androidx.compose.material3.Icon(
           imageVector = Icons.Default.ExpandMore,
           contentDescription = nativeString("Expand link preview"),
-          tint = mobileTextSecondary,
+          tint = ClawTheme.colors.textMuted,
         )
       }
     }
@@ -197,8 +197,8 @@ private fun ChatLinkPreview(
   Surface(
     onClick = { uriHandler.openUri(url) },
     shape = cardShape,
-    color = mobileCardSurface,
-    border = BorderStroke(1.dp, mobileBorder),
+    color = ClawTheme.colors.surfaceRaised,
+    border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
     Column(modifier = Modifier.fillMaxWidth()) {
       previewImage?.let { image ->
@@ -213,16 +213,16 @@ private fun ChatLinkPreview(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
       ) {
-        Text(domain, style = mobileCaption2, color = mobileTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(domain, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         when (val preview = result) {
-          null -> Text(nativeString("Loading preview…"), style = mobileCaption1, color = mobileTextSecondary)
-          LinkPreviewResult.Failed -> Text(nativeString("No preview available"), style = mobileCallout, color = mobileTextSecondary)
+          null -> Text(nativeString("Loading preview…"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+          LinkPreviewResult.Failed -> Text(nativeString("No preview available"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
           is LinkPreviewResult.Loaded -> {
             preview.metadata.title?.let { title ->
               Text(
                 text = title,
-                style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
-                color = mobileText,
+                style = ClawTheme.type.body.copy(fontWeight = FontWeight.SemiBold),
+                color = ClawTheme.colors.text,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
               )
@@ -230,8 +230,8 @@ private fun ChatLinkPreview(
             preview.metadata.description?.let { description ->
               Text(
                 text = description,
-                style = mobileCaption1,
-                color = mobileTextSecondary,
+                style = ClawTheme.type.caption,
+                color = ClawTheme.colors.textMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
               )
@@ -269,7 +269,7 @@ fun ChatTypingIndicatorBubble(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-      WorkingClawIcon(runKey = runKey, color = mobileAccent)
+      WorkingClawIcon(runKey = runKey, color = ClawTheme.colors.accent)
       Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -294,7 +294,7 @@ fun ChatOutboxBubble(
   onDelete: () -> Unit,
 ) {
   val failed = item.status == ChatOutboxStatus.Failed
-  val statusColor = if (failed) mobileDanger else mobileWarning
+  val statusColor = if (failed) ClawTheme.colors.danger else ClawTheme.colors.warning
   val statusLabel =
     when (item.status) {
       ChatOutboxStatus.Queued -> nativeString("Queued — sends when reconnected")
@@ -320,13 +320,13 @@ fun ChatOutboxBubble(
     roleLabel = nativeString("You"),
   ) {
     if (item.text.isNotBlank()) {
-      ChatMarkdown(text = item.text, textColor = mobileText)
+      ChatMarkdown(text = item.text, textColor = ClawTheme.colors.text)
     }
     item.attachments.forEach { attachment ->
       Text(
         text = nativeString("📎 \${attachment.fileName}", attachment.fileName),
-        style = mobileCaption1,
-        color = mobileTextSecondary,
+        style = ClawTheme.type.caption,
+        color = ClawTheme.colors.textMuted,
       )
     }
     Row(
@@ -335,17 +335,17 @@ fun ChatOutboxBubble(
     ) {
       Text(
         text = statusLabel,
-        style = mobileCaption1,
+        style = ClawTheme.type.caption,
         color = statusColor,
         modifier = Modifier.weight(1f),
       )
       if (failed && retryEnabled) {
-        ChatOutboxAction(label = nativeString("Retry"), color = mobileAccent, onClick = onRetry)
+        ChatOutboxAction(label = nativeString("Retry"), color = ClawTheme.colors.accent, onClick = onRetry)
       }
       // Sending rows are mid-dispatch and accepted rows may already be delivered; both stay
       // action-free until reconciliation resolves them, so a delete can never race a send.
       if (item.status == ChatOutboxStatus.Queued || failed) {
-        ChatOutboxAction(label = nativeString("Delete"), color = mobileTextSecondary, onClick = onDelete)
+        ChatOutboxAction(label = nativeString("Delete"), color = ClawTheme.colors.textMuted, onClick = onDelete)
       }
     }
   }
@@ -366,7 +366,7 @@ private fun ChatOutboxAction(
   ) {
     Text(
       text = label,
-      style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold),
+      style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold),
       modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
     )
   }
@@ -541,14 +541,14 @@ fun ChatCodeBlock(
   isComplete: Boolean = true,
 ) {
   val display = code.trimEnd()
-  // Token colors come from the theme's code palette so light/dark both keep readable contrast.
-  val palette = MobileColorsAccessor.current
+  // Syntax roles reuse semantic colors that keep at least 4.5:1 contrast against codeBg;
+  // changing these mappings can make highlighted code less readable than plain code.
   val tokenColors =
     CodeTokenColors(
-      keyword = palette.codeKeyword,
-      string = palette.codeString,
-      comment = palette.codeComment,
-      number = palette.codeNumber,
+      keyword = ClawTheme.colors.accent,
+      string = ClawTheme.colors.success,
+      comment = ClawTheme.colors.textMuted,
+      number = ClawTheme.colors.danger,
     )
   // Keyed on content: streaming re-renders of unchanged blocks reuse the tokenized result,
   // and still-open fences stay plain until the closing fence arrives.
@@ -558,23 +558,23 @@ fun ChatCodeBlock(
     }
   Surface(
     shape = RoundedCornerShape(8.dp),
-    color = mobileCodeBg,
-    border = BorderStroke(1.dp, mobileCodeBorder),
+    color = ClawTheme.colors.codeBg,
+    border = BorderStroke(1.dp, ClawTheme.colors.codeBorder),
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       if (!language.isNullOrBlank()) {
         Text(
           text = language.uppercase(Locale.US),
-          style = mobileCaption2.copy(letterSpacing = 0.4.sp),
-          color = mobileTextSecondary,
+          style = ClawTheme.type.caption.copy(letterSpacing = 0.4.sp),
+          color = ClawTheme.colors.textMuted,
         )
       }
       Text(
         text = highlighted,
         fontFamily = FontFamily.Monospace,
-        style = mobileCallout,
-        color = mobileCodeText,
+        style = ClawTheme.type.body,
+        color = ClawTheme.colors.codeText,
       )
     }
   }
