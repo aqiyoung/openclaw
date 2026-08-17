@@ -165,7 +165,7 @@ class ChatControllerCommandControlsTest {
     }
 
   @Test
-  fun startNewChatCreatesWriteScopedSessionAndReloadsHistory() =
+  fun startNewChatCreatesUnnamedWriteScopedSessionAndReloadsHistory() =
     runTest {
       val (controller, requests) =
         chatControllerTestSetup {
@@ -185,7 +185,7 @@ class ChatControllerCommandControlsTest {
       assertTrue(create.second.orEmpty().contains("\"parentSessionKey\":\"main\""))
       assertTrue(create.second.orEmpty().contains("\"emitCommandHooks\":true"))
       assertTrue(create.second.orEmpty().contains("\"succeedsParent\":false"))
-      assertTrue(create.second.orEmpty().contains("\"label\":\"New chat\""))
+      assertFalse(create.second.orEmpty().contains("\"label\""))
       assertEquals("agent:main:dashboard:fresh", controller.sessionKey.value)
       assertEquals("fresh-session", controller.sessionId.value)
       assertTrue(requests.any { it.first == "chat.history" })
@@ -228,7 +228,7 @@ class ChatControllerCommandControlsTest {
       assertEquals(false, creates[1].second.orEmpty().contains("\"parentSessionKey\""))
       assertEquals(false, creates[1].second.orEmpty().contains("\"emitCommandHooks\""))
       assertTrue(creates[1].second.orEmpty().contains("\"agentId\":\"main\""))
-      assertTrue(creates[1].second.orEmpty().contains("\"label\":\"New chat\""))
+      assertFalse(creates.any { it.second.orEmpty().contains("\"label\"") })
       assertEquals("agent:main:dashboard:fresh", controller.sessionKey.value)
     }
 
@@ -548,36 +548,6 @@ class ChatControllerCommandControlsTest {
       assertEquals(false, create.second.orEmpty().contains("\"parentSessionKey\""))
       assertEquals(false, create.second.orEmpty().contains("\"emitCommandHooks\""))
       assertEquals("agent:main:dashboard:first", controller.sessionKey.value)
-    }
-
-  @Test
-  fun startNewChatUsesNextAvailableNewChatLabel() =
-    runTest {
-      val (controller, requests) =
-        chatControllerTestSetup {
-          respond("sessions.create", """{"ok":true,"key":"agent:main:dashboard:fresh-3"}""")
-          respond("chat.history", """{"sessionId":"fresh-session-3","messages":[]}""")
-          respond("health", "{}")
-          respond("sessions.list") { paramsJson ->
-            """
-            {
-              "sessions": [
-                {"key":"agent:main:dashboard:fresh","displayName":"New chat"},
-                {"key":"agent:main:dashboard:fresh-2","displayName":"New chat 2"}
-              ]
-            }
-            """.trimIndent()
-          }
-        }
-      controller.handleGatewayEvent("health", null)
-      controller.refreshSessions()
-      advanceUntilIdle()
-
-      assertTrue(controller.startNewChatAwait())
-
-      val create = requests.first { it.first == "sessions.create" }
-      assertTrue(create.second.orEmpty().contains("\"label\":\"New chat 3\""))
-      assertEquals("agent:main:dashboard:fresh-3", controller.sessionKey.value)
     }
 
   @Test

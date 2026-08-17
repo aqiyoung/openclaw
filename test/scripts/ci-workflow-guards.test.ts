@@ -2890,7 +2890,6 @@ NODE
       repository: "openclaw/openclaw",
       runAttempt: 1,
     } as const;
-
     expect(configurableJobs).toEqual(Object.keys(expectedHostedRunners).toSorted());
     for (const [jobName, hostedRunner] of Object.entries(expectedHostedRunners)) {
       const expression = jobs[jobName]?.["runs-on"];
