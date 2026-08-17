@@ -346,8 +346,8 @@ class ChatController internal constructor(
 
   private val questionEvictionJobs = mutableMapOf<String, QuestionEvictionJob>()
 
-  private val _planSteps = MutableStateFlow<List<ChatPlanStep>>(emptyList())
-  val planSteps: StateFlow<List<ChatPlanStep>> = _planSteps.asStateFlow()
+  private val _planSnapshot = MutableStateFlow(ChatPlanSnapshot(steps = emptyList()))
+  val planSnapshot: StateFlow<ChatPlanSnapshot> = _planSnapshot.asStateFlow()
 
   // Owning run for the current plan snapshot; run-scoped terminal events must
   // not clear another run's checklist (parallel/delayed runs share a session).
@@ -692,7 +692,7 @@ class ChatController internal constructor(
         clearPendingRuns()
         clearLiveRunUi()
       }
-      clearPlanSteps()
+      clearPlan()
       appliedMainSessionKey = "main"
       beginHistoryLoad(
         key = "main",
@@ -5752,9 +5752,19 @@ class ChatController internal constructor(
       }
       "plan" -> {
         if (runId.isNullOrBlank()) return
-        if (data?.get("phase").asStringOrNull() != "update") return
+        val planData = data ?: return
+        if (planData["phase"].asStringOrNull() != "update") return
         planRunId = runId
-        _planSteps.value = parseChatPlanSteps(data?.get("steps"))
+        val steps = parseChatPlanSteps(planData["steps"])
+        _planSnapshot.value =
+          ChatPlanSnapshot(
+            steps = steps,
+            explanation =
+              planData["explanation"]
+                .asStringOrNull()
+                ?.trim()
+                ?.takeIf { steps.isNotEmpty() && it.isNotEmpty() },
+          )
       }
       "error" -> {
         updateLocalizedErrorText(nativeText("Event stream interrupted; try refreshing."))
@@ -5944,12 +5954,12 @@ class ChatController internal constructor(
 
   private fun clearPlanSteps() {
     planRunId = null
-    _planSteps.value = emptyList()
+    _planSnapshot.value = ChatPlanSnapshot(steps = emptyList())
   }
 
-  private fun clearPlanStepsFor(runId: String?) {
+  private fun clearPlanFor(runId: String?) {
     if (runId == null || planRunId == null || planRunId == runId) {
-      clearPlanSteps()
+      clearPlan()
     }
   }
 
@@ -5974,7 +5984,7 @@ class ChatController internal constructor(
         history.sessionInfo?.hasActiveRun == false ||
         (activeRunIds != null && retainedRunId !in activeRunIds)
       ) {
-        clearPlanSteps()
+        clearPlan()
       }
       return
     }
@@ -5991,12 +6001,12 @@ class ChatController internal constructor(
     }
     val plan = run.plan
     if (plan == null) {
-      if (planRunId != null && planRunId != runId) clearPlanSteps()
+      if (planRunId != null && planRunId != runId) clearPlan()
     } else if (plan.steps.isEmpty()) {
-      clearPlanSteps()
+      clearPlan()
     } else {
       planRunId = runId
-      _planSteps.value = plan.steps
+      _planSnapshot.value = plan
     }
   }
 
