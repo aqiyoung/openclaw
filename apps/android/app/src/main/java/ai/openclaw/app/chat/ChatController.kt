@@ -2407,7 +2407,7 @@ class ChatController internal constructor(
     clearLiveHistoryMarker()
     clearPendingRuns()
     clearLiveRunUi()
-    clearPlanSteps()
+    clearPlan()
     _sessionId.value = null
     _historyLoading.value = markLoading
     if (clearMessages) {
@@ -2728,7 +2728,7 @@ class ChatController internal constructor(
             if (ack.isTerminalSuccess) {
               if (isCapturedOwnerCurrent()) {
                 clearLiveRunUi()
-                clearPlanSteps()
+                clearPlan()
                 refreshCurrentHistoryBestEffort(runIdsToReconcile = setOf(actualRunId))
               }
               true
@@ -2737,7 +2737,7 @@ class ChatController internal constructor(
               // Surface failed acceptance instead of letting a cleared composer look successful.
               if (isCapturedOwnerCurrent()) {
                 clearLiveRunUi()
-                clearPlanSteps()
+                clearPlan()
                 updateLocalizedErrorText(nativeText("Chat failed before the run started; try again."))
               }
               // The parked row owns the input; restoring the draft would duplicate it.
@@ -2996,7 +2996,7 @@ class ChatController internal constructor(
     _streamingAssistantText.value = null
     pendingToolCallsById.clear()
     publishPendingToolCalls()
-    clearPlanSteps()
+    clearPlan()
     publishRunPresentation()
   }
 
@@ -5564,7 +5564,7 @@ class ChatController internal constructor(
             synchronized(pendingRuns) { pendingRuns.isNotEmpty() } || unresolvedRepliesByRunId.isNotEmpty()
           if (!hasNewerRun) {
             clearLiveRunUi()
-            clearPlanStepsFor(runId)
+            clearPlanFor(runId)
             updateLocalizedErrorText(
               if (state == "error") {
                 payload["errorMessage"].asStringOrNull()?.let(::verbatimText) ?: nativeText("Chat failed")
@@ -5602,7 +5602,7 @@ class ChatController internal constructor(
           clearPendingRuns(clearOptimisticMessages = false, clearRunTelemetry = false)
         }
         clearLiveRunUi()
-        clearPlanStepsFor(runId)
+        clearPlanFor(runId)
         refreshCurrentHistoryBestEffort(
           runIdsToReconcile = terminalRunIds,
           updateSessionInfo = true,
@@ -5770,7 +5770,7 @@ class ChatController internal constructor(
     if (!entry.hasActiveRunMetadata) retireRunTelemetry(settledRunId)
     if (terminalWasLocal) {
       clearPendingRun(settledRunId)
-      clearPlanStepsFor(settledRunId)
+      clearPlanFor(settledRunId)
       clearTransientRunUiIfIdle()
     } else {
       publishRunPresentation()
@@ -5843,7 +5843,7 @@ class ChatController internal constructor(
           if (!accepted) return
           if (isLocallyOwnedRun(lifecycleRunId)) {
             clearPendingRun(lifecycleRunId)
-            clearPlanStepsFor(lifecycleRunId)
+            clearPlanFor(lifecycleRunId)
             clearTransientRunUiIfIdle()
           } else {
             publishRunPresentation()
@@ -5923,7 +5923,7 @@ class ChatController internal constructor(
           clearPendingRuns()
         } else {
           clearPendingRun(runId)
-          clearPlanStepsFor(runId)
+          clearPlanFor(runId)
           clearTransientRunUiIfIdle()
         }
         pendingToolCallsById.clear()
@@ -6103,7 +6103,7 @@ class ChatController internal constructor(
     _streamingAssistantText.value = null
   }
 
-  private fun clearPlanSteps() {
+  private fun clearPlan() {
     planRunId = null
     _planSnapshot.value = ChatPlanSnapshot(steps = emptyList())
   }
@@ -6258,7 +6258,7 @@ class ChatController internal constructor(
   private fun clearTransientRunUiIfIdle(preservePlan: Boolean = false) {
     if (synchronized(pendingRuns) { pendingRuns.isNotEmpty() }) return
     clearLiveRunUi()
-    if (!preservePlan) clearPlanSteps()
+    if (!preservePlan) clearPlan()
   }
 
   private fun clearPendingRuns(
