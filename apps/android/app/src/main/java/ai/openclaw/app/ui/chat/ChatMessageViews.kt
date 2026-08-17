@@ -9,7 +9,6 @@ import ai.openclaw.app.chat.normalizeVisibleChatMessageRole
 import ai.openclaw.app.gateway.GatewayLoadedImage
 import ai.openclaw.app.i18n.nativeString
 import ai.openclaw.app.i18n.nativeStringResource
-import ai.openclaw.app.ui.MobileColorsAccessor
 import ai.openclaw.app.ui.design.ClawTheme
 import ai.openclaw.app.ui.image.RemoteImageResult
 import ai.openclaw.app.ui.image.safeRemoteImageStore
@@ -274,12 +273,12 @@ fun ChatTypingIndicatorBubble(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
-        Text(formatLocalizedChatDurationCompact(elapsedMs), style = mobileCallout, color = mobileTextSecondary)
+        Text(formatLocalizedChatDurationCompact(elapsedMs), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
         tokens?.let {
-          Text(nativeStringResource("·"), style = mobileCallout, color = mobileTextSecondary)
-          Text(it, style = mobileCallout, color = mobileTextSecondary)
+          Text(nativeStringResource("·"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+          Text(it, style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
         }
-        phrase?.let { Text(nativeStringResource("· \$phrase", it), style = mobileCallout, color = mobileTextSecondary) }
+        phrase?.let { Text(nativeStringResource("· \$phrase", it), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted) }
       }
     }
   }
@@ -403,7 +402,7 @@ internal fun ChatBase64Image(
   if (image != null) {
     ChatImagePreview(image = image, description = mimeType ?: nativeString("Attachment"), stateKey = base64)
   } else if (imageState.failed) {
-    Text(nativeString("Unsupported attachment"), style = mobileCaption1, color = mobileTextSecondary)
+    Text(nativeString("Unsupported attachment"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
   }
 }
 
@@ -440,23 +439,23 @@ internal fun ChatManagedImage(
       Surface(
         onClick = { retryGeneration += 1 },
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, mobileBorder),
-        color = mobileCardSurface,
+        border = BorderStroke(1.dp, ClawTheme.colors.border),
+        color = ClawTheme.colors.surfaceRaised,
         modifier = Modifier.fillMaxWidth(),
       ) {
         Text(
           nativeString("Image unavailable · Tap to retry"),
           modifier = Modifier.padding(12.dp),
-          style = mobileCaption1,
-          color = mobileTextSecondary,
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
         )
       }
     else ->
       Text(
         nativeString("Loading image…"),
         modifier = Modifier.padding(12.dp),
-        style = mobileCaption1,
-        color = mobileTextSecondary,
+        style = ClawTheme.type.caption,
+        color = ClawTheme.colors.textMuted,
       )
   }
 }
@@ -471,8 +470,8 @@ private fun ChatImagePreview(
   Surface(
     onClick = { previewVisible = true },
     shape = RoundedCornerShape(10.dp),
-    border = BorderStroke(1.dp, mobileBorder),
-    color = mobileCardSurface,
+    border = BorderStroke(1.dp, ClawTheme.colors.border),
+    color = ClawTheme.colors.surfaceRaised,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Box {
