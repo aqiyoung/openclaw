@@ -138,6 +138,23 @@ class AndroidScreenshotFixtureTest {
         )
       },
     )
+
+    val restartRecovery = messages[2].jsonObject["provenance"]?.jsonObject
+    assertEquals("internal_system", restartRecovery?.get("kind")?.jsonPrimitive?.content)
+    assertEquals("main_session_restart_recovery", restartRecovery?.get("sourceTool")?.jsonPrimitive?.content)
+    val gatewayRestarted = messages[3].jsonObject["provenance"]?.jsonObject
+    assertEquals("restart-sentinel", gatewayRestarted?.get("sourceTool")?.jsonPrimitive?.content)
+    val compaction = messages[6].jsonObject["__openclaw"]?.jsonObject
+    assertEquals("compaction", compaction?.get("kind")?.jsonPrimitive?.content)
+    assertEquals("android-screenshot-compaction", compaction?.get("id")?.jsonPrimitive?.content)
+    assertEquals("900000", compaction?.get("tokensBefore")?.jsonPrimitive?.content)
+    assertEquals("24700", compaction?.get("tokensAfter")?.jsonPrimitive?.content)
+    val reset = messages[7].jsonObject["__openclaw"]?.jsonObject
+    assertEquals("reset", reset?.get("kind")?.jsonPrimitive?.content)
+    assertEquals("android-screenshot-reset", reset?.get("id")?.jsonPrimitive?.content)
+    val inFlightRun = history["inFlightRun"]?.jsonObject
+    assertEquals("android-screenshot-active-run", inFlightRun?.get("runId")?.jsonPrimitive?.content)
+    assertEquals("", inFlightRun?.get("text")?.jsonPrimitive?.content)
   }
 
   @Test

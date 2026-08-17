@@ -33,13 +33,10 @@ fun OpenClawTheme(
 
   OpenClawSystemBarAppearance(lightAppearance = !isDark)
 
-  ClawDesignTheme(dark = isDark) {
-    CompositionLocalProvider(
-      LocalMobileColors provides mobileColorsFromClawTheme(ClawTheme.colors, ClawTheme.type),
-      LocalResolvedAppearanceIsDark provides isDark,
-    ) {
-      MaterialTheme(colorScheme = colorScheme, content = content)
-    }
+  CompositionLocalProvider(
+    LocalResolvedAppearanceIsDark provides isDark,
+  ) {
+    MaterialTheme(colorScheme = colorScheme, content = content)
   }
 }
 

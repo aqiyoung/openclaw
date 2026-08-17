@@ -39,6 +39,7 @@ internal data class ClawColors(
   val surface: Color,
   val surfaceRaised: Color,
   val surfacePressed: Color,
+  val accent: Color,
   val accentSoft: Color,
   val accentBorder: Color,
   val border: Color,
@@ -109,6 +110,7 @@ private val ClawDarkColors =
     surface = Color(0xFF0A0A0A),
     surfaceRaised = Color(0xFF111111),
     surfacePressed = Color(0xFF1A1A1A),
+    accent = Color(0xFF6EA8FF),
     accentSoft = Color(0xFF1A2A44),
     accentBorder = Color(0xFF5B93E8),
     border = Color(0xFF242424),
@@ -135,6 +137,7 @@ private val ClawLightColors =
     surface = Color(0xFFFFFEFB),
     surfaceRaised = Color(0xFFFFFFFF),
     surfacePressed = Color(0xFFE9EDF3),
+    accent = Color(0xFF1B5ACB),
     accentSoft = Color(0xFFEAF2FF),
     accentBorder = Color(0xFF174CA9),
     border = Color(0xFFDDE3EC),
@@ -207,7 +210,7 @@ internal fun ClawDesignTheme(
   accentArgb: Long? = null,
   content: @Composable () -> Unit,
 ) {
-  val colors = clawColorsForTheme(dark = dark, accentArgb = accentArgb)
+  val colors = if (dark) ClawDarkColors else ClawLightColors
   val typography = clawTypography(clawFontFamily)
 
   CompositionLocalProvider(
