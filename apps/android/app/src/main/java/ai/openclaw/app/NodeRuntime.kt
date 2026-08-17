@@ -10,7 +10,7 @@ import ai.openclaw.app.chat.ChatController
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatOutboxItem
 import ai.openclaw.app.chat.ChatPendingToolCall
-import ai.openclaw.app.chat.ChatPlanStep
+import ai.openclaw.app.chat.ChatPlanSnapshot
 import ai.openclaw.app.chat.ChatQuestionPrompt
 import ai.openclaw.app.chat.ChatSessionDeletion
 import ai.openclaw.app.chat.ChatSessionEntry
@@ -2800,7 +2800,7 @@ class NodeRuntime private constructor(
   val chatStreamingAssistantText: StateFlow<String?> = chat.streamingAssistantText
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = chat.pendingToolCalls
   val chatQuestions: StateFlow<List<ChatQuestionPrompt>> = chat.questions
-  val chatPlanSteps: StateFlow<List<ChatPlanStep>> = chat.planSteps
+  val chatPlanSnapshot: StateFlow<ChatPlanSnapshot> = chat.planSnapshot
   val chatSessions: StateFlow<List<ChatSessionEntry>> = chat.sessions
   val chatSessionBranches: StateFlow<List<SessionBranch>> = chat.sessionBranches
   val chatSessionBranchesLoading: StateFlow<Boolean> = chat.sessionBranchesLoading

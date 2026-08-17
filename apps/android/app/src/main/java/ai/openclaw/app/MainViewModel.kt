@@ -6,7 +6,7 @@ import ai.openclaw.app.chat.ChatComposerOwner
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatOutboxItem
 import ai.openclaw.app.chat.ChatPendingToolCall
-import ai.openclaw.app.chat.ChatPlanStep
+import ai.openclaw.app.chat.ChatPlanSnapshot
 import ai.openclaw.app.chat.ChatQuestionPrompt
 import ai.openclaw.app.chat.ChatSessionEntry
 import ai.openclaw.app.chat.ChatThinkingLevelSelection
@@ -639,7 +639,8 @@ class MainViewModel private constructor(
   val chatStreamingAssistantText: StateFlow<String?> = runtimeState(initial = null) { it.chatStreamingAssistantText }
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = runtimeState(initial = emptyList()) { it.chatPendingToolCalls }
   val chatQuestions: StateFlow<List<ChatQuestionPrompt>> = runtimeState(initial = emptyList()) { it.chatQuestions }
-  val chatPlanSteps: StateFlow<List<ChatPlanStep>> = runtimeState(initial = emptyList()) { it.chatPlanSteps }
+  val chatPlanSnapshot: StateFlow<ChatPlanSnapshot> =
+    runtimeState(initial = ChatPlanSnapshot(steps = emptyList())) { it.chatPlanSnapshot }
   val chatSessions: StateFlow<List<ChatSessionEntry>> = runtimeState(initial = emptyList()) { it.chatSessions }
   val chatSessionBranches: StateFlow<List<SessionBranch>> = runtimeState(initial = emptyList()) { it.chatSessionBranches }
   val chatSessionBranchesLoading: StateFlow<Boolean> = runtimeState(initial = false) { it.chatSessionBranchesLoading }
