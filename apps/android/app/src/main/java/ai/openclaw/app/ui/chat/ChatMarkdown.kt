@@ -3,12 +3,6 @@ package ai.openclaw.app.ui.chat
 import ai.openclaw.app.chat.CHAT_IMAGE_MAX_BASE64_CHARS
 import ai.openclaw.app.i18n.nativeString
 import ai.openclaw.app.ui.design.ClawTheme
-import ai.openclaw.app.ui.mobileAccent
-import ai.openclaw.app.ui.mobileCallout
-import ai.openclaw.app.ui.mobileCaption1
-import ai.openclaw.app.ui.mobileCodeBg
-import ai.openclaw.app.ui.mobileCodeText
-import ai.openclaw.app.ui.mobileTextSecondary
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -230,7 +224,7 @@ private fun RenderCommonMarkBlock(
             Modifier
               .width(2.dp)
               .fillMaxHeight()
-              .background(mobileTextSecondary.copy(alpha = 0.35f)),
+              .background(ClawTheme.colors.textMuted.copy(alpha = 0.35f)),
         )
         Column(
           modifier = Modifier.weight(1f),
@@ -277,7 +271,7 @@ private fun RenderCommonMarkBlock(
           Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(mobileTextSecondary.copy(alpha = 0.25f)),
+            .background(ClawTheme.colors.textMuted.copy(alpha = 0.25f)),
       )
     }
     is HtmlBlock -> {
@@ -295,7 +289,7 @@ private fun RenderLiteralHtml(
   if (literal.isNotEmpty()) {
     Text(
       text = literal,
-      style = mobileCallout.copy(fontFamily = FontFamily.Monospace),
+      style = ClawTheme.type.body.copy(fontFamily = FontFamily.Monospace),
       color = textColor,
     )
   }
@@ -331,11 +325,11 @@ private fun RenderMarkdownDisclosure(
       ) {
         Text(
           text = if (isExpanded) "▾" else "▸",
-          style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+          style = ClawTheme.type.body.copy(fontWeight = FontWeight.SemiBold),
         )
         Text(
           text = summary,
-          style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+          style = ClawTheme.type.body.copy(fontWeight = FontWeight.SemiBold),
           color = textColor,
         )
       }
