@@ -451,6 +451,7 @@ jobs:
           OPENCLAW_CI_WORKFLOW_REVISION: ${{ github.sha }}
           OPENCLAW_CI_REPOSITORY: ${{ github.repository }}
           OPENCLAW_CI_EVENT_NAME: ${{ github.event_name }}
+          OPENCLAW_CI_RUNNER_BACKEND: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND }}
         run: |
           node --import tsx --input-type=module <<'EOF'
           import { appendFileSync, existsSync, readFileSync } from "node:fs";
@@ -2305,10 +2306,32 @@ jobs:
         uses: ./.github/actions/setup-node-env
         with:
           install-bun: "false"
-          # Same-repo Blacksmith runs restore the dependency cache published by
-          # preflight; hosted paths use the pnpm store cache instead.
-          dependency-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'true' || 'false' }}
-          use-actions-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'false' || 'true' }}
+          # The github/hybrid planner profile uses the Actions pnpm-store cache
+          # on either runner backend; all-Blacksmith mode restores preflight's tree.
+          dependency-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'true' || 'false' }}
+          use-actions-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'false' || 'true' }}
+
+      - name: Compute extension boundary input fingerprint
+        id: extension-boundary-inputs
+        if: matrix.task == 'lint'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fingerprint="$(node --import tsx scripts/prepare-extension-package-boundary-artifacts.mts --print-input-fingerprint)"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
+      - name: Cache extension package boundary artifacts for hosted lint
+        if: matrix.task == 'lint' && (vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository))
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            dist/plugin-sdk
+            packages/plugin-sdk/dist
+            extensions/*/dist/.boundary-tsc.tsbuildinfo
+            extensions/*/dist/.boundary-tsc.stamp
+          key: ${{ runner.os }}-extension-package-boundary-v2-${{ steps.extension-boundary-inputs.outputs.fingerprint }}
+          restore-keys: |
+            ${{ runner.os }}-extension-package-boundary-v2-
 
       # check-lint's shard runner rebuilds the same plugin-sdk boundary
       # artifacts the boundary lane snapshots (~72s cold); restore them from
@@ -2362,6 +2385,7 @@ jobs:
           FORMAT_CHECK: ${{ needs.preflight.outputs.run_format_check }}
           RUN_CONTROL_UI_I18N: ${{ needs.preflight.outputs.run_control_ui_i18n }}
           RUN_UI_TESTS: ${{ needs.preflight.outputs.run_ui_tests }}
+          RUNNER_BACKEND: ${{ (vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) && 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND }}
           OPENCLAW_LOCAL_CHECK: "0"
           TASK: ${{ matrix.task }}
           PR_BASE_SHA: ${{ github.event_name == 'pull_request' && needs.preflight.outputs.diff_base_revision || '' }}
@@ -2538,6 +2562,79 @@ jobs:
               exit 1
               ;;
           esac
+
+  # The github/hybrid planner profile aggregates core targets into five Programs
+  # across five hosted jobs. All-Blacksmith mode keeps one lint job.
+  check-lint-hosted-core-shard:
+    permissions:
+      contents: read
+    name: check-lint-core-${{ matrix.stripe }}
+    needs: [preflight]
+    if: ${{ needs.preflight.outputs.run_check == 'true' && (vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        stripe: [1, 2, 3, 4, 5]
+    steps:
+      - *linux_node_checkout_step
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node-env
+        with:
+          install-bun: "false"
+          dependency-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'true' || 'false' }}
+          use-actions-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'false' || 'true' }}
+
+      - name: Run hosted core lint stripe
+        env:
+          GOMAXPROCS: "2"
+          OPENCLAW_LOCAL_CHECK: "0"
+        run: >-
+          node --import tsx scripts/run-oxlint-shards.mts
+          --only=core --split-core --core-stripe=${{ matrix.stripe }}/5 --threads=1
+
+  # The github/hybrid planner profile stripes the 14 serial core test-type
+  # graphs (~34-42s per graph on either runner class; tsgo saturates a machine
+  # per graph) across four jobs; the check-test-types row keeps the
+  # extensions/root/scripts tail. All-Blacksmith mode keeps the single
+  # 16-vCPU test-types job.
+  check-test-types-hosted-core-shard:
+    permissions:
+      contents: read
+    name: check-test-types-core-${{ matrix.stripe }}
+    needs: [preflight]
+    if: ${{ needs.preflight.outputs.run_check == 'true' && (vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' || vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) }}
+    # Measured 232-269s per stripe on hosted 4-core; hybrid attempt 1 rides
+    # the 8 vCPU class like the compact large rows, retries stay hosted.
+    runs-on: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND == 'github' && 'ubuntu-24.04' || (vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' && github.run_attempt > 1) && 'ubuntu-24.04' || github.event_name == 'workflow_dispatch' && 'ubuntu-24.04' || (vars.OPENCLAW_CI_RUNNER_BACKEND == 'hybrid' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.pull_request.author_association)) && 'blacksmith-8vcpu-ubuntu-2404' || 'ubuntu-24.04') }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        stripe: [1, 2, 3, 4, 5]
+    steps:
+      - *linux_node_checkout_step
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node-env
+        with:
+          install-bun: "false"
+          dependency-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'true' || 'false' }}
+          use-actions-cache: ${{ vars.OPENCLAW_CI_RUNNER_BACKEND != 'github' && vars.OPENCLAW_CI_RUNNER_BACKEND != 'hybrid' && github.event_name != 'workflow_dispatch' && github.repository == 'openclaw/openclaw' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'openclaw/openclaw') && 'false' || 'true' }}
+
+      - name: Run hosted core test-types stripe
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Frozen/historical targets predate stripe support; their whole
+          # test-types lane already runs inside the check-test-types row.
+          if ! grep -q -- '--stripe' scripts/run-tsgo-core-test-shards.mts 2>/dev/null; then
+            echo "[skip] target does not support core test-type stripes"
+            exit 0
+          fi
+          node scripts/run-tsgo-core-test-shards.mjs --stripe "${{ matrix.stripe }}/5" --concurrency 2
 
   check-additional-shard:
     permissions:
