@@ -20,20 +20,17 @@ class ChatControllerProgressCardTest {
 
   private fun TestScope.newController(
     gateway: ScriptedGateway,
-    gatewayAdvertisesMethod: (method: String) -> Boolean? = { null },
+    gatewayAdvertisesProgressCard: () -> Boolean? = { null },
   ): ChatController =
     backgroundScope.createChatController(
       requestGateway = gateway::request,
-      gatewayAdvertisesMethod = gatewayAdvertisesMethod,
+      gatewayAdvertisesProgressCard = gatewayAdvertisesProgressCard,
     )
 
-  private suspend fun TestScope.startRun(progressCardAdvertised: Boolean?): StartedRun {
+  private suspend fun TestScope.startRun(gatewayAdvertisesProgressCard: Boolean?): StartedRun {
     val gateway = ScriptedGateway(chatControllerTestJson)
     gateway.respondChatSend(status = "started")
-    val controller =
-      newController(gateway) { method ->
-        if (method == "progressCard.get") progressCardAdvertised else true
-      }
+    val controller = newController(gateway) { gatewayAdvertisesProgressCard }
     controller.handleGatewayEvent("health", null)
     runCurrent()
     assertTrue(controller.sendMessageAwaitAcceptance("make a plan", "off", emptyList()))
@@ -62,7 +59,7 @@ class ChatControllerProgressCardTest {
   @Test
   fun legacyPlanRendersWhenGatewayLacksProgressCardStore() =
     runTest {
-      val (controller, _, runId) = startRun(progressCardAdvertised = false)
+      val (controller, _, runId) = startRun(gatewayAdvertisesProgressCard = false)
 
       controller.handleGatewayEvent(
         "agent",
@@ -91,7 +88,7 @@ class ChatControllerProgressCardTest {
   @Test
   fun emptyLegacyPlanClearsFallbackCard() =
     runTest {
-      val (controller, _, runId) = startRun(progressCardAdvertised = false)
+      val (controller, _, runId) = startRun(gatewayAdvertisesProgressCard = false)
       controller.handleGatewayEvent(
         "agent",
         planEvent(runId, """{"phase":"update","steps":[{"step":"Active","status":"in_progress"}]}"""),
@@ -112,7 +109,7 @@ class ChatControllerProgressCardTest {
   @Test
   fun capableGatewayIgnoresLegacyPlanDualEmit() =
     runTest {
-      val (controller, gateway, runId) = startRun(progressCardAdvertised = true)
+      val (controller, gateway, runId) = startRun(gatewayAdvertisesProgressCard = true)
       gateway.respondWith("progressCard.get", cardResponse(markdown = "Canonical"))
       controller.handleGatewayEvent("progressCard.changed", changedEvent("main", "1"))
       runCurrent()
@@ -129,7 +126,7 @@ class ChatControllerProgressCardTest {
   @Test
   fun unknownGatewayCapabilityIgnoresLegacyPlan() =
     runTest {
-      val (controller, _, runId) = startRun(progressCardAdvertised = null)
+      val (controller, _, runId) = startRun(gatewayAdvertisesProgressCard = null)
 
       controller.handleGatewayEvent(
         "agent",
@@ -140,9 +137,9 @@ class ChatControllerProgressCardTest {
     }
 
   @Test
-  fun healthRefreshSkipsUnadvertisedStoreAndPreservesLegacyFallbackCard() =
+  fun failedStoreFetchPreservesLegacyFallbackCard() =
     runTest {
-      val (controller, gateway, runId) = startRun(progressCardAdvertised = false)
+      val (controller, gateway, runId) = startRun(gatewayAdvertisesProgressCard = false)
       controller.handleGatewayEvent(
         "agent",
         planEvent(runId, """{"phase":"update","explanation":"Keep me","steps":[{"step":"Active","status":"in_progress"}]}"""),
@@ -154,7 +151,6 @@ class ChatControllerProgressCardTest {
       runCurrent()
 
       assertEquals(expected, controller.progressCard.value)
-      assertEquals(0, gateway.callCount("progressCard.get"))
     }
 
   @Test
