@@ -28,7 +28,7 @@ fun OpenClawTheme(
   OpenClawSystemBarAppearance(lightAppearance = !isDark)
 
   CompositionLocalProvider(
-    LocalMobileColors provides mobileColors,
+    LocalMobileColors provides MobileColors.default,
   ) {
     MaterialTheme(colorScheme = colorScheme, content = content)
   }

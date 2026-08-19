@@ -53,6 +53,7 @@ internal data class ClawColors(
   val codeBg: Color,
   val codeText: Color,
   val codeBorder: Color,
+  val accent: Color,
 )
 
 /**
@@ -121,6 +122,7 @@ private val ClawDarkColors =
     codeBg = Color(0xFF111317),
     codeText = Color(0xFFE8EAEE),
     codeBorder = Color(0xFF2B2E35),
+    accent = Color(0xFF3EDB82),
   )
 
 private val ClawLightColors =
@@ -145,6 +147,7 @@ private val ClawLightColors =
     codeBg = Color(0xFFEFF3F8),
     codeText = Color(0xFF172033),
     codeBorder = Color(0xFFD7DDE7),
+    accent = Color(0xFF111827),
   )
 
 private val LocalClawColors = staticCompositionLocalOf { ClawDarkColors }
