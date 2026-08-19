@@ -5957,6 +5957,12 @@ class ChatController internal constructor(
     _planSnapshot.value = ChatPlanSnapshot(steps = emptyList())
   }
 
+  /** Alias for [clearPlanSteps] used by cherry-picked upstream code. */
+  private fun clearPlan() = clearPlanSteps()
+
+  /** Alias for [clearPlanFor] used by cherry-picked upstream code. */
+  private fun clearPlanStepsFor(runId: String?) = clearPlanFor(runId)
+
   private fun clearPlanFor(runId: String?) {
     if (runId == null || planRunId == null || planRunId == runId) {
       clearPlan()
