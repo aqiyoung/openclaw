@@ -13,8 +13,9 @@ function bundledPluginFile(pluginId: string, relativePath: string, suffix = ""):
 // Package scripts, workflows, Docker scenarios, and documented maintainer commands invoke these
 // files by path. They are executable roots rather than importable library modules.
 const repositoryScriptEntries = [
-  // setup-node-env invokes this helper from composite-action YAML.
+  // setup-node-env invokes these helpers from composite-action YAML.
   ".github/actions/setup-node-env/dependency-fingerprint.mjs!",
+  ".github/actions/setup-node-env/verify-importers.mjs!",
   "apps/android/scripts/build-release-artifacts.ts!",
   "scripts/bundle-a2ui.mts!",
   "scripts/build-discord-activity-sdk.mts!",
