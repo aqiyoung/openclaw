@@ -1351,7 +1351,7 @@ class NodeRuntime private constructor(
   // response from publishing into a replacement socket on the same stable endpoint.
   private val gatewayMethodsLock = Any()
   private var gatewayApprovalRpcFamily = GatewayApprovalRpcFamily.Unavailable
-  private var gatewayProgressCardAdvertised: Boolean? = null
+  private var gatewayAdvertisedMethods: Set<String>? = null
   private var gatewayMethodsEpoch = 0L
 
   @Volatile internal var gatewayDataRequestOverrideForTests: GatewayDataRequestOverride? = null
@@ -1432,6 +1432,7 @@ class NodeRuntime private constructor(
         replaceGatewayMethods(hello.methods.orEmpty())
         val operatorScopes = normalizeOperatorScopes(hello.authScopes)
         _operatorScopes.value = operatorScopes
+        // Pairing capabilities require positive hello advertisement; an unknown catalog grants none.
         _devicePairingCapabilities.value =
           selectGatewayDevicePairingCapabilities(hello.methods.orEmpty(), operatorScopes)
         _gatewayAccentArgb.value = null
@@ -1958,7 +1959,7 @@ class NodeRuntime private constructor(
           cacheScope = ::chatCacheScope,
           currentDefaultAgentId = { gatewayDefaultAgentId.value },
           currentDefaultAgentRevision = gatewayDefaultAgentRevision::get,
-          gatewayAdvertisesProgressCard = ::gatewayAdvertisesProgressCard,
+          gatewayAdvertisesMethod = ::gatewayAdvertisesMethod,
           commandOutbox = chatCommandOutbox,
           recordModelRecent = prefs::recordModelRecent,
           onSessionDeleted = ::publishChatSessionDeletion,
@@ -1974,7 +1975,7 @@ class NodeRuntime private constructor(
           scope = scope,
           json = json,
           requestGateway = AndroidScreenshotFixture::request,
-          gatewayAdvertisesProgressCard = { true },
+          gatewayAdvertisesMethod = { _ -> true },
         )
     }.also {
       it.applyMainSessionKey(_mainSessionKey.value)
@@ -7634,7 +7635,7 @@ class NodeRuntime private constructor(
     }
   }
 
-  private fun gatewayAdvertisesProgressCard(): Boolean? = synchronized(gatewayMethodsLock) { gatewayProgressCardAdvertised }
+  private fun gatewayAdvertisesMethod(method: String): Boolean? = synchronized(gatewayMethodsLock) { gatewayAdvertisedMethods?.let { method in it } }
 
   private fun captureGatewayMethods(): GatewayMethodsSnapshot =
     synchronized(gatewayMethodsLock) {
