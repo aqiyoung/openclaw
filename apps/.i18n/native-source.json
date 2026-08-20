@@ -8386,7 +8386,7 @@
       "id": "native.android.09fd6eeb7a512bda"
     },
     {
-      "kind": "ui-named-argument",
+      "kind": "ui-call",
       "line": 2245,
       "path": "apps/android/app/src/main/java/ai/openclaw/app/ui/SettingsScreens.kt",
       "source": "$currentVersion -> ${info.latestVersion}",
