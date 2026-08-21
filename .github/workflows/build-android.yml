@@ -125,7 +125,7 @@ jobs:
           BASE="${VNO_V%.*}"
           NN=$(printf "%02d" "${VNO_V##*.}")
           VERSION_CODE="${BASE//./}${NN}"
-          VERSION_NAME="${BASE}"
+          VERSION_NAME="${VNO_V}"
           RELEASE_URL="https://github.com/aqiyoung/openclaw/releases/tag/${TAG}"
           DL_BASE="https://github.com/aqiyoung/openclaw/releases/download/${TAG}/openclaw-${VERSION_NAME}-thirdParty-release"
           export TAG VERSION_NAME VERSION_CODE RELEASE_URL DL_BASE
