@@ -122,10 +122,10 @@ jobs:
           set -e
           TAG="${{ github.ref_name }}"
           VNO_V="${TAG#v}"
-          BASE="${VNO_V%.*}"
-          NN=$(printf "%02d" "${VNO_V##*.}")
-          VERSION_CODE="${BASE//./}${NN}"
           VERSION_NAME="${VNO_V}"
+          # versionCode 从 Version.properties 读取, 与 gradle 编译 APK 用的值完全一致
+          # (避免自行拼接格式不一致导致 INSTALL_FAILED_VERSION_DOWNGRADE)
+          VERSION_CODE=$(grep 'OPENCLAW_ANDROID_VERSION_CODE' apps/android/Config/Version.properties | cut -d'=' -f2 | tr -d '[:space:]')
           RELEASE_URL="https://github.com/aqiyoung/openclaw/releases/tag/${TAG}"
           DL_BASE="https://github.com/aqiyoung/openclaw/releases/download/${TAG}/openclaw-${VERSION_NAME}-thirdParty-release"
           export TAG VERSION_NAME VERSION_CODE RELEASE_URL DL_BASE
