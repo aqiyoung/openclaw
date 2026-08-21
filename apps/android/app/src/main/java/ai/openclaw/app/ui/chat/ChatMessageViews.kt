@@ -378,17 +378,17 @@ private fun bubbleStyle(role: String): ChatBubbleStyle =
     "user" ->
       ChatBubbleStyle(
         alignEnd = true,
-        containerColor = mobileAccentSoft,
-        borderColor = mobileAccent,
-        roleColor = mobileAccent,
+        containerColor = ClawTheme.colors.successSoft,
+        borderColor = ClawTheme.colors.accent,
+        roleColor = ClawTheme.colors.accent,
       )
 
     else ->
       ChatBubbleStyle(
         alignEnd = false,
-        containerColor = mobileCardSurface,
-        borderColor = mobileBorderStrong,
-        roleColor = mobileTextSecondary,
+        containerColor = ClawTheme.colors.surfaceRaised,
+        borderColor = ClawTheme.colors.borderStrong,
+        roleColor = ClawTheme.colors.textMuted,
       )
   }
 
