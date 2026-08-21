@@ -458,7 +458,7 @@
     <string name="native_42e3a99c21767def" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在等待设备批准"</string>
     <string name="native_430798d3e8250938" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"正在加载会话"</string>
     <string name="native_430df68ec29a85a2" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"此 Gateway 现在提供的证书已受此设备信任。"</string>
-    <string name="native_4346538c16287e7c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"New version found"</string>
+    <string name="native_4346538c16287e7c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"发现新版本"</string>
     <string name="native_43905968a540af6a" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"错开毫秒数"</string>
     <string name="native_43988c156beabf7d" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"event create"</string>
     <string name="native_43cc23fa52b87b4c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"文档"</string>
@@ -782,7 +782,7 @@
     <string name="native_72e9a59f5a1d6289" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"端口"</string>
     <string name="native_7344ef8e67c5337e" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"输入设置代码"</string>
     <string name="native_735cca45016888d0" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"无法加载 Gateway 日志。"</string>
-    <string name="native_73b6e48a1b552d11" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Later"</string>
+    <string name="native_73b6e48a1b552d11" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"稍后"</string>
     <string name="native_73bf01fe0c2e8dae" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"%1$s 个提供方已就绪"</string>
     <string name="native_73d5214e7f5430f8" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"你的智能体已准备就绪"</string>
     <string name="native_740aa42cc068cf01" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Gateway 上未配置 %1$s 提供商"</string>
@@ -1115,7 +1115,7 @@
     <string name="native_a8c28c2b07e4be03" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"节点操作仅在目标应用处于前台时运行（通过远程路径验证）。全局操作和同应用操作可在此处运行。"</string>
     <string name="native_a8ef5cdf31a6505a" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"尚未找到 Gateway。如果发现功能受阻，请使用手动设置。"</string>
     <string name="native_a901aa25b833cf33" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"打开会话"</string>
-    <string name="native_a9244f84ea74f0f3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Go to download"</string>
+    <string name="native_a9244f84ea74f0f3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"前往下载"</string>
     <string name="native_a92f0449a9f7235b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"处理中"</string>
     <string name="native_a9624cf0b6ae80c1" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"开始说话..."</string>
     <string name="native_a9ac253267d07365" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"手机节点"</string>

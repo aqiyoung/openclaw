@@ -1,6 +1,8 @@
 package ai.openclaw.app.ui
 
 import ai.openclaw.app.AppearanceThemeMode
+import ai.openclaw.app.ui.design.ClawDesignTheme
+import ai.openclaw.app.ui.design.ClawTheme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -27,10 +29,12 @@ fun OpenClawTheme(
 
   OpenClawSystemBarAppearance(lightAppearance = !isDark)
 
-  CompositionLocalProvider(
-    LocalMobileColors provides MobileColors.default,
-  ) {
-    MaterialTheme(colorScheme = colorScheme, content = content)
+  ClawDesignTheme(dark = isDark) {
+    CompositionLocalProvider(
+      LocalMobileColors provides mobileColorsFromClawTheme(ClawTheme.colors, ClawTheme.type),
+    ) {
+      MaterialTheme(colorScheme = colorScheme, content = content)
+    }
   }
 }
 
