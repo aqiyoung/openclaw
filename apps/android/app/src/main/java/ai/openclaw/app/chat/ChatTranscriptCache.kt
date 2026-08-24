@@ -35,6 +35,28 @@ private data class CachedMessageContent(
   val playback: String? = null,
 )
 
+@Serializable
+private data class CachedMessagePayload(
+  val content: List<CachedMessageContent>,
+  val provenance: CachedMessageProvenance? = null,
+  @SerialName("__openclaw") val transcriptMarker: CachedTranscriptMarker? = null,
+  val senderLabel: String? = null,
+)
+
+@Serializable
+private data class CachedMessageProvenance(
+  val kind: String,
+  val sourceTool: String? = null,
+)
+
+@Serializable
+private data class CachedTranscriptMarker(
+  val kind: String,
+  val id: String? = null,
+  val tokensBefore: Double? = null,
+  val tokensAfter: Double? = null,
+)
+
 /**
  * Read-only offline cache of chat sessions and transcripts.
  *
@@ -328,6 +350,20 @@ class RoomChatTranscriptCache internal constructor(
         idempotencyKey = row.idempotencyKey,
         // Canonical tree ids stay live-only; cached rows regain actions after history refresh.
         entryId = null,
+        provenance =
+          payload.provenance?.let {
+            ChatMessageProvenance(kind = it.kind, sourceTool = it.sourceTool)
+          },
+        transcriptMarker =
+          payload.transcriptMarker?.let {
+            ChatTranscriptMarker(
+              kind = it.kind,
+              id = it.id,
+              tokensBefore = it.tokensBefore,
+              tokensAfter = it.tokensAfter,
+            )
+          },
+        senderLabel = payload.senderLabel,
       )
     }
   }
@@ -445,8 +481,26 @@ class RoomChatTranscriptCache internal constructor(
                 else -> null
               }
             }
-          if (content.isEmpty()) return@mapNotNull null
-          Triple(message, role, content)
+          if (content.isEmpty() && message.provenance == null && message.transcriptMarker == null) return@mapNotNull null
+          val payload =
+            CachedMessagePayload(
+              content = content,
+              provenance =
+                message.provenance?.let {
+                  CachedMessageProvenance(kind = it.kind, sourceTool = it.sourceTool)
+                },
+              transcriptMarker =
+                message.transcriptMarker?.let {
+                  CachedTranscriptMarker(
+                    kind = it.kind,
+                    id = it.id,
+                    tokensBefore = it.tokensBefore,
+                    tokensAfter = it.tokensAfter,
+                  )
+                },
+              senderLabel = message.senderLabel,
+            )
+          Triple(message, role, payload)
         }.takeLast(MAX_CACHED_MESSAGES_PER_SESSION)
         .mapIndexed { index, (message, role, content) ->
           CachedMessageEntity(
