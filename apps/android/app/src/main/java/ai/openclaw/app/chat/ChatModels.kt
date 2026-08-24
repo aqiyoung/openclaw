@@ -30,6 +30,7 @@ data class ChatMessage(
   val entryId: String? = null,
   val provenance: ChatMessageProvenance? = null,
   val transcriptMarker: ChatTranscriptMarker? = null,
+  val senderLabel: String? = null,
 )
 
 data class ChatMessageProvenance(
