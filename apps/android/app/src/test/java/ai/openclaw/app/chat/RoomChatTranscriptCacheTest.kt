@@ -78,7 +78,8 @@ class RoomChatTranscriptCacheTest {
       saveTranscript(
         messages =
           listOf(
-            message("hello", role = "user", timestampMs = 10, idempotencyKey = "run-1:user", extraParts = listOf(imagePart)),
+            message("hello", role = "user", timestampMs = 10, idempotencyKey = "run-1:user", extraParts = listOf(imagePart))
+              .copy(senderLabel = "Alex (Slack)"),
             // Inline binary-only messages remain disposable and are skipped entirely.
             ChatMessage(id = "img", role = "user", content = listOf(imagePart), timestampMs = 11),
             ChatMessage(id = "managed", role = "assistant", content = listOf(managedImage), timestampMs = 11),
@@ -94,6 +95,7 @@ class RoomChatTranscriptCacheTest {
       assertEquals(listOf("user", "assistant", "assistant"), loaded.map { it.role })
       assertEquals(listOf(10L, 11L, 12L), loaded.map { it.timestampMs })
       assertEquals(listOf("run-1:user", null, null), loaded.map { it.idempotencyKey })
+      assertEquals(listOf("Alex (Slack)", null, null), loaded.map { it.senderLabel })
     }
 
   @Test
