@@ -94,10 +94,8 @@ import ai.openclaw.app.node.TalkHandler
 import ai.openclaw.app.node.asObjectOrNull
 import ai.openclaw.app.node.asStringOrNull
 import ai.openclaw.app.node.invokeErrorFromThrowable
-import ai.openclaw.app.node.resolveGatewayAccentArgb
-import ai.openclaw.app.node.resolveProfileAccentArgb
 import ai.openclaw.app.node.readAndroidPermissionSnapshot
-import ai.openclaw.app.protocol.OpenClawCanvasA2UIAction
+import ai.openclaw.app.node.resolveGatewayAccentArgb
 import ai.openclaw.app.systemagent.SystemAgentChatController
 import ai.openclaw.app.systemagent.SystemAgentChatState
 import ai.openclaw.app.systemagent.SystemAgentGatewayAccess
@@ -1436,7 +1434,7 @@ class NodeRuntime private constructor(
         // Pairing capabilities require positive hello advertisement; an unknown catalog grants none.
         _devicePairingCapabilities.value =
           selectGatewayDevicePairingCapabilities(hello.methods.orEmpty(), operatorScopes)
-        _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
+        _gatewayAccentArgb.value = null
         val mainSessionKey =
           prepareMainSessionKey(resolveAgentIdFromMainSessionKey(hello.mainSessionKey))
         // Create/adopt before history refresh; this keeps the first connected read on the
@@ -5783,10 +5781,9 @@ class NodeRuntime private constructor(
       val res = requestGatewayData(gatewayScope, "config.get", "{}")
       val root = json.parseToJsonElement(res).asObjectOrNull()
       val config = root?.get("config").asObjectOrNull()
-      val parsed = fetchProfileAccentArgb(gatewayScope) ?: resolveGatewayAccentArgb(config)
+      val parsed = resolveGatewayAccentArgb(config)
       publishGatewayData(gatewayScope) {
         _gatewayAccentArgb.value = parsed
-        updateHomeCanvasState()
       }
     } catch (_: Throwable) {
       // ignore

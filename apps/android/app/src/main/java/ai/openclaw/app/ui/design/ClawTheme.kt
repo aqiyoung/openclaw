@@ -210,7 +210,7 @@ internal fun ClawDesignTheme(
   accentArgb: Long? = null,
   content: @Composable () -> Unit,
 ) {
-  val colors = if (dark) ClawDarkColors else ClawLightColors
+  val colors = clawColorsForTheme(dark = dark, accentArgb = accentArgb)
   val typography = clawTypography(clawFontFamily)
 
   CompositionLocalProvider(

@@ -8,25 +8,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-/** Small tuple used by Android node handlers that need four return values. */
-data class Quad<A, B, C, D>(
-  val first: A,
-  val second: B,
-  val third: C,
-  val fourth: D,
-)
-
-/** Escapes a Kotlin string into a JSON string literal without building a JsonElement. */
-fun String.toJsonString(): String {
-  val escaped =
-    this
-      .replace("\\", "\\\\")
-      .replace("\"", "\\\"")
-      .replace("\n", "\\n")
-      .replace("\r", "\\r")
-  return "\"$escaped\""
-}
-
 fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
 
 /** Parses invoke params into a JSON object, returning null for absent/malformed input. */
@@ -92,12 +73,6 @@ fun parseHexColorArgb(raw: String?): Long? {
   if (hex.length != 6) return null
   val rgb = hex.toLongOrNull(16) ?: return null
   return 0xFF000000L or rgb
-}
-
-/** Per-profile accent from a users.prefs.get entries payload. */
-fun resolveProfileAccentArgb(entries: JsonObject?): Long? {
-  val value = entries?.get("ui.accent")?.takeIf { it !is JsonNull }
-  return parseHexColorArgb((value as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull)
 }
 
 fun resolveGatewayAccentArgb(config: JsonObject?): Long? {
