@@ -1392,11 +1392,11 @@ class NodeRuntime private constructor(
         _remoteAddress.value = hello.remoteAddress
         _gatewayVersion.value = hello.serverVersion
         _gatewayUpdateAvailable.value = hello.updateAvailable
-        replaceGatewayMethods(hello.methods)
+        replaceGatewayMethods(hello.methods.orEmpty())
         val operatorScopes = normalizeOperatorScopes(hello.authScopes)
         _operatorScopes.value = operatorScopes
         _devicePairingCapabilities.value =
-          selectGatewayDevicePairingCapabilities(hello.methods, operatorScopes)
+          selectGatewayDevicePairingCapabilities(hello.methods.orEmpty(), operatorScopes)
         _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
         val mainSessionKey =
           prepareMainSessionKey(resolveAgentIdFromMainSessionKey(hello.mainSessionKey))
