@@ -39,6 +39,9 @@ internal data class ClawColors(
   val surface: Color,
   val surfaceRaised: Color,
   val surfacePressed: Color,
+  val accent: Color,
+  val accentSoft: Color,
+  val accentBorder: Color,
   val border: Color,
   val borderStrong: Color,
   val text: Color,
@@ -55,7 +58,6 @@ internal data class ClawColors(
   val codeBg: Color,
   val codeText: Color,
   val codeBorder: Color,
-  val accent: Color,
 )
 
 /**
@@ -108,6 +110,9 @@ private val ClawDarkColors =
     surface = Color(0xFF0A0A0A),
     surfaceRaised = Color(0xFF111111),
     surfacePressed = Color(0xFF1A1A1A),
+    accent = Color(0xFF6EA8FF),
+    accentSoft = Color(0xFF1A2A44),
+    accentBorder = Color(0xFF5B93E8),
     border = Color(0xFF242424),
     borderStrong = Color(0xFF3A3A3A),
     text = Color(0xFFF8F8F8),
@@ -124,7 +129,6 @@ private val ClawDarkColors =
     codeBg = Color(0xFF111317),
     codeText = Color(0xFFE8EAEE),
     codeBorder = Color(0xFF2B2E35),
-    accent = Color(0xFF3EDB82),
   )
 
 private val ClawLightColors =
@@ -133,6 +137,9 @@ private val ClawLightColors =
     surface = Color(0xFFFFFEFB),
     surfaceRaised = Color(0xFFFFFFFF),
     surfacePressed = Color(0xFFE9EDF3),
+    accent = Color(0xFF1B5ACB),
+    accentSoft = Color(0xFFEAF2FF),
+    accentBorder = Color(0xFF174CA9),
     border = Color(0xFFDDE3EC),
     borderStrong = Color(0xFFC7D0DC),
     text = Color(0xFF111318),
@@ -149,7 +156,6 @@ private val ClawLightColors =
     codeBg = Color(0xFFEFF3F8),
     codeText = Color(0xFF172033),
     codeBorder = Color(0xFFD7DDE7),
-    accent = Color(0xFF111827),
   )
 
 internal fun clawColorsForTheme(
