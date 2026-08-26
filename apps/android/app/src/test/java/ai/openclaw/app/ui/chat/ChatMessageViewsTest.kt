@@ -199,6 +199,63 @@ class ChatMessageViewsTest {
   }
 
   @Test
+  fun omittedImageOnlyTurnsRemainVisibleWithoutLoadingBeyondTheImageCap() {
+    val omittedImage =
+      requireNotNull(
+        parseChatMessageContent(
+          Json.parseToJsonElement(
+            """{"type":"image","mimeType":"image/png","omitted":true,"bytes":5}""",
+          ),
+        ),
+      )
+    var artifactRequests = 0
+
+    composeRule.setContent {
+      Column {
+        listOf(
+          listOf(omittedImage),
+          (1..5).map { index -> omittedImage.copy(fileName = "redacted-$index.png") },
+        ).forEachIndexed { index, images ->
+          ChatBubble(
+            messageId = "omitted-images-$index",
+            entryId = null,
+            role = "assistant",
+            live = false,
+            content = images,
+            timestampMs = null,
+            onReplyMessage = {},
+            sessionActionsEnabled = false,
+            onRewindMessage = {},
+            onForkMessage = {},
+            speechState = null,
+            onToggleListen = { _, _ -> },
+            inlineMediaPlaybackBlocked = false,
+            inlineWidgetResolverReady = true,
+            resolveInlineWidgetResource = { _, _ ->
+              artifactRequests += 1
+              null
+            },
+            loadImageArtifact = {
+              artifactRequests += 1
+              null
+            },
+            loadMediaArtifact = { _, _, _ ->
+              artifactRequests += 1
+              null
+            },
+          )
+        }
+      }
+    }
+
+    composeRule.onNode(hasContentDescription("OpenClaw") and hasText("Attachment")).assertIsDisplayed()
+    (1..4).forEach { index -> composeRule.onNodeWithText("redacted-$index.png").assertIsDisplayed() }
+    composeRule.onAllNodesWithText("redacted-5.png").assertCountEquals(0)
+    composeRule.onNodeWithText("Additional images hidden: 1").assertIsDisplayed()
+    assertEquals(0, artifactRequests)
+  }
+
+  @Test
   fun managedImageCompositionRequestsItsArtifact() {
     val artifactId = "artifact_managed_image_11111111-1111-4111-8111-111111111111"
     val requested = mutableListOf<String>()
