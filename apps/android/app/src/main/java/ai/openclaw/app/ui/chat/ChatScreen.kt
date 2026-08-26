@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -120,9 +121,11 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -152,11 +155,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -214,16 +220,19 @@ internal fun chatReaderListBottomInset(showJumpToLatest: Boolean): Dp =
 internal enum class ChatComposerTrailingAction {
   StartTalk,
   StopTalk,
+  Stop,
   Send,
 }
 
 /** Talk must remain stoppable even when the active session adds text to the draft. */
 internal fun resolveChatComposerTrailingAction(
   talkActive: Boolean,
+  runActive: Boolean,
   sendEnabled: Boolean,
 ): ChatComposerTrailingAction =
   when {
     talkActive -> ChatComposerTrailingAction.StopTalk
+    runActive -> ChatComposerTrailingAction.Stop
     sendEnabled -> ChatComposerTrailingAction.Send
     else -> ChatComposerTrailingAction.StartTalk
   }
@@ -2291,26 +2300,6 @@ private fun ChatComposer(
       AttachmentStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
     }
 
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      ChatModelChip(
-        label = selectedModelLabel,
-        enabled = modelPickerEnabled,
-        onClick = onOpenModelPicker,
-        modifier = Modifier.weight(1f),
-      )
-      ChatContextMeter(
-        thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported,
-        expanded = thinkingSelectorExpanded,
-        contextUsage = contextUsage,
-        onClick = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
-      )
-    }
-
     if (thinkingSelectorExpanded && thinkingSupported) {
       ChatThinkingLevelSelector(
         options = thinkingOptions,
@@ -2354,8 +2343,17 @@ private fun ChatComposer(
           onToggleDictation = onToggleDictation,
           talkActive = talkActive,
           onToggleTalk = onToggleTalk,
+          runActive = pendingRunCount > 0,
+          onAbort = onAbort,
           sendEnabled = sendEnabled,
           onSend = onSend,
+          selectedModelLabel = selectedModelLabel,
+          modelPickerEnabled = modelPickerEnabled,
+          onOpenModelPicker = onOpenModelPicker,
+          thinkingLevel = thinkingLevel,
+          thinkingSupported = thinkingSupported,
+          onToggleThinkingSelector = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
+          contextUsage = contextUsage,
           modifier = Modifier.weight(1f),
         )
       }
@@ -2370,27 +2368,6 @@ private fun ChatComposer(
         onFixConnection = onFixConnection,
         onCopyDiagnostics = onCopyDiagnostics,
       )
-    }
-
-    if (pendingRunCount > 0) {
-      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        Surface(
-          onClick = onAbort,
-          modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-          shape = RoundedCornerShape(ClawTheme.radii.pill),
-          color = ClawTheme.colors.canvas,
-          contentColor = ClawTheme.colors.text,
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            Box(modifier = Modifier.size(8.dp).background(ClawTheme.colors.danger, RoundedCornerShape(2.dp)))
-            Text(text = nativeString("Stop"), style = ClawTheme.type.label)
-          }
-        }
-      }
     }
   }
 }
@@ -2422,38 +2399,6 @@ private fun ChatThinkingLevelSelector(
           row.firstOrNull { option -> chatThinkingOptionLabel(option, languageTag) == selected }?.let { onSelect(it.id) }
         },
         modifier = Modifier.fillMaxWidth(),
-      )
-    }
-  }
-}
-
-@Composable
-private fun ChatModelChip(
-  label: String,
-  enabled: Boolean,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  Surface(
-    onClick = onClick,
-    enabled = enabled,
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
-    color = ClawTheme.colors.canvas,
-    contentColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textMuted,
-  ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(13.dp), tint = ClawTheme.colors.textSubtle)
-      Text(
-        text = label,
-        style = ClawTheme.type.caption.copy(fontSize = 12.5.sp, lineHeight = 16.sp),
-        color = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
       )
     }
   }
@@ -2724,68 +2669,6 @@ private fun ChatOfflineNotice(
 }
 
 @Composable
-private fun ChatContextMeter(
-  thinkingLevel: String,
-  thinkingSupported: Boolean,
-  expanded: Boolean,
-  contextUsage: ChatContextUsage,
-  onClick: () -> Unit,
-) {
-  val contextFraction = contextMeterWidth(contextUsage) ?: 0f
-  Row(
-    modifier = Modifier.width(178.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
-  ) {
-    Surface(
-      onClick = onClick,
-      enabled = thinkingSupported,
-      modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-      shape = RoundedCornerShape(ClawTheme.radii.pill),
-      color = ClawTheme.colors.canvas,
-      contentColor = ClawTheme.colors.text,
-    ) {
-      Row(
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-      ) {
-        if (thinkingSupported) {
-          Icon(
-            imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-            contentDescription = if (expanded) nativeString("Close thinking level selector") else nativeString("Open thinking level selector"),
-            modifier = Modifier.size(13.dp),
-            tint = ClawTheme.colors.textSubtle,
-          )
-        }
-        Text(
-          text = contextMeterLabel(contextUsage, thinkingLevel, thinkingSupported),
-          style = ClawTheme.type.caption.copy(fontSize = 12.5.sp, lineHeight = 16.sp),
-          color = ClawTheme.colors.textMuted,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-      }
-    }
-    Box(
-      modifier =
-        Modifier
-          .weight(1f)
-          .height(3.dp)
-          .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(999.dp)),
-    ) {
-      Box(
-        modifier =
-          Modifier
-            .fillMaxWidth(contextFraction)
-            .height(3.dp)
-            .background(ClawTheme.colors.primary, RoundedCornerShape(999.dp)),
-      )
-    }
-  }
-}
-
-@Composable
 private fun ChatInputPill(
   value: String,
   onValueChange: (String) -> Unit,
@@ -2799,11 +2682,21 @@ private fun ChatInputPill(
   onToggleDictation: () -> Unit,
   talkActive: Boolean,
   onToggleTalk: () -> Unit,
+  runActive: Boolean,
+  onAbort: () -> Unit,
   sendEnabled: Boolean,
   onSend: () -> Unit,
+  selectedModelLabel: String,
+  modelPickerEnabled: Boolean,
+  onOpenModelPicker: () -> Unit,
+  thinkingLevel: String,
+  thinkingSupported: Boolean,
+  onToggleThinkingSelector: () -> Unit,
+  contextUsage: ChatContextUsage,
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
+  var attachmentMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -2812,74 +2705,223 @@ private fun ChatInputPill(
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(3.dp),
-    ) {
-      Surface(onClick = onPickImages, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
+    Column {
+      Row(
+        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+      ) {
+        Box {
+          Surface(
+            onClick = { attachmentMenuExpanded = true },
+            modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+            shape = CircleShape,
+            color = ClawTheme.colors.surfaceRaised,
+            contentColor = ClawTheme.colors.text,
+          ) {
+            Box(contentAlignment = Alignment.Center) {
+              Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = nativeString("Add attachment"),
+                modifier = Modifier.size(20.dp),
+              )
+            }
+          }
+          DropdownMenu(
+            expanded = attachmentMenuExpanded,
+            onDismissRequest = { attachmentMenuExpanded = false },
+          ) {
+            DropdownMenuItem(
+              text = { Text(nativeString("Photos")) },
+              leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
+              onClick = {
+                attachmentMenuExpanded = false
+                onPickImages()
+              },
+            )
+            DropdownMenuItem(
+              text = { Text(nativeString("Videos")) },
+              leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
+              onClick = {
+                attachmentMenuExpanded = false
+                onPickVideo()
+              },
+            )
+            DropdownMenuItem(
+              text = { Text(nativeString("Files")) },
+              leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
+              onClick = {
+                attachmentMenuExpanded = false
+                onPickAudioOrDocument()
+              },
+            )
+          }
         }
-      }
-      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
-        }
-      }
-      Surface(onClick = onPickVideo, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
-        Box(contentAlignment = Alignment.Center) {
-          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
-        }
-      }
-      Box(modifier = Modifier.weight(1f)) {
-        ChatTextFieldValueAdapter(
-          value = value,
-          onValueChange = onValueChange,
-          keyHandler = hardwareEnterHandler,
-        ) { textFieldValue, updateTextFieldValue ->
-          BasicTextField(
-            value = textFieldValue,
-            onValueChange = updateTextFieldValue,
-            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
-            cursorBrush = SolidColor(ClawTheme.colors.primary),
-            minLines = 1,
-            maxLines = 4,
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .onPreInterceptKeyBeforeSoftKeyboard { event ->
-                  hardwareEnterHandler.handle(
-                    event = event,
-                    sendEnabled = sendEnabled,
-                    textEmpty = textFieldValue.text.isEmpty(),
-                    compositionActive = textFieldValue.composition != null,
-                    onSend = onSend,
-                  )
-                },
-            decorationBox = { innerTextField ->
-              Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty()) {
-                  Text(text = nativeString("Message OpenClaw"), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+        Box(modifier = Modifier.weight(1f)) {
+          ChatTextFieldValueAdapter(
+            value = value,
+            onValueChange = onValueChange,
+            keyHandler = hardwareEnterHandler,
+          ) { textFieldValue, updateTextFieldValue ->
+            BasicTextField(
+              value = textFieldValue,
+              onValueChange = updateTextFieldValue,
+              textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
+              cursorBrush = SolidColor(ClawTheme.colors.primary),
+              minLines = 1,
+              maxLines = 4,
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                    hardwareEnterHandler.handle(
+                      event = event,
+                      sendEnabled = sendEnabled,
+                      textEmpty = textFieldValue.text.isEmpty(),
+                      compositionActive = textFieldValue.composition != null,
+                      onSend = onSend,
+                    )
+                  },
+              decorationBox = { innerTextField ->
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                  if (value.isEmpty()) {
+                    Text(
+                      text = nativeString("Message OpenClaw"),
+                      style = ClawTheme.type.body,
+                      color = ClawTheme.colors.textSubtle,
+                    )
+                  }
+                  innerTextField()
                 }
-                innerTextField()
-              }
-            },
+              },
+            )
+          }
+        }
+        ChatComposerMicButton(
+          dictationActive = dictationActive,
+          dictationEnabled = dictationEnabled,
+          voiceNoteEnabled = recordVoiceNoteEnabled,
+          onToggleDictation = onToggleDictation,
+          onStartVoiceNote = onStartVoiceNote,
+        )
+        when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
+          ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+          ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+          ChatComposerTrailingAction.StopTalk -> {
+            // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
+            if (runActive) StopButton(onClick = onAbort)
+            LiveTalkButton(active = true, onClick = onToggleTalk)
+          }
+          ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
+        }
+      }
+      ChatComposerFooter(
+        selectedModelLabel = selectedModelLabel,
+        modelPickerEnabled = modelPickerEnabled,
+        onOpenModelPicker = onOpenModelPicker,
+        thinkingLevel = thinkingLevel,
+        thinkingSupported = thinkingSupported,
+        onToggleThinkingSelector = onToggleThinkingSelector,
+        contextUsage = contextUsage,
+      )
+    }
+  }
+}
+
+@Composable
+private fun ChatComposerFooter(
+  selectedModelLabel: String,
+  modelPickerEnabled: Boolean,
+  onOpenModelPicker: () -> Unit,
+  thinkingLevel: String,
+  thinkingSupported: Boolean,
+  onToggleThinkingSelector: () -> Unit,
+  contextUsage: ChatContextUsage,
+) {
+  val contextFraction = contextMeterWidth(contextUsage)
+  val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(start = 9.dp, end = 9.dp, bottom = 2.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    ChatComposerFooterChip(
+      label = selectedModelLabel,
+      enabled = modelPickerEnabled,
+      onClick = onOpenModelPicker,
+      modifier = Modifier.weight(1f, fill = false),
+    )
+    if (thinkingSupported) {
+      ChatComposerFooterChip(
+        label = contextMeterThinkingLabel(thinkingLevel),
+        enabled = true,
+        onClick = onToggleThinkingSelector,
+      )
+    }
+    Spacer(modifier = Modifier.weight(1f))
+    if (contextFraction != null && contextPercent != null) {
+      val description = nativeString("Context \${contextPercent}% used", contextPercent)
+      val trackColor = ClawTheme.colors.surfacePressed
+      val progressColor = ClawTheme.colors.primary
+      Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+      ) {
+        Canvas(modifier = Modifier.size(14.dp)) {
+          val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+          drawCircle(color = trackColor, style = stroke)
+          drawArc(
+            color = progressColor,
+            startAngle = -90f,
+            sweepAngle = contextFraction * 360f,
+            useCenter = false,
+            style = stroke,
           )
         }
+        Text(
+          text = nativeString("\${contextPercent}%", contextPercent),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
       }
-      ChatComposerMicButton(
-        dictationActive = dictationActive,
-        dictationEnabled = dictationEnabled,
-        voiceNoteEnabled = recordVoiceNoteEnabled,
-        onToggleDictation = onToggleDictation,
-        onStartVoiceNote = onStartVoiceNote,
+    }
+  }
+}
+
+@Composable
+private fun ChatComposerFooterChip(
+  label: String,
+  enabled: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Surface(
+    onClick = onClick,
+    enabled = enabled,
+    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    color = Color.Transparent,
+    contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      Text(
+        text = label,
+        modifier = Modifier.weight(1f, fill = false),
+        style = ClawTheme.type.caption,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
-      when (resolveChatComposerTrailingAction(talkActive = talkActive, sendEnabled = sendEnabled)) {
-        ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-        ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-        ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
-      }
+      Icon(
+        imageVector = Icons.Default.ArrowDropDown,
+        contentDescription = null,
+        modifier = Modifier.size(13.dp),
+        tint = ClawTheme.colors.textSubtle,
+      )
     }
   }
 }
@@ -2894,11 +2936,11 @@ private fun LiveTalkButton(
     onClick = onClick,
     modifier =
       Modifier
-        .size(35.dp)
+        .size(ClawTheme.spacing.touchTarget)
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
-    color = ClawTheme.colors.danger,
-    contentColor = Color.White,
+    color = if (active) ClawTheme.colors.danger else ClawTheme.colors.surfaceRaised,
+    contentColor = if (active) Color.White else ClawTheme.colors.text,
   ) {
     Box(contentAlignment = Alignment.Center) {
       if (active) {
@@ -2910,6 +2952,25 @@ private fun LiveTalkButton(
           modifier = Modifier.size(20.dp),
         )
       }
+    }
+  }
+}
+
+@Composable
+private fun StopButton(onClick: () -> Unit) {
+  Surface(
+    onClick = onClick,
+    modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+    shape = CircleShape,
+    color = ClawTheme.colors.danger,
+    contentColor = Color.White,
+  ) {
+    Box(contentAlignment = Alignment.Center) {
+      Icon(
+        imageVector = Icons.Default.Stop,
+        contentDescription = nativeString("Stop"),
+        modifier = Modifier.size(20.dp),
+      )
     }
   }
 }
