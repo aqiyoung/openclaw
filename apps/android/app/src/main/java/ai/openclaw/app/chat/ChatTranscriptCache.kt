@@ -427,7 +427,7 @@ class RoomChatTranscriptCache internal constructor(
                     height = part.height,
                     sizeBytes = part.sizeBytes,
                   )
-                part.type == "audio" || part.type == "video" ->
+                part.type == "audio" || part.type == "video" || part.type == "file" ->
                   CachedMessageContent(
                     type = part.type,
                     mimeType = part.mimeType,
