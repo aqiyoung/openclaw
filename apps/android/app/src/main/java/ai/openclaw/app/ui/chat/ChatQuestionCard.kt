@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,11 +37,12 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun ChatQuestionCard(
   prompt: ChatQuestionPrompt,
-  onSubmit: (String, Map<String, List<String>>) -> Unit,
-  onSkip: (String) -> Unit,
+  onDraftChanged: (ChatQuestionPrompt, (ChatQuestionDraft) -> ChatQuestionDraft) -> Unit,
+  onSubmit: (ChatQuestionPrompt, Map<String, List<String>>) -> Unit,
+  onSkip: (ChatQuestionPrompt) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  var draft by remember(prompt.record.id) { mutableStateOf(ChatQuestionDraft()) }
+  val draft = prompt.draft
   var nowMs by remember(prompt.record.id) { mutableLongStateOf(System.currentTimeMillis()) }
   val status = prompt.status(nowMs)
   val pending = status == ChatQuestionStatus.Pending
@@ -72,7 +72,7 @@ internal fun ChatQuestionCard(
           question = question,
           draft = draft,
           enabled = pending,
-          onDraftChanged = { draft = it },
+          onDraftChanged = { update -> onDraftChanged(prompt, update) },
         )
       }
       QuestionFooter(
@@ -127,7 +127,7 @@ private fun QuestionSection(
   question: Question,
   draft: ChatQuestionDraft,
   enabled: Boolean,
-  onDraftChanged: (ChatQuestionDraft) -> Unit,
+  onDraftChanged: ((ChatQuestionDraft) -> ChatQuestionDraft) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
@@ -140,7 +140,7 @@ private fun QuestionSection(
     question.options.forEach { option ->
       val selected = option.label in draft.selectedOptions[question.questionId].orEmpty()
       Surface(
-        onClick = { onDraftChanged(draft.toggle(question, option.label)) },
+        onClick = { onDraftChanged { it.toggle(question, option.label) } },
         enabled = enabled,
         shape = RoundedCornerShape(ClawTheme.radii.row),
         color = if (selected) ClawTheme.colors.surfacePressed else ClawTheme.colors.surface,
@@ -167,7 +167,7 @@ private fun QuestionSection(
     if (question.options.isEmpty() || question.isOther == true) {
       OutlinedTextField(
         value = draft.otherText[question.questionId].orEmpty(),
-        onValueChange = { onDraftChanged(draft.setOther(question, it)) },
+        onValueChange = { value -> onDraftChanged { it.setOther(question, value) } },
         modifier = Modifier.fillMaxWidth(),
         enabled = enabled,
         label = { Text(nativeString("Other answer")) },
@@ -184,8 +184,8 @@ private fun QuestionFooter(
   draft: ChatQuestionDraft,
   status: ChatQuestionStatus,
   nowMs: Long,
-  onSubmit: (String, Map<String, List<String>>) -> Unit,
-  onSkip: (String) -> Unit,
+  onSubmit: (ChatQuestionPrompt, Map<String, List<String>>) -> Unit,
+  onSkip: (ChatQuestionPrompt) -> Unit,
 ) {
   val answers = draft.answers(prompt.record.questions)
   if (status == ChatQuestionStatus.Pending || status == ChatQuestionStatus.Submitting) {
@@ -197,13 +197,13 @@ private fun QuestionFooter(
       )
       Spacer(Modifier.weight(1f))
       TextButton(
-        onClick = { onSkip(prompt.record.id) },
+        onClick = { onSkip(prompt) },
         enabled = status == ChatQuestionStatus.Pending,
       ) {
         Text(nativeString("Skip"))
       }
       Button(
-        onClick = { answers?.let { onSubmit(prompt.record.id, it) } },
+        onClick = { answers?.let { onSubmit(prompt, it) } },
         enabled = answers != null && status == ChatQuestionStatus.Pending,
       ) {
         Text(
