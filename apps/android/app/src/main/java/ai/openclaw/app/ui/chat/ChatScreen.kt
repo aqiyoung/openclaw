@@ -3113,7 +3113,6 @@ private fun ChatComposerFooterChip(
       }
       Text(
         text = label,
-        modifier = Modifier.weight(1f, fill = false),
         style = ClawTheme.type.caption,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
