@@ -2968,7 +2968,7 @@ private fun ChatComposerFooter(
   Row(
     modifier = Modifier.fillMaxWidth().padding(start = 9.dp, end = 9.dp, bottom = 2.dp),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(2.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Box {
       ChatPermissionTriggerChip(
@@ -3054,7 +3054,9 @@ private fun ChatComposerFooter(
       val trackColor = ClawTheme.colors.surfacePressed
       val progressColor = ClawTheme.colors.primary
       Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        modifier = Modifier
+          .weight(0f, fill = false)
+          .clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
       ) {
@@ -3073,6 +3075,8 @@ private fun ChatComposerFooter(
           text = nativeString("\${contextPercent}%", contextPercent),
           style = ClawTheme.type.caption,
           color = ClawTheme.colors.textMuted,
+          maxLines = 1,
+          softWrap = false,
         )
       }
     }
