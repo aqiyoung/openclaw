@@ -2376,6 +2376,7 @@ private fun ChatComposer(
           permissionSelectorExpanded = permissionSelectorExpanded,
           onPermissionSelectorExpandedChange = { permissionSelectorExpanded = it },
           onPermissionModeChange = onPermissionModeChange,
+          canSelectFull = canSelectFull,
           modifier = Modifier.weight(1f),
         )
       }
