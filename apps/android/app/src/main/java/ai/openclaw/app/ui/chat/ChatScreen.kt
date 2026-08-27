@@ -164,9 +164,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -2495,14 +2493,8 @@ private fun ChatPermissionTriggerChip(
     ) {
       Icon(
         imageVector = permissionModeIcon(mode),
-        contentDescription = null,
+        contentDescription = permissionModeLabel(mode),
         modifier = Modifier.size(16.dp),
-      )
-      Text(
-        text = permissionModeLabel(mode),
-        style = ClawTheme.type.caption,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
       )
     }
   }
@@ -3036,6 +3028,8 @@ private fun ChatComposerFooter(
       enabled = modelPickerEnabled,
       onClick = onOpenModelPicker,
       leadingIcon = Icons.Default.Memory,
+      showLabel = false,
+      showChevron = false,
       modifier = Modifier.wrapContentWidth(),
     )
     if (thinkingSupported) {
@@ -3044,35 +3038,19 @@ private fun ChatComposerFooter(
         enabled = true,
         onClick = onToggleThinkingSelector,
         leadingIcon = Icons.Default.AutoAwesome,
+        showLabel = false,
+        showChevron = false,
       )
     }
     Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
-      val trackColor = ClawTheme.colors.surfacePressed
-      val progressColor = ClawTheme.colors.primary
-      Row(
+      Text(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-      ) {
-        Canvas(modifier = Modifier.size(14.dp)) {
-          val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-          drawCircle(color = trackColor, style = stroke)
-          drawArc(
-            color = progressColor,
-            startAngle = -90f,
-            sweepAngle = contextFraction * 360f,
-            useCenter = false,
-            style = stroke,
-          )
-        }
-        Text(
-          text = nativeString("\${contextPercent}%", contextPercent),
-          style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
-        )
-      }
+        text = nativeString("\${contextPercent}%", contextPercent),
+        style = ClawTheme.type.caption,
+        color = ClawTheme.colors.textMuted,
+      )
     }
   }
 }
@@ -3083,12 +3061,17 @@ private fun ChatComposerFooterChip(
   enabled: Boolean,
   onClick: () -> Unit,
   leadingIcon: ImageVector? = null,
+  showLabel: Boolean = true,
+  showChevron: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    modifier =
+      modifier
+        .heightIn(min = ClawTheme.spacing.touchTarget)
+        .then(if (!showLabel) Modifier.semantics { contentDescription = label } else Modifier),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
@@ -3105,19 +3088,23 @@ private fun ChatComposerFooterChip(
           modifier = Modifier.size(15.dp),
         )
       }
-      Text(
-        text = label,
-        modifier = Modifier.weight(1f, fill = false),
-        style = ClawTheme.type.caption,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Icon(
-        imageVector = Icons.Default.ArrowDropDown,
-        contentDescription = null,
-        modifier = Modifier.size(13.dp),
-        tint = ClawTheme.colors.textSubtle,
-      )
+      if (showLabel) {
+        Text(
+          text = label,
+          modifier = Modifier.weight(1f, fill = false),
+          style = ClawTheme.type.caption,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      if (showChevron) {
+        Icon(
+          imageVector = Icons.Default.ArrowDropDown,
+          contentDescription = null,
+          modifier = Modifier.size(13.dp),
+          tint = ClawTheme.colors.textSubtle,
+        )
+      }
     }
   }
 }
