@@ -120,7 +120,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.GppGood
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.Warning
@@ -296,6 +298,7 @@ fun ChatScreen(
   val selectedActiveRun by viewModel.chatSelectedActiveRunPresentation.collectAsState()
   val healthOk by viewModel.chatHealthOk.collectAsState()
   val gatewayConnectionDisplay by viewModel.gatewayConnectionDisplay.collectAsState()
+  val operatorAdminScopeAvailable by viewModel.operatorAdminScopeAvailable.collectAsState()
   val activeGatewayStableId by viewModel.activeGatewayStableId.collectAsState()
   val sessionKey by viewModel.chatSessionKey.collectAsState()
   val sessionOwnerAgentId by viewModel.chatSessionOwnerAgentId.collectAsState()
@@ -831,6 +834,7 @@ fun ChatScreen(
       onThinkingLevelChange = viewModel::setChatThinkingLevel,
       permissionMode = permissionMode,
       onPermissionModeChange = viewModel::setChatPermissionMode,
+      canSelectFull = operatorAdminScopeAvailable,
       onOpenModelPicker = { showModelPicker = true },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
@@ -2245,6 +2249,7 @@ private fun ChatComposer(
   onThinkingLevelChange: (String) -> Unit,
   permissionMode: String?,
   onPermissionModeChange: (String?) -> Unit,
+  canSelectFull: Boolean,
   onOpenModelPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
@@ -2801,6 +2806,7 @@ private fun ChatInputPill(
   permissionSelectorExpanded: Boolean,
   onPermissionSelectorExpandedChange: (Boolean) -> Unit,
   onPermissionModeChange: (String?) -> Unit,
+  canSelectFull: Boolean,
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
@@ -2935,6 +2941,7 @@ private fun ChatInputPill(
         permissionSelectorExpanded = permissionSelectorExpanded,
         onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
         onPermissionModeChange = onPermissionModeChange,
+        canSelectFull = canSelectFull,
       )
     }
   }
@@ -2953,6 +2960,7 @@ private fun ChatComposerFooter(
   permissionSelectorExpanded: Boolean,
   onPermissionSelectorExpandedChange: (Boolean) -> Unit,
   onPermissionModeChange: (String?) -> Unit,
+  canSelectFull: Boolean,
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
@@ -2978,7 +2986,9 @@ private fun ChatComposerFooter(
         )
         PERMISSION_MODE_OPTIONS.forEach { option ->
           val selected = option.value == permissionMode
+          val locked = option.value == "full" && !canSelectFull
           DropdownMenuItem(
+            enabled = !locked,
             leadingIcon = {
               Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
             },
@@ -2986,9 +2996,13 @@ private fun ChatComposerFooter(
               Column {
                 Text(option.label, style = ClawTheme.type.body)
                 Text(
-                  option.description,
+                  if (locked) {
+                    nativeString("Full access requires operator.admin access.")
+                  } else {
+                    option.description
+                  },
                   style = ClawTheme.type.caption,
-                  color = ClawTheme.colors.textMuted,
+                  color = if (locked) ClawTheme.colors.warning else ClawTheme.colors.textMuted,
                   maxLines = 2,
                   overflow = TextOverflow.Ellipsis,
                 )
@@ -3001,9 +3015,16 @@ private fun ChatComposerFooter(
                   contentDescription = null,
                   tint = ClawTheme.colors.primary,
                 )
+              } else if (locked) {
+                Icon(
+                  Icons.Default.Lock,
+                  contentDescription = null,
+                  tint = ClawTheme.colors.textSubtle,
+                )
               }
             },
             onClick = {
+              if (locked) return@DropdownMenuItem
               onPermissionModeChange(option.value)
               onPermissionSelectorExpandedChange(false)
             },
@@ -3015,6 +3036,7 @@ private fun ChatComposerFooter(
       label = selectedModelLabel,
       enabled = modelPickerEnabled,
       onClick = onOpenModelPicker,
+      leadingIcon = Icons.Default.Memory,
       modifier = Modifier.wrapContentWidth(),
     )
     if (thinkingSupported) {
@@ -3022,6 +3044,7 @@ private fun ChatComposerFooter(
         label = contextMeterThinkingLabel(thinkingLevel),
         enabled = true,
         onClick = onToggleThinkingSelector,
+        leadingIcon = Icons.Default.AutoAwesome,
       )
     }
     Spacer(modifier = Modifier.weight(1f))
@@ -3060,6 +3083,7 @@ private fun ChatComposerFooterChip(
   label: String,
   enabled: Boolean,
   onClick: () -> Unit,
+  leadingIcon: ImageVector? = null,
   modifier: Modifier = Modifier,
 ) {
   Surface(
@@ -3075,6 +3099,13 @@ private fun ChatComposerFooterChip(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+      if (leadingIcon != null) {
+        Icon(
+          imageVector = leadingIcon,
+          contentDescription = null,
+          modifier = Modifier.size(15.dp),
+        )
+      }
       Text(
         text = label,
         modifier = Modifier.weight(1f, fill = false),
