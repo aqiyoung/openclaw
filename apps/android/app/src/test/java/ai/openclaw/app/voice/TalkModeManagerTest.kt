@@ -2,6 +2,9 @@ package ai.openclaw.app.voice
 
 import ai.openclaw.app.SecurePrefs
 import ai.openclaw.app.gateway.DeviceAuthStore
+import ai.openclaw.app.gateway.GatewayClientInfo
+import ai.openclaw.app.gateway.GatewayConnectOptions
+import ai.openclaw.app.gateway.GatewayEndpoint
 import ai.openclaw.app.gateway.GatewayRequestRejected
 import ai.openclaw.app.gateway.GatewaySession
 import ai.openclaw.app.gateway.testDeviceIdentityStore
@@ -11,6 +14,8 @@ import ai.openclaw.app.i18n.verbatimText
 import android.Manifest
 import android.content.ComponentName
 import android.content.IntentFilter
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
@@ -18,6 +23,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognitionService
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.util.Base64
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -28,9 +34,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -39,6 +49,17 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -49,10 +70,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowAudioTrack
+import org.robolectric.shadows.ShadowSystemClock
 import org.robolectric.shadows.ShadowTextToSpeech
+import java.time.Duration
 import java.util.Locale
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.CoroutineContext
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -118,19 +144,18 @@ class TalkModeManagerTest {
   }
 
   @Test
-  fun disablingPlaybackCancelsTrackedJobOnce() {
-    val manager = createManager()
-    val playbackJob = Job()
+  fun disablingPlaybackCancelsTrackedJobOnce() =
+    runTest {
+      withStartedLocalPlayback { manager, playbackJob, player ->
+        val stops = player.stopCalls
+        manager.setPlaybackEnabled(false)
+        manager.setPlaybackEnabled(false)
+        runCurrent()
 
-    setPrivateField(manager, "ttsJob", playbackJob)
-    playbackGeneration(manager).set(11L)
-
-    manager.setPlaybackEnabled(false)
-    manager.setPlaybackEnabled(false)
-
-    assertTrue(playbackJob.isCancelled)
-    assertEquals(12L, playbackGeneration(manager).get())
-  }
+        assertTrue(playbackJob.isCancelled)
+        assertEquals(stops + 1, player.stopCalls)
+      }
+    }
 
   @Test
   fun beginPushToTalkRejectsNewCaptureWhenNewCaptureIsDisallowed() =
@@ -1224,6 +1249,16 @@ class TalkModeManagerTest {
   ): String = """{"relaySessionId":"relay-1","type":"transcript","role":"$role","text":"$text","final":$final}"""
 }
 
+private data class RealtimePlaybackProof(
+  val manager: TalkModeManager,
+  val scope: CoroutineScope,
+  val scheduler: TestCoroutineScheduler,
+  val synthesizer: FakeTalkSpeechSynthesizer,
+  val player: FakeTalkAudioPlayer,
+  val writes: List<Triple<AudioTrack, ByteArray, AudioFormat>>,
+  val callbackDepth: () -> Int,
+)
+
 private class FakeTalkSpeechSynthesizer : TalkSpeechSynthesizing {
   val requested = CompletableDeferred<Unit>()
   val result = CompletableDeferred<TalkSpeakResult>()
@@ -1241,13 +1276,19 @@ private class FakeTalkAudioPlayer : TalkAudioPlaying {
   val started = CompletableDeferred<Unit>()
   val finished = CompletableDeferred<Unit>()
   var stopped = false
+  var playCalls = 0
+    private set
+  var stopCalls = 0
+    private set
 
   override suspend fun play(audio: TalkSpeakAudio) {
+    playCalls += 1
     started.complete(Unit)
     finished.await()
   }
 
   override fun stop() {
+    stopCalls += 1
     stopped = true
   }
 }
