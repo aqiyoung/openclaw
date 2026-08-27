@@ -117,9 +117,14 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.GppGood
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.SupervisorAccount
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
@@ -2319,16 +2324,6 @@ private fun ChatComposer(
       )
     }
 
-    if (permissionSelectorExpanded) {
-      ChatPermissionModeSelector(
-        selected = permissionMode,
-        onSelect = { mode ->
-          onPermissionModeChange(mode)
-          permissionSelectorExpanded = false
-        },
-      )
-    }
-
     if (shouldShowSlashCommandMenu(value)) {
       SlashCommandPanel(
         commands = slashCommands,
@@ -2371,9 +2366,11 @@ private fun ChatComposer(
           thinkingLevel = thinkingLevel,
           thinkingSupported = thinkingSupported,
           onToggleThinkingSelector = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
-          permissionMode = permissionMode,
-          onTogglePermissionSelector = { permissionSelectorExpanded = !permissionSelectorExpanded },
           contextUsage = contextUsage,
+          permissionMode = permissionMode,
+          permissionSelectorExpanded = permissionSelectorExpanded,
+          onPermissionSelectorExpandedChange = { permissionSelectorExpanded = it },
+          onPermissionModeChange = onPermissionModeChange,
           modifier = Modifier.weight(1f),
         )
       }
@@ -2424,52 +2421,90 @@ private fun ChatThinkingLevelSelector(
   }
 }
 
-private val PERMISSION_MODE_OPTIONS: List<Pair<String?, String>> =
+private data class PermissionModeOption(
+  val value: String?,
+  val label: String,
+  val description: String,
+  val icon: ImageVector,
+)
+
+private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
   listOf(
-    null to "Default",
-    "read-only" to "Read-only",
-    "guarded" to "Guarded",
-    "workspace" to "Workspace",
-    "full" to "Full",
+    PermissionModeOption(
+      value = null,
+      label = "Default",
+      description = "Follow the agent's configured policy.",
+      icon = Icons.Default.GppGood,
+    ),
+    PermissionModeOption(
+      value = "read-only",
+      label = "Read only",
+      description = "Read within the session root; writes and commands are blocked.",
+      icon = Icons.Default.Lock,
+    ),
+    PermissionModeOption(
+      value = "guarded",
+      label = "Guarded",
+      description = "A human reviews requests beyond the session root.",
+      icon = Icons.Default.SupervisorAccount,
+    ),
+    PermissionModeOption(
+      value = "workspace",
+      label = "Workspace",
+      description = "An AI reviewer checks requests beyond the session root.",
+      icon = Icons.Default.Build,
+    ),
+    PermissionModeOption(
+      value = "full",
+      label = "Full access",
+      description = "No reviewer; files and commands are unrestricted.",
+      icon = Icons.Default.Warning,
+    ),
   )
 
-private fun permissionModeLabel(mode: String?): String {
-  val normalized = mode?.trim()?.lowercase(Locale.US)
-  return when (normalized) {
-    null, "" -> nativeString("Default")
-    "read-only" -> nativeString("Read-only")
-    "guarded" -> nativeString("Guarded")
-    "workspace" -> nativeString("Workspace")
-    "full" -> nativeString("Full")
-    else -> mode
-  }
-}
+private fun permissionModeLabel(mode: String?): String =
+  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: "Default"
+
+private fun permissionModeIcon(mode: String?): ImageVector =
+  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
 
 @Composable
-private fun ChatPermissionModeSelector(
-  selected: String?,
-  onSelect: (String?) -> Unit,
+private fun ChatPermissionTriggerChip(
+  mode: String?,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-  val options = PERMISSION_MODE_OPTIONS
-  val selectedLabel = permissionModeLabel(selected)
-  Column(
-    modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+  val active = mode != null
+  Surface(
+    onClick = onClick,
+    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    color = Color.Transparent,
+    contentColor = if (active) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
   ) {
-    Text(
-      text = nativeString("Permission mode"),
-      style = ClawTheme.type.caption,
-      color = ClawTheme.colors.textMuted,
-      modifier = Modifier.padding(start = 2.dp),
-    )
-    ClawSegmentedControl(
-      options = options.map { permissionModeLabel(it.first) },
-      selected = selectedLabel,
-      onSelect = { label ->
-        options.firstOrNull { permissionModeLabel(it.first) == label }?.let { onSelect(it.first) }
-      },
-      modifier = Modifier.fillMaxWidth(),
-    )
+    Row(
+      modifier = Modifier.padding(horizontal = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      Icon(
+        imageVector = permissionModeIcon(mode),
+        contentDescription = null,
+        modifier = Modifier.size(15.dp),
+      )
+      Text(
+        text = permissionModeLabel(mode),
+        style = ClawTheme.type.caption,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Icon(
+        imageVector = Icons.Default.ArrowDropDown,
+        contentDescription = null,
+        modifier = Modifier.size(13.dp),
+        tint = ClawTheme.colors.textSubtle,
+      )
+    }
   }
 }
 
@@ -2761,9 +2796,11 @@ private fun ChatInputPill(
   thinkingLevel: String,
   thinkingSupported: Boolean,
   onToggleThinkingSelector: () -> Unit,
-  permissionMode: String?,
-  onTogglePermissionSelector: () -> Unit,
   contextUsage: ChatContextUsage,
+  permissionMode: String?,
+  permissionSelectorExpanded: Boolean,
+  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
+  onPermissionModeChange: (String?) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
@@ -2825,21 +2862,6 @@ private fun ChatInputPill(
                 attachmentMenuExpanded = false
                 onPickAudioOrDocument()
               },
-            )
-          }
-        }
-        Surface(
-          onClick = onTogglePermissionSelector,
-          modifier = Modifier.size(ClawTheme.spacing.touchTarget),
-          shape = CircleShape,
-          color = ClawTheme.colors.surfaceRaised,
-          contentColor = if (permissionMode != null) ClawTheme.colors.primary else ClawTheme.colors.text,
-        ) {
-          Box(contentAlignment = Alignment.Center) {
-            Icon(
-              imageVector = Icons.Default.Lock,
-              contentDescription = nativeString("Permission mode"),
-              modifier = Modifier.size(20.dp),
             )
           }
         }
@@ -2909,6 +2931,10 @@ private fun ChatInputPill(
         thinkingSupported = thinkingSupported,
         onToggleThinkingSelector = onToggleThinkingSelector,
         contextUsage = contextUsage,
+        permissionMode = permissionMode,
+        permissionSelectorExpanded = permissionSelectorExpanded,
+        onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
+        onPermissionModeChange = onPermissionModeChange,
       )
     }
   }
@@ -2923,6 +2949,10 @@ private fun ChatComposerFooter(
   thinkingSupported: Boolean,
   onToggleThinkingSelector: () -> Unit,
   contextUsage: ChatContextUsage,
+  permissionMode: String?,
+  permissionSelectorExpanded: Boolean,
+  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
+  onPermissionModeChange: (String?) -> Unit,
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
@@ -2931,7 +2961,56 @@ private fun ChatComposerFooter(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(2.dp),
   ) {
-    Spacer(modifier = Modifier.weight(1f))
+    Box {
+      ChatPermissionTriggerChip(
+        mode = permissionMode,
+        onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
+      )
+      DropdownMenu(
+        expanded = permissionSelectorExpanded,
+        onDismissRequest = { onPermissionSelectorExpandedChange(false) },
+      ) {
+        Text(
+          text = nativeString("Permissions"),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        PERMISSION_MODE_OPTIONS.forEach { option ->
+          val selected = option.value == permissionMode
+          DropdownMenuItem(
+            leadingIcon = {
+              Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            },
+            text = {
+              Column {
+                Text(option.label, style = ClawTheme.type.body)
+                Text(
+                  option.description,
+                  style = ClawTheme.type.caption,
+                  color = ClawTheme.colors.textMuted,
+                  maxLines = 2,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              }
+            },
+            trailingIcon = {
+              if (selected) {
+                Icon(
+                  Icons.Default.Check,
+                  contentDescription = null,
+                  tint = ClawTheme.colors.primary,
+                )
+              }
+            },
+            onClick = {
+              onPermissionModeChange(option.value)
+              onPermissionSelectorExpandedChange(false)
+            },
+          )
+        }
+      }
+    }
     ChatComposerFooterChip(
       label = selectedModelLabel,
       enabled = modelPickerEnabled,
