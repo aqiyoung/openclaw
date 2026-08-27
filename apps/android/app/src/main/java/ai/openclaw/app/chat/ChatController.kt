@@ -308,9 +308,6 @@ class ChatController internal constructor(
   private val _thinkingLevelSelection = MutableStateFlow(defaultChatThinkingLevelSelection)
   val thinkingLevelSelection: StateFlow<ChatThinkingLevelSelection> = _thinkingLevelSelection.asStateFlow()
 
-  private val _permissionMode = MutableStateFlow<String?>(null)
-  val permissionMode: StateFlow<String?> = _permissionMode.asStateFlow()
-
   private val _selectedModelRef = MutableStateFlow<String?>(null)
   val selectedModelRef: StateFlow<String?> = _selectedModelRef.asStateFlow()
 
@@ -927,15 +924,13 @@ class ChatController internal constructor(
     pinned: Boolean? = null,
     archived: Boolean? = null,
     unread: Boolean? = null,
-    permissionMode: String? = null,
-    clearPermissionMode: Boolean = false,
   ): Boolean {
     val sessionKey = key.trim().takeIf { it.isNotEmpty() } ?: return false
     val capturedOwnerAgentId =
       resolveAgentIdFromMainSessionKey(sessionKey)
         ?: ownerAgentId?.trim()?.takeIf { it.isNotEmpty() }
         ?: if (sessionKey == _sessionKey.value) resolveAgentIdForSessionKey(sessionKey) else null
-    val hasPatch = clearLabel || label != null || clearCategory || category != null || pinned != null || archived != null || unread != null || clearPermissionMode || permissionMode != null
+    val hasPatch = clearLabel || label != null || clearCategory || category != null || pinned != null || archived != null || unread != null
     if (!hasPatch) return false
     try {
       val params =
@@ -955,11 +950,6 @@ class ChatController internal constructor(
           if (pinned != null) put("pinned", JsonPrimitive(pinned))
           if (archived != null) put("archived", JsonPrimitive(archived))
           if (unread != null) put("unread", JsonPrimitive(unread))
-          if (clearPermissionMode) {
-            put("permissionMode", JsonNull)
-          } else if (permissionMode != null) {
-            put("permissionMode", JsonPrimitive(permissionMode))
-          }
         }
       requestGateway("sessions.patch", params.toString())
       if (archived == true) {
@@ -1932,32 +1922,6 @@ class ChatController internal constructor(
   }
 
   /** Persists the normalized thinking level used for subsequent chat sends. */
-  /** Patches the active session's permission mode. Mirrors the upstream web capability menu
-   *  (`null` = default, `read-only`, `guarded`, `workspace`, `full`). */
-  fun setPermissionMode(mode: String?) {
-    val normalized = mode?.trim()?.takeIf { it.isNotEmpty() }
-    val key = normalizeRequestedSessionKey(_sessionKey.value)
-    if (key.isEmpty()) return
-    val rollback = _permissionMode.value
-    _permissionMode.value = normalized
-    scope.launch(start = CoroutineStart.UNDISPATCHED) {
-      try {
-        val ok =
-          patchSession(
-            key = key,
-            permissionMode = normalized,
-            clearPermissionMode = normalized == null,
-          )
-        if (!ok) _permissionMode.value = rollback
-      } catch (err: CancellationException) {
-        throw err
-      } catch (err: Throwable) {
-        _permissionMode.value = rollback
-        updateErrorText(err.message)
-      }
-    }
-  }
-
   fun setThinkingLevel(thinkingLevel: String) {
     val normalized = normalizeThinking(thinkingLevel)
     val selection = _thinkingLevelSelection.value
@@ -3829,7 +3793,6 @@ class ChatController internal constructor(
           ?.trim()
           ?.takeIf { it.isNotEmpty() }
           ?.let { _thinkingLevel.value = it }
-        _permissionMode.value = history.permissionMode
         true
       }
     if (!applied) return HistoryRefreshResult.Superseded
@@ -6376,8 +6339,7 @@ class ChatController internal constructor(
     sessionKey: String,
     previousMessages: List<ChatMessage>,
   ): ChatHistory {
-    val root = json.parseToJsonElement(historyJson).asObjectOrNull()
-      ?: return ChatHistory(sessionKey = sessionKey, sessionId = null, thinkingLevel = null, permissionMode = null, messages = emptyList())
+    val root = json.parseToJsonElement(historyJson).asObjectOrNull() ?: return ChatHistory(sessionKey, null, null, emptyList())
     val sid = root["sessionId"].asStringOrNull()
     val thinkingLevel = root["thinkingLevel"].asStringOrNull()
     val sessionInfo = root["sessionInfo"].asObjectOrNull()?.let { parseSessionEntry(it, fallbackKey = sessionKey) }
@@ -6403,7 +6365,6 @@ class ChatController internal constructor(
       sessionKey = sessionKey,
       sessionId = sid,
       thinkingLevel = thinkingLevel,
-      permissionMode = sessionInfo?.permissionMode,
       messages = reconcileMessageIds(previous = previousMessages, incoming = messages),
       sessionInfo = sessionInfo,
       inFlightRun = parseInFlightRun(root),
@@ -6510,7 +6471,6 @@ class ChatController internal constructor(
       thinkingLevel = obj["thinkingLevel"].asStringOrNull()?.trim(),
       thinkingLevels = parseThinkingLevels(obj["thinkingLevels"]),
       thinkingDefault = obj["thinkingDefault"].asStringOrNull()?.trim(),
-      permissionMode = obj["permissionMode"].asStringOrNull()?.trim(),
       contextTokens = obj["contextTokens"].asLongOrNull(),
       hasContextUsageMetadata =
         "totalTokens" in obj ||

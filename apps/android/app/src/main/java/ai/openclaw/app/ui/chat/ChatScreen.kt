@@ -86,7 +86,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -95,7 +94,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -117,24 +115,14 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.GppGood
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.SupervisorAccount
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -169,7 +157,6 @@ import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -227,19 +214,16 @@ internal fun chatReaderListBottomInset(showJumpToLatest: Boolean): Dp =
 internal enum class ChatComposerTrailingAction {
   StartTalk,
   StopTalk,
-  Stop,
   Send,
 }
 
 /** Talk must remain stoppable even when the active session adds text to the draft. */
 internal fun resolveChatComposerTrailingAction(
   talkActive: Boolean,
-  runActive: Boolean,
   sendEnabled: Boolean,
 ): ChatComposerTrailingAction =
   when {
     talkActive -> ChatComposerTrailingAction.StopTalk
-    runActive -> ChatComposerTrailingAction.Stop
     sendEnabled -> ChatComposerTrailingAction.Send
     else -> ChatComposerTrailingAction.StartTalk
   }
@@ -296,7 +280,6 @@ fun ChatScreen(
   val selectedActiveRun by viewModel.chatSelectedActiveRunPresentation.collectAsState()
   val healthOk by viewModel.chatHealthOk.collectAsState()
   val gatewayConnectionDisplay by viewModel.gatewayConnectionDisplay.collectAsState()
-  val operatorAdminScopeAvailable by viewModel.operatorAdminScopeAvailable.collectAsState()
   val activeGatewayStableId by viewModel.activeGatewayStableId.collectAsState()
   val sessionKey by viewModel.chatSessionKey.collectAsState()
   val sessionOwnerAgentId by viewModel.chatSessionOwnerAgentId.collectAsState()
@@ -306,7 +289,6 @@ fun ChatScreen(
   val gatewayAgents by viewModel.gatewayAgents.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
   val thinkingLevelSelection by viewModel.chatThinkingLevelSelection.collectAsState()
-  val permissionMode by viewModel.chatPermissionMode.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val subagentActivities by viewModel.chatSubagentActivities.collectAsState()
@@ -830,9 +812,6 @@ fun ChatScreen(
       },
       commands = chatCommands,
       onThinkingLevelChange = viewModel::setChatThinkingLevel,
-      permissionMode = permissionMode,
-      onPermissionModeChange = viewModel::setChatPermissionMode,
-      canSelectFull = operatorAdminScopeAvailable,
       onOpenModelPicker = { showModelPicker = true },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
@@ -2245,9 +2224,6 @@ private fun ChatComposer(
   onDismissShareImportNotice: () -> Unit,
   commands: List<ChatCommandEntry>,
   onThinkingLevelChange: (String) -> Unit,
-  permissionMode: String?,
-  onPermissionModeChange: (String?) -> Unit,
-  canSelectFull: Boolean,
   onOpenModelPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
@@ -2278,7 +2254,6 @@ private fun ChatComposer(
   LaunchedEffect(thinkingSupported) {
     if (!thinkingSupported) thinkingSelectorExpanded = false
   }
-  var permissionSelectorExpanded by rememberSaveable { mutableStateOf(false) }
 
   val dictationActive =
     dictationState is ChatDictationState.Starting || dictationState is ChatDictationState.Listening
@@ -2314,6 +2289,26 @@ private fun ChatComposer(
     }
     if (attachments.isNotEmpty()) {
       AttachmentStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
+    }
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      ChatModelChip(
+        label = selectedModelLabel,
+        enabled = modelPickerEnabled,
+        onClick = onOpenModelPicker,
+        modifier = Modifier.weight(1f),
+      )
+      ChatContextMeter(
+        thinkingLevel = thinkingLevel,
+        thinkingSupported = thinkingSupported,
+        expanded = thinkingSelectorExpanded,
+        contextUsage = contextUsage,
+        onClick = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
+      )
     }
 
     if (thinkingSelectorExpanded && thinkingSupported) {
@@ -2359,22 +2354,8 @@ private fun ChatComposer(
           onToggleDictation = onToggleDictation,
           talkActive = talkActive,
           onToggleTalk = onToggleTalk,
-          runActive = pendingRunCount > 0,
-          onAbort = onAbort,
           sendEnabled = sendEnabled,
           onSend = onSend,
-          selectedModelLabel = selectedModelLabel,
-          modelPickerEnabled = modelPickerEnabled,
-          onOpenModelPicker = onOpenModelPicker,
-          thinkingLevel = thinkingLevel,
-          thinkingSupported = thinkingSupported,
-          onToggleThinkingSelector = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
-          contextUsage = contextUsage,
-          permissionMode = permissionMode,
-          permissionSelectorExpanded = permissionSelectorExpanded,
-          onPermissionSelectorExpandedChange = { permissionSelectorExpanded = it },
-          onPermissionModeChange = onPermissionModeChange,
-          canSelectFull = canSelectFull,
           modifier = Modifier.weight(1f),
         )
       }
@@ -2389,6 +2370,27 @@ private fun ChatComposer(
         onFixConnection = onFixConnection,
         onCopyDiagnostics = onCopyDiagnostics,
       )
+    }
+
+    if (pendingRunCount > 0) {
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        Surface(
+          onClick = onAbort,
+          modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+          shape = RoundedCornerShape(ClawTheme.radii.pill),
+          color = ClawTheme.colors.canvas,
+          contentColor = ClawTheme.colors.text,
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            Box(modifier = Modifier.size(8.dp).background(ClawTheme.colors.danger, RoundedCornerShape(2.dp)))
+            Text(text = nativeString("Stop"), style = ClawTheme.type.label)
+          }
+        }
+      }
     }
   }
 }
@@ -2425,76 +2427,33 @@ private fun ChatThinkingLevelSelector(
   }
 }
 
-private data class PermissionModeOption(
-  val value: String?,
-  val label: String,
-  val description: String,
-  val icon: ImageVector,
-)
-
-private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
-  listOf(
-    PermissionModeOption(
-      value = null,
-      label = "Default",
-      description = "Follow the agent's configured policy.",
-      icon = Icons.Default.GppGood,
-    ),
-    PermissionModeOption(
-      value = "read-only",
-      label = "Read only",
-      description = "Read within the session root; writes and commands are blocked.",
-      icon = Icons.Default.Lock,
-    ),
-    PermissionModeOption(
-      value = "guarded",
-      label = "Guarded",
-      description = "A human reviews requests beyond the session root.",
-      icon = Icons.Default.SupervisorAccount,
-    ),
-    PermissionModeOption(
-      value = "workspace",
-      label = "Workspace",
-      description = "An AI reviewer checks requests beyond the session root.",
-      icon = Icons.Default.Build,
-    ),
-    PermissionModeOption(
-      value = "full",
-      label = "Full access",
-      description = "No reviewer; files and commands are unrestricted.",
-      icon = Icons.Default.Warning,
-    ),
-  )
-
-private fun permissionModeLabel(mode: String?): String =
-  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: "Default"
-
-private fun permissionModeIcon(mode: String?): ImageVector =
-  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
-
 @Composable
-private fun ChatPermissionTriggerChip(
-  mode: String?,
+private fun ChatModelChip(
+  label: String,
+  enabled: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val isFull = mode == "full"
   Surface(
     onClick = onClick,
+    enabled = enabled,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
-    color = Color.Transparent,
-    contentColor = if (isFull) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+    color = ClawTheme.colors.canvas,
+    contentColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textMuted,
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 8.dp),
+      modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-      Icon(
-        imageVector = permissionModeIcon(mode),
-        contentDescription = permissionModeLabel(mode),
-        modifier = Modifier.size(16.dp),
+      Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(13.dp), tint = ClawTheme.colors.textSubtle)
+      Text(
+        text = label,
+        style = ClawTheme.type.caption.copy(fontSize = 12.5.sp, lineHeight = 16.sp),
+        color = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
     }
   }
@@ -2765,6 +2724,68 @@ private fun ChatOfflineNotice(
 }
 
 @Composable
+private fun ChatContextMeter(
+  thinkingLevel: String,
+  thinkingSupported: Boolean,
+  expanded: Boolean,
+  contextUsage: ChatContextUsage,
+  onClick: () -> Unit,
+) {
+  val contextFraction = contextMeterWidth(contextUsage) ?: 0f
+  Row(
+    modifier = Modifier.width(178.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Surface(
+      onClick = onClick,
+      enabled = thinkingSupported,
+      modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+      shape = RoundedCornerShape(ClawTheme.radii.pill),
+      color = ClawTheme.colors.canvas,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        if (thinkingSupported) {
+          Icon(
+            imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = if (expanded) nativeString("Close thinking level selector") else nativeString("Open thinking level selector"),
+            modifier = Modifier.size(13.dp),
+            tint = ClawTheme.colors.textSubtle,
+          )
+        }
+        Text(
+          text = contextMeterLabel(contextUsage, thinkingLevel, thinkingSupported),
+          style = ClawTheme.type.caption.copy(fontSize = 12.5.sp, lineHeight = 16.sp),
+          color = ClawTheme.colors.textMuted,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+    }
+    Box(
+      modifier =
+        Modifier
+          .weight(1f)
+          .height(3.dp)
+          .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(999.dp)),
+    ) {
+      Box(
+        modifier =
+          Modifier
+            .fillMaxWidth(contextFraction)
+            .height(3.dp)
+            .background(ClawTheme.colors.primary, RoundedCornerShape(999.dp)),
+      )
+    }
+  }
+}
+
+@Composable
 private fun ChatInputPill(
   value: String,
   onValueChange: (String) -> Unit,
@@ -2778,26 +2799,11 @@ private fun ChatInputPill(
   onToggleDictation: () -> Unit,
   talkActive: Boolean,
   onToggleTalk: () -> Unit,
-  runActive: Boolean,
-  onAbort: () -> Unit,
   sendEnabled: Boolean,
   onSend: () -> Unit,
-  selectedModelLabel: String,
-  modelPickerEnabled: Boolean,
-  onOpenModelPicker: () -> Unit,
-  thinkingLevel: String,
-  thinkingSupported: Boolean,
-  onToggleThinkingSelector: () -> Unit,
-  contextUsage: ChatContextUsage,
-  permissionMode: String?,
-  permissionSelectorExpanded: Boolean,
-  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
-  onPermissionModeChange: (String?) -> Unit,
-  canSelectFull: Boolean,
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
-  var attachmentMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -2806,363 +2812,73 @@ private fun ChatInputPill(
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
-    Column {
-      Row(
-        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-      ) {
-        Box {
-          Surface(
-            onClick = { attachmentMenuExpanded = true },
-            modifier = Modifier.size(ClawTheme.spacing.touchTarget),
-            shape = CircleShape,
-            color = ClawTheme.colors.surfaceRaised,
-            contentColor = ClawTheme.colors.text,
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = nativeString("Add attachment"),
-                modifier = Modifier.size(20.dp),
-              )
-            }
-          }
-          DropdownMenu(
-            expanded = attachmentMenuExpanded,
-            onDismissRequest = { attachmentMenuExpanded = false },
-          ) {
-            DropdownMenuItem(
-              text = { Text(nativeString("Photos")) },
-              leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickImages()
-              },
-            )
-            DropdownMenuItem(
-              text = { Text(nativeString("Videos")) },
-              leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickVideo()
-              },
-            )
-            DropdownMenuItem(
-              text = { Text(nativeString("Files")) },
-              leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickAudioOrDocument()
-              },
-            )
-          }
-        }
-        Box(modifier = Modifier.weight(1f)) {
-          ChatTextFieldValueAdapter(
-            value = value,
-            onValueChange = onValueChange,
-            keyHandler = hardwareEnterHandler,
-          ) { textFieldValue, updateTextFieldValue ->
-            BasicTextField(
-              value = textFieldValue,
-              onValueChange = updateTextFieldValue,
-              textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
-              cursorBrush = SolidColor(ClawTheme.colors.primary),
-              minLines = 1,
-              maxLines = 4,
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .onPreInterceptKeyBeforeSoftKeyboard { event ->
-                    hardwareEnterHandler.handle(
-                      event = event,
-                      sendEnabled = sendEnabled,
-                      textEmpty = textFieldValue.text.isEmpty(),
-                      compositionActive = textFieldValue.composition != null,
-                      onSend = onSend,
-                    )
-                  },
-              decorationBox = { innerTextField ->
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                  if (value.isEmpty()) {
-                    Text(
-                      text = nativeString("Message OpenClaw"),
-                      style = ClawTheme.type.body,
-                      color = ClawTheme.colors.textSubtle,
-                    )
-                  }
-                  innerTextField()
-                }
-              },
-            )
-          }
-        }
-        ChatComposerMicButton(
-          dictationActive = dictationActive,
-          dictationEnabled = dictationEnabled,
-          voiceNoteEnabled = recordVoiceNoteEnabled,
-          onToggleDictation = onToggleDictation,
-          onStartVoiceNote = onStartVoiceNote,
-        )
-        when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
-          ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-          ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-          ChatComposerTrailingAction.StopTalk -> {
-            // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
-            if (runActive) StopButton(onClick = onAbort)
-            LiveTalkButton(active = true, onClick = onToggleTalk)
-          }
-          ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
-        }
-      }
-      ChatComposerFooter(
-        selectedModelLabel = selectedModelLabel,
-        modelPickerEnabled = modelPickerEnabled,
-        onOpenModelPicker = onOpenModelPicker,
-        thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported,
-        onToggleThinkingSelector = onToggleThinkingSelector,
-        contextUsage = contextUsage,
-        permissionMode = permissionMode,
-        permissionSelectorExpanded = permissionSelectorExpanded,
-        onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
-        onPermissionModeChange = onPermissionModeChange,
-        canSelectFull = canSelectFull,
-      )
-    }
-  }
-}
-
-@Composable
-private fun ChatComposerFooter(
-  selectedModelLabel: String,
-  modelPickerEnabled: Boolean,
-  onOpenModelPicker: () -> Unit,
-  thinkingLevel: String,
-  thinkingSupported: Boolean,
-  onToggleThinkingSelector: () -> Unit,
-  contextUsage: ChatContextUsage,
-  permissionMode: String?,
-  permissionSelectorExpanded: Boolean,
-  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
-  onPermissionModeChange: (String?) -> Unit,
-  canSelectFull: Boolean,
-) {
-  val contextFraction = contextMeterWidth(contextUsage)
-  val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
-  var plusMenuExpanded by remember { mutableStateOf(false) }
-  Row(
-    modifier = Modifier.fillMaxWidth().padding(start = 9.dp, end = 9.dp, bottom = 2.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(2.dp),
-  ) {
-    Box {
-      ChatComposerFooterChip(
-        label = nativeString("Capabilities"),
-        enabled = true,
-        onClick = { plusMenuExpanded = !plusMenuExpanded },
-        leadingIcon = Icons.Default.Add,
-        showLabel = false,
-        showChevron = false,
-      )
-      DropdownMenu(
-        expanded = plusMenuExpanded,
-        onDismissRequest = { plusMenuExpanded = false },
-      ) {
-        Text(
-          text = nativeString("Capabilities"),
-          style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-        DropdownMenuItem(
-          enabled = modelPickerEnabled,
-          leadingIcon = {
-            Icon(
-              Icons.Default.Memory,
-              contentDescription = null,
-              modifier = Modifier.size(18.dp),
-              tint = ClawTheme.colors.textMuted,
-            )
-          },
-          text = {
-            Column(modifier = Modifier.padding(vertical = 2.dp)) {
-              Text(nativeString("Model"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-              Text(
-                selectedModelLabel,
-                style = ClawTheme.type.caption,
-                color = ClawTheme.colors.text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
-            }
-          },
-          onClick = {
-            plusMenuExpanded = false
-            onOpenModelPicker()
-          },
-        )
-        if (thinkingSupported) {
-          DropdownMenuItem(
-            enabled = true,
-            leadingIcon = {
-              Icon(
-                Icons.Default.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = ClawTheme.colors.textMuted,
-              )
-            },
-            text = {
-              Column(modifier = Modifier.padding(vertical = 2.dp)) {
-                Text(nativeString("Thinking"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-                Text(
-                  contextMeterThinkingLabel(thinkingLevel),
-                  style = ClawTheme.type.caption,
-                  color = ClawTheme.colors.text,
-                  maxLines = 1,
-                  overflow = TextOverflow.Ellipsis,
-                )
-              }
-            },
-            onClick = {
-              plusMenuExpanded = false
-              onToggleThinkingSelector()
-            },
-          )
-        }
-      }
-    }
-    Box {
-      ChatPermissionTriggerChip(
-        mode = permissionMode,
-        onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
-      )
-      DropdownMenu(
-        expanded = permissionSelectorExpanded,
-        onDismissRequest = { onPermissionSelectorExpandedChange(false) },
-      ) {
-        Text(
-          text = nativeString("Permissions"),
-          style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-        PERMISSION_MODE_OPTIONS.forEachIndexed { index, option ->
-          val selected = option.value == permissionMode
-          val locked = option.value == "full" && !canSelectFull
-          DropdownMenuItem(
-            enabled = !locked,
-            modifier =
-              Modifier.background(
-                if (selected) ClawTheme.colors.surfacePressed else Color.Transparent,
-                shape = RoundedCornerShape(6.dp),
-              ),
-            leadingIcon = {
-              Icon(
-                option.icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.textMuted,
-              )
-            },
-            text = {
-              Column(modifier = Modifier.padding(vertical = 2.dp)) {
-                Text(option.label, style = ClawTheme.type.caption, color = ClawTheme.colors.text)
-                Text(
-                  if (locked) {
-                    nativeString("Full access requires operator.admin access.")
-                  } else {
-                    option.description
-                  },
-                  style = ClawTheme.type.caption,
-                  color = if (locked) ClawTheme.colors.warning else ClawTheme.colors.textMuted,
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis,
-                )
-              }
-            },
-            trailingIcon = {
-              when {
-                selected ->
-                  Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
-                locked ->
-                  Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
-                else -> Text("${index + 1}", style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
-              }
-            },
-            onClick = {
-              if (locked) return@DropdownMenuItem
-              onPermissionModeChange(option.value)
-              onPermissionSelectorExpandedChange(false)
-            },
-          )
-        }
-      }
-    }
-    Spacer(modifier = Modifier.weight(1f))
-    if (contextFraction != null && contextPercent != null) {
-      val description = nativeString("Context \${contextPercent}% used", contextPercent)
-      Text(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-        text = nativeString("\${contextPercent}%", contextPercent),
-        style = ClawTheme.type.caption,
-        color = ClawTheme.colors.textMuted,
-      )
-    }
-  }
-}
-
-@Composable
-private fun ChatComposerFooterChip(
-  label: String,
-  enabled: Boolean,
-  onClick: () -> Unit,
-  leadingIcon: ImageVector? = null,
-  showLabel: Boolean = true,
-  showChevron: Boolean = true,
-  modifier: Modifier = Modifier,
-) {
-  Surface(
-    onClick = onClick,
-    enabled = enabled,
-    modifier =
-      modifier
-        .heightIn(min = ClawTheme.spacing.touchTarget)
-        .then(if (!showLabel) Modifier.semantics { contentDescription = label } else Modifier),
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
-    color = Color.Transparent,
-    contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
-  ) {
     Row(
-      modifier = Modifier.padding(horizontal = 6.dp),
+      modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-      if (leadingIcon != null) {
-        Icon(
-          imageVector = leadingIcon,
-          contentDescription = null,
-          modifier = Modifier.size(15.dp),
-        )
+      Surface(onClick = onPickImages, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Attach image"), modifier = Modifier.size(20.dp))
+        }
       }
-      if (showLabel) {
-        Text(
-          text = label,
-          modifier = Modifier.weight(1f, fill = false),
-          style = ClawTheme.type.caption,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+      Surface(onClick = onPickAudioOrDocument, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.AttachFile, contentDescription = nativeString("Attachment"), modifier = Modifier.size(20.dp))
+        }
       }
-      if (showChevron) {
-        Icon(
-          imageVector = Icons.Default.ArrowDropDown,
-          contentDescription = null,
-          modifier = Modifier.size(13.dp),
-          tint = ClawTheme.colors.textSubtle,
-        )
+      Surface(onClick = onPickVideo, modifier = Modifier.size(31.dp), shape = CircleShape, color = ClawTheme.colors.surfaceRaised, contentColor = ClawTheme.colors.text) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(imageVector = Icons.Default.Videocam, contentDescription = nativeString("Attach video"), modifier = Modifier.size(20.dp))
+        }
+      }
+      Box(modifier = Modifier.weight(1f)) {
+        ChatTextFieldValueAdapter(
+          value = value,
+          onValueChange = onValueChange,
+          keyHandler = hardwareEnterHandler,
+        ) { textFieldValue, updateTextFieldValue ->
+          BasicTextField(
+            value = textFieldValue,
+            onValueChange = updateTextFieldValue,
+            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
+            cursorBrush = SolidColor(ClawTheme.colors.primary),
+            minLines = 1,
+            maxLines = 4,
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                  hardwareEnterHandler.handle(
+                    event = event,
+                    sendEnabled = sendEnabled,
+                    textEmpty = textFieldValue.text.isEmpty(),
+                    compositionActive = textFieldValue.composition != null,
+                    onSend = onSend,
+                  )
+                },
+            decorationBox = { innerTextField ->
+              Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                if (value.isEmpty()) {
+                  Text(text = nativeString("Message OpenClaw"), style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+                }
+                innerTextField()
+              }
+            },
+          )
+        }
+      }
+      ChatComposerMicButton(
+        dictationActive = dictationActive,
+        dictationEnabled = dictationEnabled,
+        voiceNoteEnabled = recordVoiceNoteEnabled,
+        onToggleDictation = onToggleDictation,
+        onStartVoiceNote = onStartVoiceNote,
+      )
+      when (resolveChatComposerTrailingAction(talkActive = talkActive, sendEnabled = sendEnabled)) {
+        ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+        ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+        ChatComposerTrailingAction.StopTalk -> LiveTalkButton(active = true, onClick = onToggleTalk)
       }
     }
   }
@@ -3178,11 +2894,11 @@ private fun LiveTalkButton(
     onClick = onClick,
     modifier =
       Modifier
-        .size(ClawTheme.spacing.touchTarget)
+        .size(35.dp)
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
-    color = if (active) ClawTheme.colors.danger else ClawTheme.colors.surfaceRaised,
-    contentColor = if (active) Color.White else ClawTheme.colors.text,
+    color = ClawTheme.colors.danger,
+    contentColor = Color.White,
   ) {
     Box(contentAlignment = Alignment.Center) {
       if (active) {
@@ -3194,25 +2910,6 @@ private fun LiveTalkButton(
           modifier = Modifier.size(20.dp),
         )
       }
-    }
-  }
-}
-
-@Composable
-private fun StopButton(onClick: () -> Unit) {
-  Surface(
-    onClick = onClick,
-    modifier = Modifier.size(ClawTheme.spacing.touchTarget),
-    shape = CircleShape,
-    color = ClawTheme.colors.danger,
-    contentColor = Color.White,
-  ) {
-    Box(contentAlignment = Alignment.Center) {
-      Icon(
-        imageVector = Icons.Default.Stop,
-        contentDescription = nativeString("Stop"),
-        modifier = Modifier.size(20.dp),
-      )
     }
   }
 }
