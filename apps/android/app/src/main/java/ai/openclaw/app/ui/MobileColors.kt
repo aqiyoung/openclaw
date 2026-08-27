@@ -36,18 +36,18 @@ internal data class MobileColors(
   companion object {
     /** Fallback palette used when OpenClawTheme has not been installed. */
     val default: MobileColors = MobileColors(
-      accent = Color(0xFF3EDB82),
-      accentSoft = Color(0xFF102719),
-      border = Color(0xFF242424),
-      borderStrong = Color(0xFF3A3A3A),
-      cardSurface = Color(0xFF111111),
-      codeBg = Color(0xFF111317),
-      codeText = Color(0xFFE8EAEE),
-      codeBorder = Color(0xFF2B2E35),
-      text = Color(0xFFF8F8F8),
-      textSecondary = Color(0xFFA8A8A8),
+      accent = Color(0xFFFF5C5C),
+      accentSoft = Color(0x1AFF5C5C),
+      border = Color(0xFF1E2028),
+      borderStrong = Color(0xFF2E3040),
+      cardSurface = Color(0xFF191C24),
+      codeBg = Color(0xFF13151B),
+      codeText = Color(0xFFBCBCC0),
+      codeBorder = Color(0xFF1E2028),
+      text = Color(0xFFBCBCC0),
+      textSecondary = Color(0xFF8B8B94),
       warning = Color(0xFFE6B956),
-      danger = Color(0xFFFF6B6B),
+      danger = Color(0xFFF87171),
     )
   }
 }
