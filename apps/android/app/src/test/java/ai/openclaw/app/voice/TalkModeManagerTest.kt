@@ -12,10 +12,12 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Looper
 import android.os.SystemClock
 import android.speech.RecognitionListener
 import android.speech.RecognitionService
 import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +49,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowTextToSpeech
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -1073,6 +1077,8 @@ class TalkModeManagerTest {
     talkAudioPlayer: TalkAudioPlaying? = null,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     isConnected: () -> Boolean = { true },
+    onBeforeSpeak: suspend () -> Unit = {},
+    onAfterSpeak: suspend () -> Unit = {},
     onStoppedByRelay: () -> Unit = {},
     realtimeCaptureDispatcher: CoroutineDispatcher = Dispatchers.IO,
     realtimePlaybackDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -1093,6 +1099,8 @@ class TalkModeManagerTest {
       scope = scope,
       session = session,
       isConnected = isConnected,
+      onBeforeSpeak = onBeforeSpeak,
+      onAfterSpeak = onAfterSpeak,
       onStoppedByRelay = onStoppedByRelay,
       talkSpeakClient = talkSpeakClient,
       talkAudioPlayer = talkAudioPlayer ?: TalkAudioPlayer(app),

@@ -341,7 +341,7 @@ fun ChatScreen(
   val micCooldown by viewModel.micCooldown.collectAsState()
   val talkModeEnabled by viewModel.talkModeEnabled.collectAsState()
   val talkModeListening by viewModel.talkModeListening.collectAsState()
-  val inlineMediaPlaybackBlocked = messageSpeechState != null || talkModeEnabled || talkModeListening
+  val inlineMediaPlaybackBlocked = messageSpeechState?.isActive == true || talkModeEnabled || talkModeListening
   val thinkingSupported =
     chatThinkingSupported(
       selection = thinkingLevelSelection,
@@ -1795,7 +1795,7 @@ private fun ChatBubble(
       onRewind = entryId?.let { value -> { onRewindMessage(value) } },
       onFork = entryId?.let { value -> { onForkMessage(value) } },
       enabled = !live,
-      listenActive = messageSpeech != null,
+      listenActive = messageSpeech?.isActive == true,
       onToggleListen = toggleListen,
       modifier =
         Modifier
@@ -1883,7 +1883,7 @@ private fun ChatBubble(
           messageSpeech?.let { speech ->
             FullChatSpeechIndicator(
               phase = speech.phase,
-              onStop = { onToggleListen(checkNotNull(messageId), messageText) },
+              onToggle = { onToggleListen(checkNotNull(messageId), messageText) },
             )
           }
           timestampMs?.let {
@@ -1903,10 +1903,10 @@ private fun ChatBubble(
 @Composable
 private fun FullChatSpeechIndicator(
   phase: MessageSpeechPhase,
-  onStop: () -> Unit,
+  onToggle: () -> Unit,
 ) {
   Surface(
-    onClick = onStop,
+    onClick = onToggle,
     shape = RoundedCornerShape(999.dp),
     color = ClawTheme.colors.surfacePressed,
   ) {
@@ -1917,17 +1917,22 @@ private fun FullChatSpeechIndicator(
     ) {
       Icon(
         imageVector =
-          if (phase == MessageSpeechPhase.Preparing) {
-            Icons.Default.HourglassEmpty
-          } else {
-            Icons.AutoMirrored.Filled.VolumeUp
+          when (phase) {
+            MessageSpeechPhase.Preparing -> Icons.Default.HourglassEmpty
+            MessageSpeechPhase.Speaking -> Icons.AutoMirrored.Filled.VolumeUp
+            MessageSpeechPhase.Failed -> Icons.Default.Refresh
           },
         contentDescription = null,
         modifier = Modifier.size(14.dp),
         tint = ClawTheme.colors.textMuted,
       )
       Text(
-        text = if (phase == MessageSpeechPhase.Preparing) nativeString("Preparing audio…") else nativeString("Speaking…"),
+        text =
+          when (phase) {
+            MessageSpeechPhase.Preparing -> nativeString("Preparing audio…")
+            MessageSpeechPhase.Speaking -> nativeString("Speaking…")
+            MessageSpeechPhase.Failed -> nativeString("Audio error · Retry")
+          },
         style = ClawTheme.type.caption,
         color = ClawTheme.colors.textMuted,
       )
