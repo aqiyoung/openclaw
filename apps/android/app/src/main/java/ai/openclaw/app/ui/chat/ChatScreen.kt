@@ -2480,35 +2480,29 @@ private fun ChatPermissionTriggerChip(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val active = mode != null
+  val isFull = mode == "full"
   Surface(
     onClick = onClick,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
     color = Color.Transparent,
-    contentColor = if (active) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+    contentColor = if (isFull) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 6.dp),
+      modifier = Modifier.padding(horizontal = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Icon(
         imageVector = permissionModeIcon(mode),
         contentDescription = null,
-        modifier = Modifier.size(15.dp),
+        modifier = Modifier.size(16.dp),
       )
       Text(
         text = permissionModeLabel(mode),
         style = ClawTheme.type.caption,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-      )
-      Icon(
-        imageVector = Icons.Default.ArrowDropDown,
-        contentDescription = null,
-        modifier = Modifier.size(13.dp),
-        tint = ClawTheme.colors.textSubtle,
       )
     }
   }
@@ -2985,17 +2979,27 @@ private fun ChatComposerFooter(
           color = ClawTheme.colors.textMuted,
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
-        PERMISSION_MODE_OPTIONS.forEach { option ->
+        PERMISSION_MODE_OPTIONS.forEachIndexed { index, option ->
           val selected = option.value == permissionMode
           val locked = option.value == "full" && !canSelectFull
           DropdownMenuItem(
             enabled = !locked,
+            modifier =
+              Modifier.background(
+                if (selected) ClawTheme.colors.surfacePressed else Color.Transparent,
+                shape = RoundedCornerShape(6.dp),
+              ),
             leadingIcon = {
-              Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+              Icon(
+                option.icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.textMuted,
+              )
             },
             text = {
-              Column {
-                Text(option.label, style = ClawTheme.type.body)
+              Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                Text(option.label, style = ClawTheme.type.caption, color = ClawTheme.colors.text)
                 Text(
                   if (locked) {
                     nativeString("Full access requires operator.admin access.")
@@ -3010,18 +3014,12 @@ private fun ChatComposerFooter(
               }
             },
             trailingIcon = {
-              if (selected) {
-                Icon(
-                  Icons.Default.Check,
-                  contentDescription = null,
-                  tint = ClawTheme.colors.primary,
-                )
-              } else if (locked) {
-                Icon(
-                  Icons.Default.Lock,
-                  contentDescription = null,
-                  tint = ClawTheme.colors.textSubtle,
-                )
+              when {
+                selected ->
+                  Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
+                locked ->
+                  Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
+                else -> Text("${index + 1}", style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
               }
             },
             onClick = {
