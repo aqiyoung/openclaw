@@ -2875,6 +2875,7 @@ class NodeRuntime private constructor(
   val chatHealthOk: StateFlow<Boolean> = chat.healthOk
   val chatThinkingLevel: StateFlow<String> = chat.thinkingLevel
   val chatThinkingLevelSelection: StateFlow<ChatThinkingLevelSelection> = chat.thinkingLevelSelection
+  val chatPermissionMode: StateFlow<String?> = chat.permissionMode
   val chatSelectedModelRef: StateFlow<String?> = chat.selectedModelRef
   val chatModelCatalog: StateFlow<List<GatewayModelSummary>> = chat.modelCatalog
   val chatStreamingAssistantText: StateFlow<String?> = chat.streamingAssistantText
@@ -5107,6 +5108,10 @@ class NodeRuntime private constructor(
 
   fun setChatThinkingLevel(level: String) {
     chat.setThinkingLevel(level)
+  }
+
+  fun setChatPermissionMode(mode: String?) {
+    chat.setPermissionMode(mode)
   }
 
   fun setChatSessionModel(

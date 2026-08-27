@@ -95,6 +95,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -298,6 +299,7 @@ fun ChatScreen(
   val gatewayAgents by viewModel.gatewayAgents.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
   val thinkingLevelSelection by viewModel.chatThinkingLevelSelection.collectAsState()
+  val permissionMode by viewModel.chatPermissionMode.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val subagentActivities by viewModel.chatSubagentActivities.collectAsState()
@@ -821,6 +823,8 @@ fun ChatScreen(
       },
       commands = chatCommands,
       onThinkingLevelChange = viewModel::setChatThinkingLevel,
+      permissionMode = permissionMode,
+      onPermissionModeChange = viewModel::setChatPermissionMode,
       onOpenModelPicker = { showModelPicker = true },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
@@ -2233,6 +2237,8 @@ private fun ChatComposer(
   onDismissShareImportNotice: () -> Unit,
   commands: List<ChatCommandEntry>,
   onThinkingLevelChange: (String) -> Unit,
+  permissionMode: String?,
+  onPermissionModeChange: (String?) -> Unit,
   onOpenModelPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
@@ -2263,6 +2269,7 @@ private fun ChatComposer(
   LaunchedEffect(thinkingSupported) {
     if (!thinkingSupported) thinkingSelectorExpanded = false
   }
+  var permissionSelectorExpanded by rememberSaveable { mutableStateOf(false) }
 
   val dictationActive =
     dictationState is ChatDictationState.Starting || dictationState is ChatDictationState.Listening
@@ -2311,6 +2318,16 @@ private fun ChatComposer(
       )
     }
 
+    if (permissionSelectorExpanded) {
+      ChatPermissionModeSelector(
+        selected = permissionMode,
+        onSelect = { mode ->
+          onPermissionModeChange(mode)
+          permissionSelectorExpanded = false
+        },
+      )
+    }
+
     if (shouldShowSlashCommandMenu(value)) {
       SlashCommandPanel(
         commands = slashCommands,
@@ -2353,6 +2370,8 @@ private fun ChatComposer(
           thinkingLevel = thinkingLevel,
           thinkingSupported = thinkingSupported,
           onToggleThinkingSelector = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
+          permissionMode = permissionMode,
+          onTogglePermissionSelector = { permissionSelectorExpanded = !permissionSelectorExpanded },
           contextUsage = contextUsage,
           modifier = Modifier.weight(1f),
         )
@@ -2401,6 +2420,55 @@ private fun ChatThinkingLevelSelector(
         modifier = Modifier.fillMaxWidth(),
       )
     }
+  }
+}
+
+private val PERMISSION_MODE_OPTIONS: List<Pair<String?, String>> =
+  listOf(
+    null to "Default",
+    "read-only" to "Read-only",
+    "guarded" to "Guarded",
+    "workspace" to "Workspace",
+    "full" to "Full",
+  )
+
+private fun permissionModeLabel(mode: String?): String {
+  val normalized = mode?.trim()?.lowercase(Locale.US)
+  return when (normalized) {
+    null, "" -> nativeString("Default")
+    "read-only" -> nativeString("Read-only")
+    "guarded" -> nativeString("Guarded")
+    "workspace" -> nativeString("Workspace")
+    "full" -> nativeString("Full")
+    else -> mode
+  }
+}
+
+@Composable
+private fun ChatPermissionModeSelector(
+  selected: String?,
+  onSelect: (String?) -> Unit,
+) {
+  val options = PERMISSION_MODE_OPTIONS
+  val selectedLabel = permissionModeLabel(selected)
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Text(
+      text = nativeString("Permission mode"),
+      style = ClawTheme.type.caption,
+      color = ClawTheme.colors.textMuted,
+      modifier = Modifier.padding(start = 2.dp),
+    )
+    ClawSegmentedControl(
+      options = options.map { permissionModeLabel(it.first) },
+      selected = selectedLabel,
+      onSelect = { label ->
+        options.firstOrNull { permissionModeLabel(it.first) == label }?.let { onSelect(it.first) }
+      },
+      modifier = Modifier.fillMaxWidth(),
+    )
   }
 }
 
@@ -2692,6 +2760,8 @@ private fun ChatInputPill(
   thinkingLevel: String,
   thinkingSupported: Boolean,
   onToggleThinkingSelector: () -> Unit,
+  permissionMode: String?,
+  onTogglePermissionSelector: () -> Unit,
   contextUsage: ChatContextUsage,
   modifier: Modifier = Modifier,
 ) {
@@ -2822,6 +2892,8 @@ private fun ChatInputPill(
         thinkingLevel = thinkingLevel,
         thinkingSupported = thinkingSupported,
         onToggleThinkingSelector = onToggleThinkingSelector,
+        permissionMode = permissionMode,
+        onTogglePermissionSelector = onTogglePermissionSelector,
         contextUsage = contextUsage,
       )
     }
@@ -2836,6 +2908,8 @@ private fun ChatComposerFooter(
   thinkingLevel: String,
   thinkingSupported: Boolean,
   onToggleThinkingSelector: () -> Unit,
+  permissionMode: String?,
+  onTogglePermissionSelector: () -> Unit,
   contextUsage: ChatContextUsage,
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
@@ -2859,6 +2933,11 @@ private fun ChatComposerFooter(
         onClick = onToggleThinkingSelector,
       )
     }
+    ChatComposerFooterChip(
+      label = permissionModeLabel(permissionMode),
+      enabled = true,
+      onClick = onTogglePermissionSelector,
+    )
     Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
