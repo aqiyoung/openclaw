@@ -2951,11 +2951,89 @@ private fun ChatComposerFooter(
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
+  var plusMenuExpanded by remember { mutableStateOf(false) }
   Row(
     modifier = Modifier.fillMaxWidth().padding(start = 9.dp, end = 9.dp, bottom = 2.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(2.dp),
   ) {
+    Box {
+      ChatComposerFooterChip(
+        label = nativeString("Capabilities"),
+        enabled = true,
+        onClick = { plusMenuExpanded = !plusMenuExpanded },
+        leadingIcon = Icons.Default.Add,
+        showLabel = false,
+        showChevron = false,
+      )
+      DropdownMenu(
+        expanded = plusMenuExpanded,
+        onDismissRequest = { plusMenuExpanded = false },
+      ) {
+        Text(
+          text = nativeString("Capabilities"),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        DropdownMenuItem(
+          enabled = modelPickerEnabled,
+          leadingIcon = {
+            Icon(
+              Icons.Default.Memory,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+              tint = ClawTheme.colors.textMuted,
+            )
+          },
+          text = {
+            Column(modifier = Modifier.padding(vertical = 2.dp)) {
+              Text(nativeString("Model"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+              Text(
+                selectedModelLabel,
+                style = ClawTheme.type.caption,
+                color = ClawTheme.colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+          },
+          onClick = {
+            plusMenuExpanded = false
+            onOpenModelPicker()
+          },
+        )
+        if (thinkingSupported) {
+          DropdownMenuItem(
+            enabled = true,
+            leadingIcon = {
+              Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = ClawTheme.colors.textMuted,
+              )
+            },
+            text = {
+              Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                Text(nativeString("Thinking"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+                Text(
+                  contextMeterThinkingLabel(thinkingLevel),
+                  style = ClawTheme.type.caption,
+                  color = ClawTheme.colors.text,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              }
+            },
+            onClick = {
+              plusMenuExpanded = false
+              onToggleThinkingSelector()
+            },
+          )
+        }
+      }
+    }
     Box {
       ChatPermissionTriggerChip(
         mode = permissionMode,
@@ -3022,25 +3100,6 @@ private fun ChatComposerFooter(
           )
         }
       }
-    }
-    ChatComposerFooterChip(
-      label = selectedModelLabel,
-      enabled = modelPickerEnabled,
-      onClick = onOpenModelPicker,
-      leadingIcon = Icons.Default.Memory,
-      showLabel = false,
-      showChevron = false,
-      modifier = Modifier.wrapContentWidth(),
-    )
-    if (thinkingSupported) {
-      ChatComposerFooterChip(
-        label = contextMeterThinkingLabel(thinkingLevel),
-        enabled = true,
-        onClick = onToggleThinkingSelector,
-        leadingIcon = Icons.Default.AutoAwesome,
-        showLabel = false,
-        showChevron = false,
-      )
     }
     Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
