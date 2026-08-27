@@ -2845,11 +2845,12 @@ private fun ChatComposerFooter(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(2.dp),
   ) {
+    Spacer(modifier = Modifier.weight(1f))
     ChatComposerFooterChip(
       label = selectedModelLabel,
       enabled = modelPickerEnabled,
       onClick = onOpenModelPicker,
-      modifier = Modifier.weight(1f, fill = false),
+      modifier = Modifier.wrapContentWidth(),
     )
     if (thinkingSupported) {
       ChatComposerFooterChip(
