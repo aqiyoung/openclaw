@@ -75,7 +75,10 @@ fun parseHexColorArgb(raw: String?): Long? {
   return 0xFF000000L or rgb
 }
 
-/** Per-profile accent from a users.prefs.get entries payload. */
+/**
+ * Per-profile accent from a users.prefs.get entries payload. Null for missing or
+ * malformed values so callers fall back to the gateway accent.
+ */
 fun resolveProfileAccentArgb(entries: JsonObject?): Long? {
   val value = entries?.get("ui.accent")?.takeIf { it !is JsonNull }
   return parseHexColorArgb((value as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull)

@@ -1670,12 +1670,15 @@ final class NodeAppModel {
             let session = config["session"] as? [String: Any]
             let mainKey = SessionKey.normalizeMainKey(session?["mainKey"] as? String)
             let scope = (session?["scope"] as? String) ?? "per-sender"
+            let accentHex = ColorHexSupport.gatewayUserAccentHex(configUI: config["ui"] as? [String: Any])
+            let profileAccentHex = await self.fetchProfileAccentHex(ifCurrentRoute: sourceRoute)
             guard shouldApply(),
                   GatewayStableIdentifier.matches(self.chatTranscriptCacheGatewayID, sourceGatewayID)
             else { return }
             await MainActor.run {
                 self.mainSessionBaseKey = mainKey
                 self.gatewaySessionScope = scope
+                self.gatewayAccentColorHex = profileAccentHex ?? accentHex
                 self.synchronizeTalkSessionKey()
                 self.homeCanvasRevision &+= 1
             }
@@ -1687,6 +1690,26 @@ final class NodeAppModel {
                 }
             }
             // ignore
+        }
+    }
+
+    /// Caller's per-profile accent (users.prefs.get). nil covers every
+    /// non-authoritative outcome — profile-less connections
+    /// (no_durable_identity), older gateways without the method, and malformed
+    /// stored values — so the gateway accent stays the fallback.
+    private func fetchProfileAccentHex(ifCurrentRoute sourceRoute: GatewayNodeSessionRoute) async -> String? {
+        do {
+            let res = try await operatorGateway.request(
+                method: "users.prefs.get",
+                paramsJSON: #"{"keys":["ui.accent"]}"#,
+                timeoutSeconds: 8,
+                ifCurrentRoute: sourceRoute)
+            guard let json = try JSONSerialization.jsonObject(with: res) as? [String: Any],
+                  json["status"] as? String == "ok"
+            else { return nil }
+            return ColorHexSupport.profileAccentHex(entries: json["entries"] as? [String: Any])
+        } catch {
+            return nil
         }
     }
 
@@ -1824,6 +1847,16 @@ final class NodeAppModel {
     {
         guard shouldContinue(), let payload = evt.payload else { return }
         switch evt.event {
+        case "config.changed":
+            // Persisted config writes (accent, session routing) must reach an
+            // already-connected app; the protocol directs clients to re-read via
+            // config.get, which the guarded branding refresh already does.
+            await self.refreshBrandingFromGateway(shouldApply: shouldContinue)
+        case "users.prefs.changed":
+            // The gateway targets this event at connections bound to the
+            // caller's own profile, so any receipt means our profile appearance
+            // changed on another device — re-run the guarded branding refresh.
+            await self.refreshBrandingFromGateway(shouldApply: shouldContinue)
         case "voicewake.changed":
             struct Payload: Decodable { var triggers: [String] }
             guard let decoded = try? GatewayPayloadDecoding.decode(payload, as: Payload.self) else { return }
