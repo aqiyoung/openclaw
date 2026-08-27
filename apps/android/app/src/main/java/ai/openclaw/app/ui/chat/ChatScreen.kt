@@ -2827,6 +2827,21 @@ private fun ChatInputPill(
             )
           }
         }
+        Surface(
+          onClick = onTogglePermissionSelector,
+          modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+          shape = CircleShape,
+          color = ClawTheme.colors.surfaceRaised,
+          contentColor = if (permissionMode != null) ClawTheme.colors.primary else ClawTheme.colors.text,
+        ) {
+          Box(contentAlignment = Alignment.Center) {
+            Icon(
+              imageVector = Icons.Default.Lock,
+              contentDescription = nativeString("Permission mode"),
+              modifier = Modifier.size(20.dp),
+            )
+          }
+        }
         Box(modifier = Modifier.weight(1f)) {
           ChatTextFieldValueAdapter(
             value = value,
@@ -2892,8 +2907,6 @@ private fun ChatInputPill(
         thinkingLevel = thinkingLevel,
         thinkingSupported = thinkingSupported,
         onToggleThinkingSelector = onToggleThinkingSelector,
-        permissionMode = permissionMode,
-        onTogglePermissionSelector = onTogglePermissionSelector,
         contextUsage = contextUsage,
       )
     }
@@ -2908,8 +2921,6 @@ private fun ChatComposerFooter(
   thinkingLevel: String,
   thinkingSupported: Boolean,
   onToggleThinkingSelector: () -> Unit,
-  permissionMode: String?,
-  onTogglePermissionSelector: () -> Unit,
   contextUsage: ChatContextUsage,
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
@@ -2933,11 +2944,6 @@ private fun ChatComposerFooter(
         onClick = onToggleThinkingSelector,
       )
     }
-    ChatComposerFooterChip(
-      label = permissionModeLabel(permissionMode),
-      enabled = true,
-      onClick = onTogglePermissionSelector,
-    )
     Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
