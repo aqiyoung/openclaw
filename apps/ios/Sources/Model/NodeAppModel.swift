@@ -1690,6 +1690,26 @@ final class NodeAppModel {
         }
     }
 
+    /// Caller's per-profile accent (users.prefs.get). nil covers every
+    /// non-authoritative outcome — profile-less connections
+    /// (no_durable_identity), older gateways without the method, and malformed
+    /// stored values — so the gateway accent stays the fallback.
+    private func fetchProfileAccentHex(ifCurrentRoute sourceRoute: GatewayNodeSessionRoute) async -> String? {
+        do {
+            let res = try await operatorGateway.request(
+                method: "users.prefs.get",
+                paramsJSON: #"{"keys":["ui.accent"]}"#,
+                timeoutSeconds: 8,
+                ifCurrentRoute: sourceRoute)
+            guard let json = try JSONSerialization.jsonObject(with: res) as? [String: Any],
+                  json["status"] as? String == "ok"
+            else { return nil }
+            return ColorHexSupport.profileAccentHex(entries: json["entries"] as? [String: Any])
+        } catch {
+            return nil
+        }
+    }
+
     private func refreshAgentsFromGateway(shouldApply: () -> Bool = { true }) async {
         do {
             guard let sourceGatewayID = self.chatTranscriptCacheGatewayID,

@@ -5389,6 +5389,11 @@ class NodeRuntime private constructor(
     if (event == GatewayEvent.VoicewakeChanged.rawValue) {
       applyVoiceWakeWords(payloadJson)
     }
+    if (event == GatewayEvent.UsersPrefsChanged.rawValue) {
+      // The gateway targets this event at connections bound to the caller's own
+      // profile; receipt means our profile appearance changed on another device.
+      scope.launch { refreshBrandingFromGateway() }
+    }
     handleExecApprovalGatewayEvent(event = event, payloadJson = payloadJson)
     micCapture.handleGatewayEvent(event, payloadJson)
     talkMode.handleGatewayEvent(event, payloadJson)
@@ -5763,7 +5768,7 @@ class NodeRuntime private constructor(
       val res = requestGatewayData(gatewayScope, "config.get", "{}")
       val root = json.parseToJsonElement(res).asObjectOrNull()
       val config = root?.get("config").asObjectOrNull()
-      val parsed = resolveGatewayAccentArgb(config)
+      val parsed = fetchProfileAccentArgb(gatewayScope) ?: resolveGatewayAccentArgb(config)
       publishGatewayData(gatewayScope) {
         _gatewayAccentArgb.value = parsed
         updateHomeCanvasState()
@@ -5772,6 +5777,28 @@ class NodeRuntime private constructor(
       // ignore
     }
   }
+
+  /**
+   * Caller's per-profile accent (users.prefs.get). Null covers profile-less
+   * connections (no_durable_identity), older gateways without the method, and
+   * malformed stored values, so the gateway accent stays the fallback. Inner
+   * try: a failed profile fetch must not discard the config accent.
+   */
+  private suspend fun fetchProfileAccentArgb(gatewayScope: GatewayDataScope): Long? =
+    try {
+      val res =
+        requestGatewayData(gatewayScope, GatewayMethod.UsersPrefsGet.rawValue, """{"keys":["ui.accent"]}""")
+      val root = json.parseToJsonElement(res).asObjectOrNull()
+      if ((root?.get("status") as? JsonPrimitive)?.contentOrNull == "ok") {
+        resolveProfileAccentArgb(root.get("entries").asObjectOrNull())
+      } else {
+        null
+      }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Throwable) {
+      null
+    }
 
   /** Lists one directory of the active agent's workspace (read-only RPC). */
   suspend fun listWorkspaceFiles(
