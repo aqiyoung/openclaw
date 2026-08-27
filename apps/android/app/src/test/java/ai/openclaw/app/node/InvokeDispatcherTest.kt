@@ -450,8 +450,6 @@ private class InvokeDispatcherFakeNotificationsStateProvider : NotificationsStat
 }
 
 private class InvokeDispatcherFakeSystemNotificationPoster : SystemNotificationPoster {
-  override fun isAuthorized(): Boolean = true
-
   override fun post(request: SystemNotifyRequest) = Unit
 }
 
