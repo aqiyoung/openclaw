@@ -622,6 +622,7 @@ enum class GatewayEvent(
   DevicePairResolved("device.pair.resolved"),
   SkillsChanged("skills.changed"),
   VoicewakeChanged("voicewake.changed"),
+  UsersPrefsChanged("users.prefs.changed"),
   VoicewakeRoutingChanged("voicewake.routing.changed"),
   ExecApprovalRequested("exec.approval.requested"),
   ExecApprovalResolved("exec.approval.resolved"),

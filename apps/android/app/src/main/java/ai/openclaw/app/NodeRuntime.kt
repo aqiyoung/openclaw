@@ -5285,6 +5285,9 @@ class NodeRuntime private constructor(
     if (event == GatewayEvent.VoicewakeChanged.rawValue) {
       applyVoiceWakeWords(payloadJson)
     }
+    if (event == GatewayEvent.UsersPrefsChanged.rawValue) {
+      scope.launch { refreshBrandingFromGateway() }
+    }
     handleExecApprovalGatewayEvent(event = event, payloadJson = payloadJson)
     micCapture.handleGatewayEvent(event, payloadJson)
     talkMode.handleGatewayEvent(event, payloadJson)
@@ -5652,6 +5655,19 @@ class NodeRuntime private constructor(
       providerModelCatalogRefreshGuard.publishIfCurrent(refreshGeneration) { publish() }
     }
 
+  private suspend fun fetchProfileAccentArgb(gatewayScope: GatewayDataScope): Long? =
+    try {
+      val res = requestGatewayData(gatewayScope, "users.prefs.get", """{"keys":["ui.accent"]}""")
+      val root = json.parseToJsonElement(res).asObjectOrNull()
+      if ((root?.get("status") as? JsonPrimitive)?.contentOrNull == "ok") {
+        resolveProfileAccentArgb(root.get("entries").asObjectOrNull())
+      } else {
+        null
+      }
+    } catch (_: Throwable) {
+      null
+    }
+
   private suspend fun refreshBrandingFromGateway() {
     val gatewayScope = captureGatewayDataScope() ?: return
     if (!gatewayConnectionDisplay.value.isConnected) return
@@ -5659,7 +5675,7 @@ class NodeRuntime private constructor(
       val res = requestGatewayData(gatewayScope, "config.get", "{}")
       val root = json.parseToJsonElement(res).asObjectOrNull()
       val config = root?.get("config").asObjectOrNull()
-      val parsed = resolveGatewayAccentArgb(config)
+      val parsed = fetchProfileAccentArgb(gatewayScope) ?: resolveGatewayAccentArgb(config)
       publishGatewayData(gatewayScope) {
         _gatewayAccentArgb.value = parsed
         updateHomeCanvasState()

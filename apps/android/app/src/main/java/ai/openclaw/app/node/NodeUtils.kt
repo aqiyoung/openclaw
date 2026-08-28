@@ -84,6 +84,10 @@ fun JsonElement?.asStringOrNull(): String? =
     else -> null
   }
 
+/** Converts a JSON string-typed element into a Kotlin string (returns null otherwise). */
+fun JsonElement?.asJsonStringOrNull(): String? =
+  (this as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+
 /** Parses #RRGGBB or RRGGBB into opaque ARGB. */
 fun parseHexColorArgb(raw: String?): Long? {
   val trimmed = raw?.trim().orEmpty()
@@ -96,17 +100,14 @@ fun parseHexColorArgb(raw: String?): Long? {
 
 fun resolveGatewayAccentArgb(config: JsonObject?): Long? {
   val ui = config?.get("ui").asObjectOrNull()
-  // Control UI precedence (gateway talk.config): a present user accent wins over the
-  // operator seam color even when it is not a usable hex string; only an absent or
-  // JSON-null accent falls through, matching the gateway's `??` selection.
-  val chosen =
-    ui
-      ?.get("prefs")
-      .asObjectOrNull()
-      ?.get("accent")
-      ?.takeIf { it !is JsonNull }
-      ?: ui?.get("seamColor")
+  val chosen = ui?.get("prefs").asObjectOrNull()?.get("accent")?.takeIf { it !is JsonNull } ?: ui?.get("seamColor")
   return parseHexColorArgb((chosen as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull)
+}
+
+/** Per-profile accent from a users.prefs.get entries payload. */
+fun resolveProfileAccentArgb(entries: JsonObject?): Long? {
+  val value = entries?.get("ui.accent")?.takeIf { it !is JsonNull }
+  return parseHexColorArgb((value as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull)
 }
 
 /** Converts gateway invocation throwables into protocol code/message pairs. */

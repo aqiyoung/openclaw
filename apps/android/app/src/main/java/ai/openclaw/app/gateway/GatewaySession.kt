@@ -1095,7 +1095,7 @@ class GatewaySession(
         } else {
           ticketedPath
         }
-      val url = "$scheme://${formatGatewayAuthority(endpoint.host, endpoint.port)}$playbackPath"
+      val url = "$scheme://${formatGatewayAuthority(endpoint.host, endpoint.port)}${endpoint.contextPath}$playbackPath"
       val headers = mediaTransportHeaders()
       return TicketedMediaRequest(url = url, headers = headers)
     }
@@ -1955,7 +1955,20 @@ class GatewaySession(
         ?.trim()
         .orEmpty()
         .ifBlank { "http" }
-    val suffix = buildUrlSuffix(parsed)
+    val suffix = run {
+      val path = parsed?.rawPath.orEmpty()
+      val capability = path.removePrefix("/__openclaw__/cap/")
+      val isRootCapability = path != capability && capability.isNotEmpty() && !capability.contains('/')
+      val hasUriExtras = parsed?.rawUserInfo != null || parsed?.rawQuery != null || parsed?.rawFragment != null
+      val isHttpSurface = scheme.equals("http", ignoreCase = true) || scheme.equals("https", ignoreCase = true)
+      val contextPath =
+        if (isRootCapability && !hasUriExtras && isHttpSurface) {
+          endpoint.contextPath
+        } else {
+          ""
+        }
+      contextPath + buildUrlSuffix(parsed)
+    }
 
     // If raw URL is a non-loopback address and this connection uses TLS,
     // normalize scheme/port to the endpoint we actually connected to.

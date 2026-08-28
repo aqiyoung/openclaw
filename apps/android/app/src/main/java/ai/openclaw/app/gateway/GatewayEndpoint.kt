@@ -12,6 +12,7 @@ data class GatewayEndpoint(
   val canvasPort: Int? = null,
   val tlsEnabled: Boolean = false,
   val tlsFingerprintSha256: String? = null,
+  val contextPath: String = "",
 ) {
   companion object {
     /** Builds a stable manual endpoint key that survives display-name changes. */

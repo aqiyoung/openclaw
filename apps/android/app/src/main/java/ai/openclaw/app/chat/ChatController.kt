@@ -5997,6 +5997,12 @@ class ChatController internal constructor(
   /** Alias for [clearPlanSteps] used by cherry-picked upstream code. */
   private fun clearPlan() = clearPlanSteps()
 
+  private fun gatewayAdvertisesProgressCard(): Boolean = true
+
+  private fun refreshProgressCard() {
+    _planSnapshot.value = ChatPlanSnapshot(steps = _planSnapshot.value.steps)
+  }
+
   /** Alias for [clearPlanFor] used by cherry-picked upstream code. */
   private fun clearPlanStepsFor(runId: String?) = clearPlanFor(runId)
 
