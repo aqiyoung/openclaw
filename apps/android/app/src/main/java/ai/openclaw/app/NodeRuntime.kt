@@ -95,6 +95,7 @@ import ai.openclaw.app.node.asObjectOrNull
 import ai.openclaw.app.node.asStringOrNull
 import ai.openclaw.app.node.invokeErrorFromThrowable
 import ai.openclaw.app.node.resolveGatewayAccentArgb
+import ai.openclaw.app.node.resolveProfileAccentArgb
 import ai.openclaw.app.node.readAndroidPermissionSnapshot
 import ai.openclaw.app.protocol.OpenClawCanvasA2UIAction
 import ai.openclaw.app.systemagent.SystemAgentChatController
