@@ -5125,6 +5125,7 @@ class NodeRuntime private constructor(
     sessionKey: String,
     ownerAgentId: String? = null,
   ) {
+    Log.d("NodeRuntime", "switchChatSession: key=$sessionKey ownerAgentId=$ownerAgentId")
     stopMessageSpeech()
     chat.switchSession(sessionKey, ownerAgentId)
   }
