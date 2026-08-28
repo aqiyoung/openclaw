@@ -3055,7 +3055,7 @@ private fun ChatComposerFooter(
       val progressColor = ClawTheme.colors.primary
       Row(
         modifier = Modifier
-          .weight(0f, fill = false)
+          .wrapContentWidth()
           .clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
