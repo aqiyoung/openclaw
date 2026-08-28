@@ -94,6 +94,12 @@ fun parseHexColorArgb(raw: String?): Long? {
   return 0xFF000000L or rgb
 }
 
+/** Per-profile accent from a users.prefs.get entries payload. */
+fun resolveProfileAccentArgb(entries: JsonObject?): Long? {
+  val value = entries?.get("ui.accent")?.takeIf { it !is JsonNull }
+  return parseHexColorArgb((value as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull)
+}
+
 fun resolveGatewayAccentArgb(config: JsonObject?): Long? {
   val ui = config?.get("ui").asObjectOrNull()
   // Control UI precedence (gateway talk.config): a present user accent wins over the
