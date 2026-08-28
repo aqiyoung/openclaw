@@ -5788,7 +5788,7 @@ class NodeRuntime private constructor(
       val res = requestGatewayData(gatewayScope, "config.get", "{}")
       val root = json.parseToJsonElement(res).asObjectOrNull()
       val config = root?.get("config").asObjectOrNull()
-      val parsed = resolveGatewayAccentArgb(config)
+      val parsed = fetchProfileAccentArgb(gatewayScope) ?: resolveGatewayAccentArgb(config)
       publishGatewayData(gatewayScope) {
         _gatewayAccentArgb.value = parsed
       }
