@@ -2970,6 +2970,61 @@ private fun ChatComposerFooter(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
+    Box {
+      ChatPermissionTriggerChip(
+        mode = permissionMode,
+        onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
+      )
+      DropdownMenu(
+        expanded = permissionSelectorExpanded,
+        onDismissRequest = { onPermissionSelectorExpandedChange(false) },
+      ) {
+        Text(
+          text = nativeString("Permissions"),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        PERMISSION_MODE_OPTIONS.forEach { option ->
+          val selected = option.value == permissionMode
+          val locked = option.value == "full" && !canSelectFull
+          DropdownMenuItem(
+            enabled = !locked,
+            leadingIcon = {
+              Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            },
+            text = {
+              Column {
+                Text(option.label, style = ClawTheme.type.body)
+                Text(
+                  if (locked) {
+                    nativeString("Full access requires operator.admin access.")
+                  } else {
+                    option.description
+                  },
+                  style = ClawTheme.type.caption,
+                  color = if (locked) ClawTheme.colors.warning else ClawTheme.colors.textMuted,
+                  maxLines = 2,
+                  overflow = TextOverflow.Ellipsis,
+                )
+              }
+            },
+            trailingIcon = {
+              if (selected) {
+                Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
+              } else if (locked) {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
+              }
+            },
+            onClick = {
+              if (locked) return@DropdownMenuItem
+              onPermissionModeChange(option.value)
+              onPermissionSelectorExpandedChange(false)
+            },
+          )
+        }
+      }
+    }
     Spacer(modifier = Modifier.weight(1f))
     ChatComposerFooterChip(
       label = selectedModelLabel,
@@ -2986,6 +3041,7 @@ private fun ChatComposerFooter(
         leadingIcon = Icons.Default.AutoAwesome,
       )
     }
+    Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
       val trackColor = ClawTheme.colors.surfacePressed
