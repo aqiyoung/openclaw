@@ -279,15 +279,6 @@ internal fun OpenClawSidebar(
         )
       }
 
-      SidebarSectionTitle(nativeString("Agents"), palette)
-      roster.selected?.let { selected ->
-        SidebarAgentRow(
-          agent = selected,
-          selected = true,
-          palette = palette,
-          onClick = { onSelectAgent(selected.id) },
-        )
-      }
       if (roster.others.isNotEmpty()) {
         Box {
           SidebarActionRow(
