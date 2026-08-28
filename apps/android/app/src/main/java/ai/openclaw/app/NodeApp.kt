@@ -9,6 +9,7 @@ import ai.openclaw.app.wear.WearRealtimeChannelRegistry
 import android.app.Application
 import android.content.res.Configuration
 import android.os.StrictMode
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +21,22 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class NodeApp : Application() {
   val prefs: SecurePrefs by lazy { SecurePrefs(this) }
+
+  // Catch uncaught exceptions from Compose (e.g. weight allocator crashes on
+  // recompose) and log the stack so the crash is diagnosable without adb.
+  init {
+    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+      Log.e("NodeApp", "Uncaught exception on thread ${thread.name}", throwable)
+      // Delegate to the default handler so the app still terminates cleanly.
+      val default = Thread.getDefaultUncaughtExceptionHandler()
+      if (default !== this) {
+        default.uncaughtException(thread, throwable)
+      } else {
+        Log.e("NodeApp", "No default handler; exiting.")
+        android.os.Process.killProcess(android.os.Process.myPid())
+      }
+    }
+  }
 
   // System share senders can create overlapping Activity tasks; keep one bounded process queue.
   internal val chatShareDraftSeq = AtomicLong()

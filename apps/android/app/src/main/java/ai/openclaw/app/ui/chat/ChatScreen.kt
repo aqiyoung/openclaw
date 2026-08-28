@@ -1,5 +1,6 @@
 package ai.openclaw.app.ui.chat
 
+import android.util.Log
 import ai.openclaw.app.ChatDraft
 import ai.openclaw.app.ChatDraftPlacement
 import ai.openclaw.app.GatewayAgentSummary
@@ -846,7 +847,10 @@ fun ChatScreen(
       permissionMode = permissionMode,
       onPermissionModeChange = viewModel::setChatPermissionMode,
       canSelectFull = operatorAdminScopeAvailable,
-      onOpenModelPicker = { showModelPicker = true },
+      onOpenModelPicker = {
+        Log.d("ChatScreen", "model chip tap")
+        showModelPicker = true
+      },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
         val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return@ChatComposer
@@ -3015,7 +3019,10 @@ private fun ChatComposerFooter(
     Box {
       ChatPermissionTriggerChip(
         mode = permissionMode,
-        onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
+        onClick = {
+          Log.d("ChatScreen", "permission chip tap, expanded=$permissionSelectorExpanded")
+          onPermissionSelectorExpandedChange(!permissionSelectorExpanded)
+        },
       )
       DropdownMenu(
         expanded = permissionSelectorExpanded,
@@ -3078,7 +3085,10 @@ private fun ChatComposerFooter(
     ChatComposerFooterChip(
       label = selectedModelLabel,
       enabled = modelPickerEnabled,
-      onClick = onOpenModelPicker,
+      onClick = {
+        Log.d("ChatScreen", "model chip tap")
+        onOpenModelPicker()
+      },
       leadingIcon = Icons.Default.Memory,
       modifier = Modifier.wrapContentWidth(),
     )
@@ -3086,7 +3096,10 @@ private fun ChatComposerFooter(
       ChatComposerFooterChip(
         label = contextMeterThinkingLabel(thinkingLevel),
         enabled = true,
-        onClick = onToggleThinkingSelector,
+        onClick = {
+          Log.d("ChatScreen", "thinking chip tap")
+          onToggleThinkingSelector()
+        },
         leadingIcon = Icons.Default.AutoAwesome,
       )
     }
@@ -3097,7 +3110,7 @@ private fun ChatComposerFooter(
       val progressColor = ClawTheme.colors.primary
       Row(
         modifier = Modifier
-          .weight(0f, fill = false)
+          .wrapContentWidth()
           .clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),

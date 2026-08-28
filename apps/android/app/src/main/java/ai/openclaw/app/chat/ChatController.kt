@@ -1,5 +1,6 @@
 package ai.openclaw.app.chat
 
+import android.util.Log
 import ai.openclaw.app.GatewayModelSummary
 import ai.openclaw.app.gateway.GatewayLoadedImage
 import ai.openclaw.app.gateway.GatewayLoadedMedia
@@ -2056,6 +2057,7 @@ class ChatController internal constructor(
   /** Patches the active session's permission mode. Mirrors the upstream web capability menu
    *  (`null` = default, `read-only`, `guarded`, `workspace`, `full`). */
   fun setPermissionMode(mode: String?) {
+    Log.d("ChatController", "setPermissionMode: mode=$mode")
     val normalized = mode?.trim()?.takeIf { it.isNotEmpty() }
     val key = normalizeRequestedSessionKey(_sessionKey.value)
     if (key.isEmpty()) return
@@ -2080,6 +2082,7 @@ class ChatController internal constructor(
   }
 
   fun setThinkingLevel(thinkingLevel: String) {
+    Log.d("ChatController", "setThinkingLevel: level=$thinkingLevel")
     val normalized = normalizeThinking(thinkingLevel)
     val selection = _thinkingLevelSelection.value
     if (selection.isGatewayProvided && selection.options.none { it.id == normalized }) {
@@ -2124,6 +2127,7 @@ class ChatController internal constructor(
     sessionKey: String,
     modelRef: String?,
   ) {
+    Log.d("ChatController", "setSessionModel: key=$sessionKey modelRef=$modelRef")
     // Enter the model-selection queue before returning so an immediate send cannot overtake it.
     scope.launch(start = CoroutineStart.UNDISPATCHED) {
       setSessionModelAwait(sessionKey = sessionKey, modelRef = modelRef)
@@ -2352,6 +2356,7 @@ class ChatController internal constructor(
     sessionKey: String,
     ownerAgentId: String? = null,
   ) {
+    Log.d("ChatController", "switchSession: key=$sessionKey ownerAgentId=$ownerAgentId")
     val key = normalizeRequestedSessionKey(sessionKey)
     if (key.isEmpty()) return
     val owner = normalizeSessionSelectionOwner(key, ownerAgentId)
