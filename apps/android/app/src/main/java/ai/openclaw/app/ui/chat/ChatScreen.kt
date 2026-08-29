@@ -2495,14 +2495,8 @@ private fun ChatPermissionTriggerChip(
     ) {
       Icon(
         imageVector = permissionModeIcon(mode),
-        contentDescription = null,
+        contentDescription = permissionModeLabel(mode),
         modifier = Modifier.size(15.dp),
-      )
-      Text(
-        text = permissionModeLabel(mode),
-        style = ClawTheme.type.caption,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
       )
       Icon(
         imageVector = Icons.Default.ArrowDropDown,
