@@ -2964,6 +2964,56 @@ private fun ChatComposerFooter(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
+    // Capability (attachment picker) trigger: web composer-lead holds the
+    // plus menu, the permission picker, and any composer-level lead
+    // controls. Mirror that by putting capability + permission first.
+    Box {
+      Surface(
+        onClick = { attachmentMenuExpanded = true },
+        modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+        shape = CircleShape,
+        color = ClawTheme.colors.surfaceRaised,
+        contentColor = ClawTheme.colors.text,
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = nativeString("Add attachment"),
+            modifier = Modifier.size(20.dp),
+          )
+        }
+      }
+      DropdownMenu(
+        expanded = attachmentMenuExpanded,
+        onDismissRequest = { attachmentMenuExpanded = false },
+      ) {
+        DropdownMenuItem(
+          text = { Text(nativeString("Photos")) },
+          leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
+          onClick = {
+            attachmentMenuExpanded = false
+            onPickImages()
+          },
+        )
+        DropdownMenuItem(
+          text = { Text(nativeString("Videos")) },
+          leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
+          onClick = {
+            attachmentMenuExpanded = false
+            onPickVideo()
+          },
+        )
+        DropdownMenuItem(
+          text = { Text(nativeString("Files")) },
+          leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
+          onClick = {
+            attachmentMenuExpanded = false
+            onPickAudioOrDocument()
+          },
+        )
+      }
+    }
+    Spacer(modifier = Modifier.width(4.dp))
     Box {
       ChatPermissionTriggerChip(
         mode = permissionMode,
@@ -3101,6 +3151,12 @@ private fun ChatComposerFooterChip(
         style = ClawTheme.type.caption,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
+      )
+      Icon(
+        imageVector = Icons.Default.ArrowDropDown,
+        contentDescription = null,
+        modifier = Modifier.size(13.dp),
+        tint = ClawTheme.colors.textSubtle,
       )
     }
   }
