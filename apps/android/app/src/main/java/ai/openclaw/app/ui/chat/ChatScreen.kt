@@ -3102,12 +3102,6 @@ private fun ChatComposerFooterChip(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )
-      Icon(
-        imageVector = Icons.Default.ArrowDropDown,
-        contentDescription = null,
-        modifier = Modifier.size(13.dp),
-        tint = ClawTheme.colors.textSubtle,
-      )
     }
   }
 }
