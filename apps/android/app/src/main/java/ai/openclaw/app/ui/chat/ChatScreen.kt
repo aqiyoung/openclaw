@@ -2498,11 +2498,11 @@ private fun ChatPermissionTriggerChip(
         contentDescription = permissionModeLabel(mode),
         modifier = Modifier.size(15.dp),
       )
-      Icon(
-        imageVector = Icons.Default.ArrowDropDown,
-        contentDescription = null,
-        modifier = Modifier.size(13.dp),
-        tint = ClawTheme.colors.textSubtle,
+      Text(
+        text = permissionModeLabel(mode),
+        style = ClawTheme.type.caption,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
     }
   }
@@ -3024,7 +3024,6 @@ private fun ChatComposerFooter(
       label = selectedModelLabel,
       enabled = modelPickerEnabled,
       onClick = onOpenModelPicker,
-      leadingIcon = Icons.Default.Memory,
       modifier = Modifier.wrapContentWidth(),
     )
     if (thinkingSupported) {
@@ -3032,7 +3031,6 @@ private fun ChatComposerFooter(
         label = contextMeterThinkingLabel(thinkingLevel),
         enabled = true,
         onClick = onToggleThinkingSelector,
-        leadingIcon = Icons.Default.AutoAwesome,
       )
     }
     Spacer(modifier = Modifier.weight(1f))
