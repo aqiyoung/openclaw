@@ -3020,20 +3020,6 @@ private fun ChatComposerFooter(
       }
     }
     Spacer(modifier = Modifier.weight(1f))
-    ChatComposerFooterChip(
-      label = selectedModelLabel,
-      enabled = modelPickerEnabled,
-      onClick = onOpenModelPicker,
-      modifier = Modifier.wrapContentWidth(),
-    )
-    if (thinkingSupported) {
-      ChatComposerFooterChip(
-        label = contextMeterThinkingLabel(thinkingLevel),
-        enabled = true,
-        onClick = onToggleThinkingSelector,
-      )
-    }
-    Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
       val trackColor = ClawTheme.colors.surfacePressed
@@ -3064,6 +3050,19 @@ private fun ChatComposerFooter(
           softWrap = false,
         )
       }
+    }
+    ChatComposerFooterChip(
+      label = selectedModelLabel,
+      enabled = modelPickerEnabled,
+      onClick = onOpenModelPicker,
+      modifier = Modifier.wrapContentWidth(),
+    )
+    if (thinkingSupported) {
+      ChatComposerFooterChip(
+        label = contextMeterThinkingLabel(thinkingLevel),
+        enabled = true,
+        onClick = onToggleThinkingSelector,
+      )
     }
   }
 }
