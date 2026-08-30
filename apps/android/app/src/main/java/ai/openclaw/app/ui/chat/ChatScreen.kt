@@ -2871,6 +2871,62 @@ private fun ChatInputPill(
             )
           }
         }
+        // Footer chips inline in the same Row (web mobile 1-row layout)
+        Box {
+          ChatPermissionTriggerChip(
+            mode = permissionMode,
+            onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
+          )
+          DropdownMenu(
+            expanded = permissionSelectorExpanded,
+            onDismissRequest = { onPermissionSelectorExpandedChange(false) },
+          ) {
+            PERMISSION_MODE_OPTIONS.forEach { option ->
+              val selected = option.value == permissionMode
+              val locked = option.value == "full" && !canSelectFull
+              DropdownMenuItem(
+                enabled = !locked,
+                leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                text = { Text(option.label, style = ClawTheme.type.body) },
+                trailingIcon = {
+                  if (selected) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
+                  } else if (locked) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
+                  }
+                },
+                onClick = {
+                  if (locked) return@DropdownMenuItem
+                  onPermissionModeChange(option.value)
+                  onPermissionSelectorExpandedChange(false)
+                },
+              )
+            }
+          }
+        }
+        val contextFraction = contextMeterWidth(contextUsage)
+        val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
+        if (contextFraction != null && contextPercent != null) {
+          val description = nativeString("Context \${contextPercent}% used", contextPercent)
+          Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = description }) {
+            val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+            drawCircle(color = ClawTheme.colors.surfacePressed, style = stroke)
+            drawArc(color = ClawTheme.colors.primary, startAngle = -90f, sweepAngle = contextFraction * 360f, useCenter = false, style = stroke)
+          }
+        }
+        ChatComposerFooterChip(
+          label = selectedModelLabel,
+          enabled = modelPickerEnabled,
+          onClick = onOpenModelPicker,
+          modifier = Modifier.widthIn(min = 60.dp, max = 120.dp),
+        )
+        if (thinkingSupported) {
+          ChatComposerFooterChip(
+            label = contextMeterThinkingLabel(thinkingLevel),
+            enabled = true,
+            onClick = onToggleThinkingSelector,
+          )
+        }
         Box(modifier = Modifier.weight(1f)) {
           ChatTextFieldValueAdapter(
             value = value,
@@ -2927,62 +2983,6 @@ private fun ChatInputPill(
             LiveTalkButton(active = true, onClick = onToggleTalk)
           }
           ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
-        }
-        // Footer chips inline in the same Row (web mobile 1-row layout)
-        Box {
-          ChatPermissionTriggerChip(
-            mode = permissionMode,
-            onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
-          )
-          DropdownMenu(
-            expanded = permissionSelectorExpanded,
-            onDismissRequest = { onPermissionSelectorExpandedChange(false) },
-          ) {
-            PERMISSION_MODE_OPTIONS.forEach { option ->
-              val selected = option.value == permissionMode
-              val locked = option.value == "full" && !canSelectFull
-              DropdownMenuItem(
-                enabled = !locked,
-                leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                text = { Text(option.label, style = ClawTheme.type.body) },
-                trailingIcon = {
-                  if (selected) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
-                  } else if (locked) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
-                  }
-                },
-                onClick = {
-                  if (locked) return@DropdownMenuItem
-                  onPermissionModeChange(option.value)
-                  onPermissionSelectorExpandedChange(false)
-                },
-              )
-            }
-          }
-        }
-        val contextFraction = contextMeterWidth(contextUsage)
-        val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
-        if (contextFraction != null && contextPercent != null) {
-          val description = nativeString("Context \${contextPercent}% used", contextPercent)
-          Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = description }) {
-            val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-            drawCircle(color = ClawTheme.colors.surfacePressed, style = stroke)
-            drawArc(color = ClawTheme.colors.primary, startAngle = -90f, sweepAngle = contextFraction * 360f, useCenter = false, style = stroke)
-          }
-        }
-        ChatComposerFooterChip(
-          label = selectedModelLabel,
-          enabled = modelPickerEnabled,
-          onClick = onOpenModelPicker,
-          modifier = Modifier.widthIn(min = 60.dp, max = 120.dp),
-        )
-        if (thinkingSupported) {
-          ChatComposerFooterChip(
-            label = contextMeterThinkingLabel(thinkingLevel),
-            enabled = true,
-            onClick = onToggleThinkingSelector,
-          )
         }
       }
     }
