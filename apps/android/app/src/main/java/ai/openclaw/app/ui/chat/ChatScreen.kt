@@ -2814,12 +2814,11 @@ private fun ChatInputPill(
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
-    Column {
-      Row(
-        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-      ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
         Box {
           Surface(
             onClick = { attachmentMenuExpanded = true },
@@ -2923,21 +2922,20 @@ private fun ChatInputPill(
           }
           ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
         }
-      }
-      ChatComposerFooter(
-        selectedModelLabel = selectedModelLabel,
-        modelPickerEnabled = modelPickerEnabled,
-        onOpenModelPicker = onOpenModelPicker,
-        thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported,
-        onToggleThinkingSelector = onToggleThinkingSelector,
-        contextUsage = contextUsage,
-        permissionMode = permissionMode,
-        permissionSelectorExpanded = permissionSelectorExpanded,
-        onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
-        onPermissionModeChange = onPermissionModeChange,
-        canSelectFull = canSelectFull,
-      )
+        ChatComposerFooterInline(
+          selectedModelLabel = selectedModelLabel,
+          modelPickerEnabled = modelPickerEnabled,
+          onOpenModelPicker = onOpenModelPicker,
+          thinkingLevel = thinkingLevel,
+          thinkingSupported = thinkingSupported,
+          onToggleThinkingSelector = onToggleThinkingSelector,
+          contextUsage = contextUsage,
+          permissionMode = permissionMode,
+          permissionSelectorExpanded = permissionSelectorExpanded,
+          onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
+          onPermissionModeChange = onPermissionModeChange,
+          canSelectFull = canSelectFull,
+        )
     }
   }
 }
@@ -2988,20 +2986,7 @@ private fun ChatComposerFooter(
               Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
             },
             text = {
-              Column {
-                Text(option.label, style = ClawTheme.type.body)
-                Text(
-                  if (locked) {
-                    nativeString("Full access requires operator.admin access.")
-                  } else {
-                    option.description
-                  },
-                  style = ClawTheme.type.caption,
-                  color = if (locked) ClawTheme.colors.warning else ClawTheme.colors.textMuted,
-                  maxLines = 2,
-                  overflow = TextOverflow.Ellipsis,
-                )
-              }
+              Text(option.label, style = ClawTheme.type.body)
             },
             trailingIcon = {
               if (selected) {
@@ -3024,14 +3009,113 @@ private fun ChatComposerFooter(
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
       val trackColor = ClawTheme.colors.surfacePressed
       val progressColor = ClawTheme.colors.primary
-      Row(
+      Surface(
+        onClick = { /* context ring is clickable; no-op until the details sheet lands */ },
         modifier = Modifier
-          .wrapContentWidth()
+          .size(ClawTheme.spacing.touchTarget)
           .clearAndSetSemantics { contentDescription = description },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        shape = CircleShape,
+        color = Color.Transparent,
+        contentColor = ClawTheme.colors.textMuted,
       ) {
-        Canvas(modifier = Modifier.size(14.dp)) {
+        Box(contentAlignment = Alignment.Center) {
+          Canvas(modifier = Modifier.size(16.dp)) {
+            val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+            drawCircle(color = trackColor, style = stroke)
+            drawArc(
+              color = progressColor,
+              startAngle = -90f,
+              sweepAngle = contextFraction * 360f,
+              useCenter = false,
+              style = stroke,
+            )
+          }
+        }
+      }
+    }
+    ChatComposerFooterChip(
+      label = selectedModelLabel,
+      enabled = modelPickerEnabled,
+      onClick = onOpenModelPicker,
+      modifier = Modifier.widthIn(min = 120.dp, max = 180.dp),
+    )
+    if (thinkingSupported) {
+      ChatComposerFooterChip(
+        label = contextMeterThinkingLabel(thinkingLevel),
+        enabled = true,
+        onClick = onToggleThinkingSelector,
+      )
+    }
+  }
+}
+
+@Composable
+private fun ChatComposerFooterInline(
+  selectedModelLabel: String,
+  modelPickerEnabled: Boolean,
+  onOpenModelPicker: () -> Unit,
+  thinkingLevel: String,
+  thinkingSupported: Boolean,
+  onToggleThinkingSelector: () -> Unit,
+  contextUsage: ChatContextUsage,
+  permissionMode: String?,
+  permissionSelectorExpanded: Boolean,
+  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
+  onPermissionModeChange: (String?) -> Unit,
+  canSelectFull: Boolean,
+) {
+  val contextFraction = contextMeterWidth(contextUsage)
+  val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
+  Spacer(modifier = Modifier.weight(1f))
+  Box {
+    ChatPermissionTriggerChip(
+      mode = permissionMode,
+      onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
+    )
+    DropdownMenu(
+      expanded = permissionSelectorExpanded,
+      onDismissRequest = { onPermissionSelectorExpandedChange(false) },
+    ) {
+      PERMISSION_MODE_OPTIONS.forEach { option ->
+        val selected = option.value == permissionMode
+        val locked = option.value == "full" && !canSelectFull
+        DropdownMenuItem(
+          enabled = !locked,
+          leadingIcon = {
+            Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp))
+          },
+          text = { Text(option.label, style = ClawTheme.type.body) },
+          trailingIcon = {
+            if (selected) {
+              Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
+            } else if (locked) {
+              Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
+            }
+          },
+          onClick = {
+            if (locked) return@DropdownMenuItem
+            onPermissionModeChange(option.value)
+            onPermissionSelectorExpandedChange(false)
+          },
+        )
+      }
+    }
+  }
+  if (contextFraction != null && contextPercent != null) {
+    val description = nativeString("Context \${contextPercent}% used", contextPercent)
+    val trackColor = ClawTheme.colors.surfacePressed
+    val progressColor = ClawTheme.colors.primary
+    Surface(
+      onClick = { },
+      modifier = Modifier
+        .size(ClawTheme.spacing.touchTarget)
+        .clearAndSetSemantics { contentDescription = description },
+      shape = CircleShape,
+      color = Color.Transparent,
+      contentColor = ClawTheme.colors.textMuted,
+    ) {
+      Box(contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.size(16.dp)) {
           val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
           drawCircle(color = trackColor, style = stroke)
           drawArc(
@@ -3042,28 +3126,21 @@ private fun ChatComposerFooter(
             style = stroke,
           )
         }
-        Text(
-          text = nativeString("\${contextPercent}%", contextPercent),
-          style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
-          maxLines = 1,
-          softWrap = false,
-        )
       }
     }
+  }
+  ChatComposerFooterChip(
+    label = selectedModelLabel,
+    enabled = modelPickerEnabled,
+    onClick = onOpenModelPicker,
+    modifier = Modifier.widthIn(min = 120.dp, max = 180.dp),
+  )
+  if (thinkingSupported) {
     ChatComposerFooterChip(
-      label = selectedModelLabel,
-      enabled = modelPickerEnabled,
-      onClick = onOpenModelPicker,
-      modifier = Modifier.wrapContentWidth(),
+      label = contextMeterThinkingLabel(thinkingLevel),
+      enabled = true,
+      onClick = onToggleThinkingSelector,
     )
-    if (thinkingSupported) {
-      ChatComposerFooterChip(
-        label = contextMeterThinkingLabel(thinkingLevel),
-        enabled = true,
-        onClick = onToggleThinkingSelector,
-      )
-    }
   }
 }
 
