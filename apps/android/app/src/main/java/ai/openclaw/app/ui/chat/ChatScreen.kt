@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -95,6 +96,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -3050,7 +3052,7 @@ private fun ChatComposerFooter(
 }
 
 @Composable
-private fun ChatComposerFooterInline(
+private fun RowScope.ChatComposerFooterInline(
   selectedModelLabel: String,
   modelPickerEnabled: Boolean,
   onOpenModelPicker: () -> Unit,
@@ -3066,7 +3068,7 @@ private fun ChatComposerFooterInline(
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
-  Spacer(modifier = Modifier.weight(1f))
+  Spacer(modifier = Modifier.weight(1f, fill = false))
   Box {
     ChatPermissionTriggerChip(
       mode = permissionMode,
