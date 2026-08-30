@@ -3068,7 +3068,7 @@ private fun RowScope.ChatComposerFooterInline(
 ) {
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
-  Spacer(modifier = Modifier.weight(1f, fill = false))
+  Spacer(modifier = Modifier.width(8.dp))
   Box {
     ChatPermissionTriggerChip(
       mode = permissionMode,
