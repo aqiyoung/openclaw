@@ -3135,7 +3135,7 @@ private fun RowScope.ChatComposerFooterInline(
     label = selectedModelLabel,
     enabled = modelPickerEnabled,
     onClick = onOpenModelPicker,
-    modifier = Modifier.widthIn(min = 120.dp, max = 180.dp),
+    modifier = Modifier.widthIn(min = 80.dp, max = 140.dp),
   )
   if (thinkingSupported) {
     ChatComposerFooterChip(
@@ -3157,13 +3157,13 @@ private fun ChatComposerFooterChip(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget).padding(horizontal = 2.dp),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 6.dp),
+      modifier = Modifier.padding(horizontal = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
