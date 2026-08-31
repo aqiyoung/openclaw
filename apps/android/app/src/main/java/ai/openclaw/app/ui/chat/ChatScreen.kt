@@ -86,7 +86,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -2871,7 +2870,10 @@ private fun ChatInputPill(
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
-    Column(modifier = Modifier.heightIn(min = ComposerMinHeight)) {
+    Column(
+      modifier = Modifier.heightIn(min = ComposerMinHeight),
+      verticalArrangement = Arrangement.SpaceBetween,
+    ) {
       val contextFraction = contextMeterWidth(contextUsage)
       val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
       // Editor region. Upstream keeps `.agent-chat__composer-input-row` to the
@@ -2927,10 +2929,9 @@ private fun ChatInputPill(
           )
         }
       }
-      // `margin-top: auto` upstream: the slack docks this row to the bottom.
-      Spacer(modifier = Modifier.weight(1f))
-      // Footer region, a two-column grid upstream: lead on the left, trail
-      // right-aligned (`.agent-chat__composer-trail { justify-content: flex-end }`).
+      // Footer region. Upstream uses `margin-top: auto` on the footer row to
+      // dock it at the bottom of the input container; SpaceBetween gives the
+      // same behavior without forcing the composer to expand vertically.
       Row(
         modifier =
           Modifier
