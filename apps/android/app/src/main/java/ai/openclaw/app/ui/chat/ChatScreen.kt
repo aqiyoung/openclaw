@@ -250,6 +250,40 @@ private val ComposerAttachWidth = 36.dp
 /** Web mobile reserves 138px for the model trigger (`.chat-composer-model-control`). */
 private val ComposerModelChipMinWidth = 138.dp
 
+/**
+ * Compact phone composer tokens, mirrored from the upstream
+ * `.agent-chat__input--mobile-toolbar` block (`@media (max-width: 560px)` in
+ * ui/src/styles/chat/layout.css). That class is applied unconditionally to the
+ * chat composer, so these are the numbers a phone actually renders:
+ * `--chat-composer-min-height: 105px`, control size 32px, send/plus 36px,
+ * chip height 32px with a 2px gap, 20px footer icons.
+ */
+private val ComposerMinHeight = 105.dp
+
+private val ComposerEditorInsetInline = 12.dp
+
+private val ComposerEditorInsetBlock = 6.dp
+
+private val ComposerFooterPaddingInline = 8.dp
+
+private val ComposerFooterPaddingBlock = 6.dp
+
+private val ComposerFooterColumnGap = 5.dp
+
+private val ComposerControlSize = 32.dp
+
+private val ComposerChipHeight = 32.dp
+
+private val ComposerChipGap = 2.dp
+
+private val ComposerSendSize = 36.dp
+
+private val ComposerPlusSize = 36.dp
+
+private val ComposerIconSize = 20.dp
+
+private val ComposerTrailGap = 4.dp
+
 /** Talk must remain stoppable even when the active session adds text to the draft. */
 internal fun resolveChatComposerTrailingAction(
   talkActive: Boolean,
@@ -2837,249 +2871,250 @@ private fun ChatInputPill(
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
-    Column {
+    Column(modifier = Modifier.heightIn(min = ComposerMinHeight)) {
+      val contextFraction = contextMeterWidth(contextUsage)
+      val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
+      // Editor region. Upstream keeps `.agent-chat__composer-input-row` to the
+      // textarea alone: every control lives in the footer row below it, so the
+      // draft owns the top of the surface and the footer keeps the bottom.
       Row(
-        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(
+              start = ComposerEditorInsetInline,
+              end = ComposerEditorInsetInline,
+              top = ComposerEditorInsetBlock,
+            ),
         verticalAlignment = Alignment.CenterVertically,
-        // Web mobile (.agent-chat__composer-input-row) collapses the row gap to 0.
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
       ) {
-        Box {
-          Surface(
-            onClick = { attachmentMenuExpanded = true },
-            modifier = Modifier.size(width = ComposerAttachWidth, height = ComposerControlHeight),
-            shape = CircleShape,
-            color = ClawTheme.colors.surfaceRaised,
-            contentColor = ClawTheme.colors.text,
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = nativeString("Add attachment"),
-                modifier = Modifier.size(20.dp),
+        ChatTextFieldValueAdapter(
+          value = value,
+          onValueChange = onValueChange,
+          keyHandler = hardwareEnterHandler,
+        ) { textFieldValue, updateTextFieldValue ->
+          BasicTextField(
+            value = textFieldValue,
+            onValueChange = updateTextFieldValue,
+            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
+            cursorBrush = SolidColor(ClawTheme.colors.primary),
+            minLines = 1,
+            maxLines = 6,
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .onPreInterceptKeyBeforeSoftKeyboard { event ->
+                  hardwareEnterHandler.handle(
+                    event = event,
+                    sendEnabled = sendEnabled,
+                    textEmpty = textFieldValue.text.isEmpty(),
+                    compositionActive = textFieldValue.composition != null,
+                    onSend = onSend,
+                  )
+                },
+            decorationBox = { innerTextField ->
+              Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                if (value.isEmpty()) {
+                  Text(
+                    text = nativeString("Message OpenClaw"),
+                    style = ClawTheme.type.body,
+                    color = ClawTheme.colors.textSubtle,
+                  )
+                }
+                innerTextField()
+              }
+            },
+          )
+        }
+      }
+      // `margin-top: auto` upstream: the slack docks this row to the bottom.
+      Spacer(modifier = Modifier.weight(1f))
+      // Footer region, a two-column grid upstream: lead on the left, trail
+      // right-aligned (`.agent-chat__composer-trail { justify-content: flex-end }`).
+      Row(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .heightIn(min = ComposerControlSize)
+            .padding(horizontal = ComposerFooterPaddingInline, vertical = ComposerFooterPaddingBlock),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ComposerFooterColumnGap),
+      ) {
+        // lead: the (+) attachment trigger beside the permission picker.
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+          Box {
+            Surface(
+              onClick = { attachmentMenuExpanded = true },
+              modifier = Modifier.size(ComposerPlusSize),
+              shape = CircleShape,
+              color = Color.Transparent,
+              contentColor = ClawTheme.colors.text,
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.Default.Add,
+                  contentDescription = nativeString("Add attachment"),
+                  modifier = Modifier.size(ComposerIconSize),
+                )
+              }
+            }
+            DropdownMenu(
+              expanded = attachmentMenuExpanded,
+              onDismissRequest = { attachmentMenuExpanded = false },
+            ) {
+              DropdownMenuItem(
+                text = { Text(nativeString("Photos")) },
+                leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
+                onClick = {
+                  attachmentMenuExpanded = false
+                  onPickImages()
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(nativeString("Videos")) },
+                leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
+                onClick = {
+                  attachmentMenuExpanded = false
+                  onPickVideo()
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(nativeString("Files")) },
+                leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
+                onClick = {
+                  attachmentMenuExpanded = false
+                  onPickAudioOrDocument()
+                },
               )
             }
           }
-          DropdownMenu(
-            expanded = attachmentMenuExpanded,
-            onDismissRequest = { attachmentMenuExpanded = false },
-          ) {
-            DropdownMenuItem(
-              text = { Text(nativeString("Photos")) },
-              leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickImages()
-              },
+          Box {
+            ChatPermissionTriggerChip(
+              mode = permissionMode,
+              onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
             )
-            DropdownMenuItem(
-              text = { Text(nativeString("Videos")) },
-              leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickVideo()
-              },
-            )
-            DropdownMenuItem(
-              text = { Text(nativeString("Files")) },
-              leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
-              onClick = {
-                attachmentMenuExpanded = false
-                onPickAudioOrDocument()
-              },
-            )
-          }
-        }
-        Box(modifier = Modifier.weight(1f)) {
-          ChatTextFieldValueAdapter(
-            value = value,
-            onValueChange = onValueChange,
-            keyHandler = hardwareEnterHandler,
-          ) { textFieldValue, updateTextFieldValue ->
-            BasicTextField(
-              value = textFieldValue,
-              onValueChange = updateTextFieldValue,
-              textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
-              cursorBrush = SolidColor(ClawTheme.colors.primary),
-              minLines = 1,
-              maxLines = 4,
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .heightIn(min = ComposerControlHeight)
-                  .onPreInterceptKeyBeforeSoftKeyboard { event ->
-                    hardwareEnterHandler.handle(
-                      event = event,
-                      sendEnabled = sendEnabled,
-                      textEmpty = textFieldValue.text.isEmpty(),
-                      compositionActive = textFieldValue.composition != null,
-                      onSend = onSend,
-                    )
+            DropdownMenu(
+              expanded = permissionSelectorExpanded,
+              onDismissRequest = { onPermissionSelectorExpandedChange(false) },
+            ) {
+              PERMISSION_MODE_OPTIONS.forEach { option ->
+                val selected = option.value == permissionMode
+                val locked = option.value == "full" && !canSelectFull
+                DropdownMenuItem(
+                  enabled = !locked,
+                  leadingIcon = {
+                    Icon(option.icon, contentDescription = null, modifier = Modifier.size(ComposerIconSize))
                   },
-              decorationBox = { innerTextField ->
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                  if (value.isEmpty()) {
-                    Text(
-                      text = nativeString("Message OpenClaw"),
-                      style = ClawTheme.type.body,
-                      color = ClawTheme.colors.textSubtle,
-                    )
-                  }
-                  innerTextField()
-                }
-              },
-            )
+                  text = { Text(option.label, style = ClawTheme.type.body) },
+                  trailingIcon = {
+                    if (selected) {
+                      Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
+                    } else if (locked) {
+                      Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
+                    }
+                  },
+                  onClick = {
+                    if (locked) return@DropdownMenuItem
+                    onPermissionModeChange(option.value)
+                    onPermissionSelectorExpandedChange(false)
+                  },
+                )
+              }
+            }
           }
         }
-        // Web mobile (.agent-chat__composer-actions) stacks the trailing controls
-        // vertically: flex-direction column, 4px gap, 4px leading inset.
-        Column(
-          modifier = Modifier.padding(start = ComposerBoxInset),
-          verticalArrangement = Arrangement.spacedBy(4.dp),
-          horizontalAlignment = Alignment.CenterHorizontally,
+        // trail: context, then the model/effort pickers, then the primary actions.
+        Row(
+          modifier = Modifier.weight(1f),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.End,
         ) {
-          ChatComposerMicButton(
-            dictationActive = dictationActive,
-            dictationEnabled = dictationEnabled,
-            voiceNoteEnabled = recordVoiceNoteEnabled,
-            onToggleDictation = onToggleDictation,
-            onStartVoiceNote = onStartVoiceNote,
-          )
-          when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
-            ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-            ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-            ChatComposerTrailingAction.StopTalk -> {
-              // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
-              if (runActive) StopButton(onClick = onAbort)
-              LiveTalkButton(active = true, onClick = onToggleTalk)
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap),
+          ) {
+            if (contextFraction != null && contextPercent != null) {
+              val description = nativeString("Context \${contextPercent}% used", contextPercent)
+              val trackColor = ClawTheme.colors.surfacePressed
+              val progressColor = ClawTheme.colors.primary
+              Row(
+                modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+              ) {
+                Canvas(modifier = Modifier.size(ComposerIconSize)) {
+                  val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                  drawCircle(color = trackColor, style = stroke)
+                  drawArc(
+                    color = progressColor,
+                    startAngle = -90f,
+                    sweepAngle = contextFraction * 360f,
+                    useCenter = false,
+                    style = stroke,
+                  )
+                }
+                Text(
+                  text = nativeString("\${contextPercent}%", contextPercent),
+                  style = ClawTheme.type.caption,
+                  color = ClawTheme.colors.textMuted,
+                )
+              }
             }
-            ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(ComposerChipGap),
+            ) {
+              ChatComposerFooterChip(
+                label = selectedModelLabel,
+                enabled = modelPickerEnabled,
+                onClick = onOpenModelPicker,
+                modifier =
+                  Modifier
+                    .heightIn(min = ComposerChipHeight)
+                    .widthIn(min = ComposerModelChipMinWidth),
+              )
+              if (thinkingSupported) {
+                ChatComposerFooterChip(
+                  label = contextMeterThinkingLabel(thinkingLevel),
+                  enabled = true,
+                  onClick = onToggleThinkingSelector,
+                  modifier = Modifier.heightIn(min = ComposerChipHeight),
+                )
+              }
+            }
+            // Upstream keeps these side by side: mobile sets flex-direction row.
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+              ChatComposerMicButton(
+                dictationActive = dictationActive,
+                dictationEnabled = dictationEnabled,
+                voiceNoteEnabled = recordVoiceNoteEnabled,
+                onToggleDictation = onToggleDictation,
+                onStartVoiceNote = onStartVoiceNote,
+              )
+              when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
+                ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+                ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+                ChatComposerTrailingAction.StopTalk -> {
+                  // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
+                  if (runActive) StopButton(onClick = onAbort)
+                  LiveTalkButton(active = true, onClick = onToggleTalk)
+                }
+                ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
+              }
+            }
           }
         }
       }
-      ChatComposerFooter(
-        selectedModelLabel = selectedModelLabel,
-        modelPickerEnabled = modelPickerEnabled,
-        onOpenModelPicker = onOpenModelPicker,
-        thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported,
-        onToggleThinkingSelector = onToggleThinkingSelector,
-        contextUsage = contextUsage,
-        permissionMode = permissionMode,
-        permissionSelectorExpanded = permissionSelectorExpanded,
-        onPermissionSelectorExpandedChange = onPermissionSelectorExpandedChange,
-        onPermissionModeChange = onPermissionModeChange,
-        canSelectFull = canSelectFull,
-      )
     }
   }
 }
 
-@Composable
-private fun ChatComposerFooter(
-  selectedModelLabel: String,
-  modelPickerEnabled: Boolean,
-  onOpenModelPicker: () -> Unit,
-  thinkingLevel: String,
-  thinkingSupported: Boolean,
-  onToggleThinkingSelector: () -> Unit,
-  contextUsage: ChatContextUsage,
-  permissionMode: String?,
-  permissionSelectorExpanded: Boolean,
-  onPermissionSelectorExpandedChange: (Boolean) -> Unit,
-  onPermissionModeChange: (String?) -> Unit,
-  canSelectFull: Boolean,
-) {
-  val contextFraction = contextMeterWidth(contextUsage)
-  val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .heightIn(min = ComposerControlHeight)
-        .padding(horizontal = ComposerBoxInset, vertical = 2.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    // Web mobile (.agent-chat__composer-controls) collapses the control gap to 0.
-    horizontalArrangement = Arrangement.spacedBy(0.dp),
-  ) {
-    Box {
-      ChatPermissionTriggerChip(
-        mode = permissionMode,
-        onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
-      )
-      DropdownMenu(
-        expanded = permissionSelectorExpanded,
-        onDismissRequest = { onPermissionSelectorExpandedChange(false) },
-      ) {
-        PERMISSION_MODE_OPTIONS.forEach { option ->
-          val selected = option.value == permissionMode
-          val locked = option.value == "full" && !canSelectFull
-          DropdownMenuItem(
-            enabled = !locked,
-            leadingIcon = { Icon(option.icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-            text = { Text(option.label, style = ClawTheme.type.body) },
-            trailingIcon = {
-              if (selected) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
-              } else if (locked) {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
-              }
-            },
-            onClick = {
-              if (locked) return@DropdownMenuItem
-              onPermissionModeChange(option.value)
-              onPermissionSelectorExpandedChange(false)
-            },
-          )
-        }
-      }
-    }
-    // Web mobile right-aligns the model/effort cluster (`.composer-controls` with
-    // `justify-content: flex-end`; `flex: 1 1 0`). The permission trigger is
-    // Android-only, so it keeps the leading edge.
-    Row(
-      modifier = Modifier.weight(1f),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.End,
-    ) {
-      ChatComposerFooterChip(
-        label = selectedModelLabel,
-        enabled = modelPickerEnabled,
-        onClick = onOpenModelPicker,
-        // Web mobile reserves 138px for the model trigger and caps it at 70vw;
-        // `fill = false` keeps the chip content-sized while the weight lets it
-        // yield space instead of overflowing on long model names.
-        modifier = Modifier.weight(1f, fill = false).widthIn(min = ComposerModelChipMinWidth),
-      )
-      if (thinkingSupported) {
-        ChatComposerFooterChip(
-          label = contextMeterThinkingLabel(thinkingLevel),
-          enabled = true,
-          onClick = onToggleThinkingSelector,
-          // Web mobile keeps a 44px effort target (`.chat-controls__effort-picker`).
-          modifier = Modifier.widthIn(min = ComposerControlHeight),
-        )
-      }
-    }
-    if (contextFraction != null && contextPercent != null) {
-      val description = nativeString("Context \${contextPercent}% used", contextPercent)
-      val trackColor = ClawTheme.colors.surfacePressed
-      val progressColor = ClawTheme.colors.primary
-      Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-      ) {
-        Canvas(modifier = Modifier.size(14.dp)) {
-          val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-          drawCircle(color = trackColor, style = stroke)
-          drawArc(color = progressColor, startAngle = -90f, sweepAngle = contextFraction * 360f, useCenter = false, style = stroke)
-        }
-        Text(text = nativeString("\${contextPercent}%", contextPercent), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-      }
-    }
-  }
-}
 @Composable
 private fun ChatComposerFooterChip(
   label: String,
@@ -3090,8 +3125,8 @@ private fun ChatComposerFooterChip(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    // Web mobile keeps a 44px inline trigger (`.chat-controls__inline-select-trigger`).
-    modifier = modifier.heightIn(min = ComposerControlHeight),
+    // Compact phone web keeps the chip family at 32px (`--chat-composer-chip-height`).
+    modifier = modifier.heightIn(min = ComposerChipHeight),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
