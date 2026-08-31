@@ -2491,38 +2491,38 @@ private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
   listOf(
     PermissionModeOption(
       value = null,
-      label = "Default",
-      description = "Follow the agent's configured policy.",
+      label = "默认",
+      description = "遵循 Agent 已配置的策略。",
       icon = Icons.Default.GppGood,
     ),
     PermissionModeOption(
       value = "read-only",
-      label = "Read only",
-      description = "Read within the session root; writes and commands are blocked.",
+      label = "只读",
+      description = "仅可在会话根目录内读取；写入与命令被阻止。",
       icon = Icons.Default.Lock,
     ),
     PermissionModeOption(
       value = "guarded",
-      label = "Guarded",
-      description = "A human reviews requests beyond the session root.",
+      label = "受保护",
+      description = "超出会话根目录的请求需人工审核。",
       icon = Icons.Default.SupervisorAccount,
     ),
     PermissionModeOption(
       value = "workspace",
-      label = "Workspace",
-      description = "An AI reviewer checks requests beyond the session root.",
+      label = "工作区",
+      description = "由 AI 审核超出会话根目录的请求。",
       icon = Icons.Default.Build,
     ),
     PermissionModeOption(
       value = "full",
-      label = "Full access",
-      description = "No reviewer; files and commands are unrestricted.",
+      label = "完全访问",
+      description = "无审核；文件与命令不受限制。",
       icon = Icons.Default.Warning,
     ),
   )
 
 private fun permissionModeLabel(mode: String?): String =
-  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: "Default"
+  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: "默认"
 
 private fun permissionModeIcon(mode: String?): ImageVector =
   PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
@@ -2546,7 +2546,7 @@ private fun ChatPermissionPickerDropdownMenu(
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
-          text = nativeString("Permission"),
+          text = nativeString("权限"),
           style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
           color = ClawTheme.colors.text,
         )
@@ -3235,7 +3235,7 @@ private fun ChatInputPill(
               Box(contentAlignment = Alignment.Center) {
                 Icon(
                   imageVector = Icons.Default.Add,
-                  contentDescription = nativeString("Add attachment"),
+                  contentDescription = nativeString("添加附件"),
                   modifier = Modifier.size(ComposerIconSize),
                 )
               }
@@ -3245,7 +3245,7 @@ private fun ChatInputPill(
               onDismissRequest = { attachmentMenuExpanded = false },
             ) {
               DropdownMenuItem(
-                text = { Text(nativeString("Photos")) },
+                text = { Text(nativeString("图片")) },
                 leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
                 onClick = {
                   attachmentMenuExpanded = false
@@ -3253,7 +3253,7 @@ private fun ChatInputPill(
                 },
               )
               DropdownMenuItem(
-                text = { Text(nativeString("Videos")) },
+                text = { Text(nativeString("视频")) },
                 leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
                 onClick = {
                   attachmentMenuExpanded = false
@@ -3261,7 +3261,7 @@ private fun ChatInputPill(
                 },
               )
               DropdownMenuItem(
-                text = { Text(nativeString("Files")) },
+                text = { Text(nativeString("文件")) },
                 leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
                 onClick = {
                   attachmentMenuExpanded = false
@@ -3284,7 +3284,7 @@ private fun ChatInputPill(
               Box(contentAlignment = Alignment.Center) {
                 Icon(
                   imageVector = permissionModeIcon(permissionMode),
-                  contentDescription = nativeString("Permission mode"),
+                  contentDescription = nativeString("权限模式"),
                   modifier = Modifier.size(ComposerIconSize),
                 )
               }
@@ -3312,24 +3312,30 @@ private fun ChatInputPill(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap, Alignment.End),
           ) {
-            if (contextFraction != null && contextPercent != null) {
-              val description = nativeString("Context \${contextPercent}% used", contextPercent)
-              val trackColor = ClawTheme.colors.surfacePressed
-              val progressColor = ClawTheme.colors.primary
-              // Web mobile shows only the ring icon (16px) in the footer; the
-              // percentage lives inside the details popover, so keep it compact.
-              Box(contentAlignment = Alignment.Center) {
-                Surface(
-                  onClick = { contextMeterExpanded = !contextMeterExpanded },
-                  modifier = Modifier.size(ComposerControlSize),
-                  shape = CircleShape,
-                  color = Color.Transparent,
-                  contentColor = ClawTheme.colors.textMuted,
-                ) {
-                  Box(contentAlignment = Alignment.Center) {
-                    Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = description }) {
-                      val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                      drawCircle(color = trackColor, style = stroke)
+            // Web mobile shows only the ring icon (16px) in the footer; the
+            // percentage lives inside the details popover, so keep it compact.
+            // Always render the ring (empty when usage isn't available yet) so
+            // the control never disappears from the composer.
+            val contextDescription = if (contextPercent != null) {
+              nativeString("上下文已用 \${contextPercent}%", contextPercent)
+            } else {
+              nativeString("上下文窗口")
+            }
+            val trackColor = ClawTheme.colors.surfacePressed
+            val progressColor = ClawTheme.colors.primary
+            Box(contentAlignment = Alignment.Center) {
+              Surface(
+                onClick = { contextMeterExpanded = !contextMeterExpanded },
+                modifier = Modifier.size(ComposerControlSize),
+                shape = CircleShape,
+                color = Color.Transparent,
+                contentColor = ClawTheme.colors.textMuted,
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = contextDescription }) {
+                    val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawCircle(color = trackColor, style = stroke)
+                    if (contextFraction != null) {
                       drawArc(
                         color = progressColor,
                         startAngle = -90f,
@@ -3340,12 +3346,12 @@ private fun ChatInputPill(
                     }
                   }
                 }
-                ChatContextMeterDropdownMenu(
-                  expanded = contextMeterExpanded,
-                  usage = contextUsage,
-                  onDismiss = { contextMeterExpanded = false },
-                )
               }
+              ChatContextMeterDropdownMenu(
+                expanded = contextMeterExpanded,
+                usage = contextUsage,
+                onDismiss = { contextMeterExpanded = false },
+              )
             }
             Row(
               modifier = Modifier.weight(1f, fill = false),
@@ -3717,8 +3723,8 @@ private fun ChatContextMeterDropdownMenu(
   usage: ChatContextUsage,
   onDismiss: () -> Unit,
 ) {
-  val fraction = contextMeterWidth(usage) ?: return
-  val percent = (fraction * 100).roundToInt()
+  val fraction = contextMeterWidth(usage)
+  val percent = fraction?.let { (it * 100).roundToInt() }
   val used = usage.totalTokens ?: 0L
   val limit = usage.contextTokens ?: 0L
   val approximate = usage.totalTokensFresh == false
@@ -3733,28 +3739,34 @@ private fun ChatContextMeterDropdownMenu(
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
-          text = nativeString("Context window"),
+          text = nativeString("上下文窗口"),
           style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
           color = ClawTheme.colors.text,
         )
         Text(
-          text = nativeString("\${formatCompactTokenCount(used)} / \${formatCompactTokenCount(limit)} · \${percent}%", formatCompactTokenCount(used), formatCompactTokenCount(limit), percent),
+          text = if (percent != null) {
+            nativeString("\${formatCompactTokenCount(used)} / \${formatCompactTokenCount(limit)} · \${percent}%", formatCompactTokenCount(used), formatCompactTokenCount(limit), percent)
+          } else {
+            nativeString("上下文 --")
+          },
           style = ClawTheme.type.caption,
           color = ClawTheme.colors.textMuted,
         )
       }
-      Box(
-        modifier = Modifier.fillMaxWidth().height(6.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(3.dp)),
-      ) {
-        val warning = fraction >= 0.85f
-        val fillColor = if (warning) ClawTheme.colors.warning else ClawTheme.colors.primary
+      if (fraction != null) {
         Box(
-          modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(fillColor, RoundedCornerShape(3.dp)),
-        )
+          modifier = Modifier.fillMaxWidth().height(6.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(3.dp)),
+        ) {
+          val warning = fraction >= 0.85f
+          val fillColor = if (warning) ClawTheme.colors.warning else ClawTheme.colors.primary
+          Box(
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(fillColor, RoundedCornerShape(3.dp)),
+          )
+        }
       }
       if (approximate) {
         Text(
-          text = nativeString("Total is approximate; context may already be compacted."),
+          text = nativeString("总量为估算值，上下文可能已被压缩。"),
           style = ClawTheme.type.caption,
           color = ClawTheme.colors.textMuted,
         )
