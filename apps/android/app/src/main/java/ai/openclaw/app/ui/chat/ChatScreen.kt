@@ -233,6 +233,22 @@ internal enum class ChatComposerTrailingAction {
   Send,
 }
 
+/**
+ * Mobile-web composer geometry, mirrored from `@media (max-width: 768px)` in
+ * ui/src/styles/chat/layout.css so the Android input box tracks the same
+ * measurements as the mobile web layout:
+ * `--chat-composer-control-height: 44px`, `--chat-box-inset: 4px`, and the
+ * 36px-wide attachment trigger (`.agent-chat__input-btn--attach`).
+ */
+private val ComposerControlHeight = 44.dp
+
+private val ComposerBoxInset = 4.dp
+
+private val ComposerAttachWidth = 36.dp
+
+/** Web mobile reserves 138px for the model trigger (`.chat-composer-model-control`). */
+private val ComposerModelChipMinWidth = 138.dp
+
 /** Talk must remain stoppable even when the active session adds text to the draft. */
 internal fun resolveChatComposerTrailingAction(
   talkActive: Boolean,
@@ -2824,12 +2840,13 @@ private fun ChatInputPill(
       Row(
         modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        // Web mobile (.agent-chat__composer-input-row) collapses the row gap to 0.
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
       ) {
         Box {
           Surface(
             onClick = { attachmentMenuExpanded = true },
-            modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+            modifier = Modifier.size(width = ComposerAttachWidth, height = ComposerControlHeight),
             shape = CircleShape,
             color = ClawTheme.colors.surfaceRaised,
             contentColor = ClawTheme.colors.text,
@@ -2888,6 +2905,7 @@ private fun ChatInputPill(
               modifier =
                 Modifier
                   .fillMaxWidth()
+                  .heightIn(min = ComposerControlHeight)
                   .onPreInterceptKeyBeforeSoftKeyboard { event ->
                     hardwareEnterHandler.handle(
                       event = event,
@@ -2912,22 +2930,30 @@ private fun ChatInputPill(
             )
           }
         }
-        ChatComposerMicButton(
-          dictationActive = dictationActive,
-          dictationEnabled = dictationEnabled,
-          voiceNoteEnabled = recordVoiceNoteEnabled,
-          onToggleDictation = onToggleDictation,
-          onStartVoiceNote = onStartVoiceNote,
-        )
-        when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
-          ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-          ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-          ChatComposerTrailingAction.StopTalk -> {
-            // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
-            if (runActive) StopButton(onClick = onAbort)
-            LiveTalkButton(active = true, onClick = onToggleTalk)
+        // Web mobile (.agent-chat__composer-actions) stacks the trailing controls
+        // vertically: flex-direction column, 4px gap, 4px leading inset.
+        Column(
+          modifier = Modifier.padding(start = ComposerBoxInset),
+          verticalArrangement = Arrangement.spacedBy(4.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          ChatComposerMicButton(
+            dictationActive = dictationActive,
+            dictationEnabled = dictationEnabled,
+            voiceNoteEnabled = recordVoiceNoteEnabled,
+            onToggleDictation = onToggleDictation,
+            onStartVoiceNote = onStartVoiceNote,
+          )
+          when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
+            ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+            ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+            ChatComposerTrailingAction.StopTalk -> {
+              // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
+              if (runActive) StopButton(onClick = onAbort)
+              LiveTalkButton(active = true, onClick = onToggleTalk)
+            }
+            ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
           }
-          ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
         }
       }
       ChatComposerFooter(
@@ -2966,9 +2992,14 @@ private fun ChatComposerFooter(
   val contextFraction = contextMeterWidth(contextUsage)
   val contextPercent = contextFraction?.let { (it * 100).roundToInt() }
   Row(
-    modifier = Modifier.fillMaxWidth().padding(start = 9.dp, end = 9.dp, bottom = 2.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = ComposerControlHeight)
+        .padding(horizontal = ComposerBoxInset, vertical = 2.dp),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(2.dp),
+    // Web mobile (.agent-chat__composer-controls) collapses the control gap to 0.
+    horizontalArrangement = Arrangement.spacedBy(0.dp),
   ) {
     Box {
       ChatPermissionTriggerChip(
@@ -3002,20 +3033,33 @@ private fun ChatComposerFooter(
         }
       }
     }
-    ChatComposerFooterChip(
-      label = selectedModelLabel,
-      enabled = modelPickerEnabled,
-      onClick = onOpenModelPicker,
-      modifier = Modifier.weight(1f, fill = false),
-    )
-    if (thinkingSupported) {
+    // Web mobile right-aligns the model/effort cluster (`.composer-controls` with
+    // `justify-content: flex-end`; `flex: 1 1 0`). The permission trigger is
+    // Android-only, so it keeps the leading edge.
+    Row(
+      modifier = Modifier.weight(1f),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.End,
+    ) {
       ChatComposerFooterChip(
-        label = contextMeterThinkingLabel(thinkingLevel),
-        enabled = true,
-        onClick = onToggleThinkingSelector,
+        label = selectedModelLabel,
+        enabled = modelPickerEnabled,
+        onClick = onOpenModelPicker,
+        // Web mobile reserves 138px for the model trigger and caps it at 70vw;
+        // `fill = false` keeps the chip content-sized while the weight lets it
+        // yield space instead of overflowing on long model names.
+        modifier = Modifier.weight(1f, fill = false).widthIn(min = ComposerModelChipMinWidth),
       )
+      if (thinkingSupported) {
+        ChatComposerFooterChip(
+          label = contextMeterThinkingLabel(thinkingLevel),
+          enabled = true,
+          onClick = onToggleThinkingSelector,
+          // Web mobile keeps a 44px effort target (`.chat-controls__effort-picker`).
+          modifier = Modifier.widthIn(min = ComposerControlHeight),
+        )
+      }
     }
-    Spacer(modifier = Modifier.weight(1f))
     if (contextFraction != null && contextPercent != null) {
       val description = nativeString("Context \${contextPercent}% used", contextPercent)
       val trackColor = ClawTheme.colors.surfacePressed
@@ -3045,7 +3089,8 @@ private fun ChatComposerFooterChip(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
+    // Web mobile keeps a 44px inline trigger (`.chat-controls__inline-select-trigger`).
+    modifier = modifier.heightIn(min = ComposerControlHeight),
     shape = RoundedCornerShape(ClawTheme.radii.pill),
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
