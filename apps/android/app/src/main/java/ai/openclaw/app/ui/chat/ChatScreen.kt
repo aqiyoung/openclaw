@@ -132,6 +132,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
@@ -1003,6 +1004,7 @@ fun ChatScreen(
     ChatModelPickerSheet(
       sections = modelSections,
       favorites = modelFavorites.toSet(),
+      selectedModelRef = selectedModelRef,
       onDismiss = { showModelPicker = false },
       onSelect = { modelRef ->
         viewModel.setChatSessionModel(sessionKey = sessionKey, modelRef = modelRef)
@@ -2525,6 +2527,100 @@ private fun permissionModeIcon(mode: String?): ImageVector =
   PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
 
 @Composable
+private fun ChatPermissionPickerDropdownMenu(
+  expanded: Boolean,
+  selectedMode: String?,
+  canSelectFull: Boolean,
+  onDismiss: () -> Unit,
+  onSelect: (String?) -> Unit,
+) {
+  DropdownMenu(
+    expanded = expanded,
+    onDismissRequest = onDismiss,
+  ) {
+    Column(modifier = Modifier.widthIn(min = 280.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          text = nativeString("Permission"),
+          style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
+          color = ClawTheme.colors.text,
+        )
+      }
+      HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
+      PERMISSION_MODE_OPTIONS.forEachIndexed { index, option ->
+        val selected = option.value == selectedMode
+        val locked = option.value == "full" && !canSelectFull
+        Surface(
+          onClick = {
+            if (!locked) {
+              onSelect(option.value)
+            }
+          },
+          enabled = !locked,
+          modifier = Modifier.fillMaxWidth(),
+          color = Color.Transparent,
+          contentColor = if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.text,
+        ) {
+          Row(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Icon(
+              imageVector = option.icon,
+              contentDescription = null,
+              modifier = Modifier.size(22.dp),
+              tint = if (selected) ClawTheme.colors.primary else if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.text,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+              Text(
+                text = option.label,
+                style = ClawTheme.type.body,
+                color = if (selected) ClawTheme.colors.primary else if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+              Text(
+                text = option.description,
+                style = ClawTheme.type.caption,
+                color = ClawTheme.colors.textMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+            when {
+              selected -> Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = ClawTheme.colors.primary,
+              )
+              locked -> Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = ClawTheme.colors.textSubtle,
+              )
+              else -> Text(
+                text = "${index + 1}",
+                style = ClawTheme.type.caption,
+                color = ClawTheme.colors.textSubtle,
+                modifier = Modifier.widthIn(min = 20.dp),
+                textAlign = TextAlign.End,
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
 private fun ChatPermissionTriggerChip(
   mode: String?,
   onClick: () -> Unit,
@@ -2646,49 +2742,142 @@ internal fun branchMetadataText(branch: SessionBranch): String {
 private fun ChatModelPickerSheet(
   sections: ChatModelPickerSections,
   favorites: Set<String>,
+  selectedModelRef: String?,
   onDismiss: () -> Unit,
   onSelect: (String?) -> Unit,
   onToggleFavorite: (String) -> Unit,
 ) {
+  var searchQuery by rememberSaveable { mutableStateOf("") }
+  val allModels = remember(sections) { sections.pinned + sections.recent + sections.remaining }
+  val normalizedQuery = remember(searchQuery) { searchQuery.trim().lowercase(Locale.US) }
+  val filteredModels =
+    remember(allModels, normalizedQuery) {
+      if (normalizedQuery.isEmpty()) {
+        allModels
+      } else {
+        allModels.filter { model ->
+          model.name.lowercase(Locale.US).contains(normalizedQuery) ||
+            model.provider.lowercase(Locale.US).contains(normalizedQuery) ||
+            model.providerQualifiedRef().lowercase(Locale.US).contains(normalizedQuery)
+        }
+      }
+    }
+  val grouped =
+    remember(filteredModels) {
+      filteredModels.groupBy { modelProviderDisplayLabel(it.provider) }.toSortedMap()
+    }
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
-    LazyColumn(
-      modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
-      contentPadding = PaddingValues(bottom = 24.dp),
-    ) {
-      item {
-        Surface(
-          onClick = { onSelect(null) },
-          modifier = Modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
-          color = Color.Transparent,
-          contentColor = ClawTheme.colors.text,
-        ) {
-          Text(
-            text = nativeString("Default"),
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-            style = ClawTheme.type.body,
+    Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+      // Header
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          text = nativeString("Model"),
+          style = ClawTheme.type.title,
+          color = ClawTheme.colors.text,
+        )
+        IconButton(onClick = onDismiss) {
+          Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = nativeString("Close"),
+            modifier = Modifier.size(22.dp),
+            tint = ClawTheme.colors.textMuted,
           )
         }
       }
-      item {
-        HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
+      // Search
+      Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(ClawTheme.radii.pill),
+        color = ClawTheme.colors.surfacePressed,
+        contentColor = ClawTheme.colors.text,
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = ClawTheme.colors.textMuted,
+          )
+          BasicTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            textStyle = ClawTheme.type.body.copy(color = ClawTheme.colors.text),
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+            decorationBox = { innerTextField ->
+              Box(contentAlignment = Alignment.CenterStart) {
+                if (searchQuery.isEmpty()) {
+                  Text(
+                    text = nativeString("Search models"),
+                    style = ClawTheme.type.body,
+                    color = ClawTheme.colors.textSubtle,
+                  )
+                }
+                innerTextField()
+              }
+            },
+          )
+        }
       }
-      listOf(
-        "Pinned" to sections.pinned,
-        "Recent" to sections.recent,
-        "Models" to sections.remaining,
-      ).forEach { (title, models) ->
-        if (models.isNotEmpty()) {
-          item(key = "section-$title") {
+      LazyColumn(
+        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+        contentPadding = PaddingValues(bottom = 24.dp),
+      ) {
+        item {
+          Surface(
+            onClick = { onSelect(null) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
+            color = Color.Transparent,
+            contentColor = ClawTheme.colors.text,
+          ) {
+            Row(
+              modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+              Text(
+                text = nativeString("Default"),
+                style = ClawTheme.type.body,
+              )
+              if (selectedModelRef == null) {
+                Icon(
+                  imageVector = Icons.Default.Check,
+                  contentDescription = null,
+                  modifier = Modifier.size(20.dp),
+                  tint = ClawTheme.colors.primary,
+                )
+              }
+            }
+          }
+        }
+        item {
+          HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
+        }
+        if (filteredModels.isEmpty() && normalizedQuery.isNotEmpty()) {
+          item {
             Text(
-              text = title,
-              modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 6.dp),
-              style = ClawTheme.type.caption,
+              text = nativeString("No matching models"),
+              modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+              style = ClawTheme.type.body,
               color = ClawTheme.colors.textMuted,
             )
+          }
+        }
+        grouped.forEach { (provider, models) ->
+          item(key = "provider-$provider") {
+            ChatModelPickerProviderHeading(provider = provider)
           }
           itemsIndexed(
             items = models,
@@ -2698,6 +2887,7 @@ private fun ChatModelPickerSheet(
             ChatModelPickerRow(
               model = model,
               pinned = ref in favorites,
+              selected = ref == selectedModelRef,
               onSelect = { onSelect(ref) },
               onToggleFavorite = { onToggleFavorite(ref) },
             )
@@ -2709,37 +2899,123 @@ private fun ChatModelPickerSheet(
 }
 
 @Composable
+private fun ChatModelPickerProviderHeading(provider: String) {
+  val label = modelProviderDisplayLabel(provider)
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Surface(
+      modifier = Modifier.size(20.dp),
+      shape = CircleShape,
+      color = ClawTheme.colors.surfacePressed,
+      contentColor = ClawTheme.colors.textMuted,
+    ) {
+      Box(contentAlignment = Alignment.Center) {
+        Text(
+          text = label.take(1).uppercase(Locale.US),
+          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Bold),
+        )
+      }
+    }
+    Text(
+      text = label,
+      style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold),
+      color = ClawTheme.colors.textMuted,
+    )
+  }
+}
+
+@Composable
 private fun ChatModelPickerRow(
   model: GatewayModelSummary,
   pinned: Boolean,
+  selected: Boolean,
   onSelect: () -> Unit,
   onToggleFavorite: () -> Unit,
 ) {
   Surface(
     onClick = onSelect,
-    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
     color = Color.Transparent,
     contentColor = ClawTheme.colors.text,
   ) {
     Row(
-      modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+      modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = model.name, style = ClawTheme.type.body, color = ClawTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(text = model.provider, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          Text(
+            text = model.name,
+            style = ClawTheme.type.body,
+            color = if (selected) ClawTheme.colors.primary else ClawTheme.colors.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+          if (model.available == false) {
+            Text(
+              text = nativeString("Unavailable"),
+              style = ClawTheme.type.caption,
+              color = ClawTheme.colors.textSubtle,
+            )
+          }
+        }
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          Text(
+            text = modelProviderDisplayLabel(model.provider),
+            style = ClawTheme.type.caption,
+            color = ClawTheme.colors.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+          model.contextTokens?.let { tokens ->
+            Text(
+              text = "· ${formatCompactContextWindow(tokens)}",
+              style = ClawTheme.type.caption,
+              color = ClawTheme.colors.textMuted,
+              maxLines = 1,
+            )
+          }
+        }
+      }
+      if (selected) {
+        Icon(
+          imageVector = Icons.Default.Check,
+          contentDescription = null,
+          modifier = Modifier.size(20.dp),
+          tint = ClawTheme.colors.primary,
+        )
       }
       IconButton(onClick = onToggleFavorite) {
         Icon(
           imageVector = if (pinned) Icons.Default.Star else Icons.Default.StarBorder,
           contentDescription = if (pinned) nativeString("Unpin model") else nativeString("Pin model"),
+          modifier = Modifier.size(18.dp),
           tint = if (pinned) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
         )
       }
     }
   }
 }
+
+private fun modelProviderDisplayLabel(provider: String): String =
+  provider.trim().removePrefix("openclaw/").replaceFirstChar { it.uppercase(Locale.US) }
+
+private fun formatCompactContextWindow(tokens: Long): String =
+  when {
+    tokens >= 1_000_000 -> nativeString("\${(tokens / 1_000_000.0).format1f()}M", (tokens / 1_000_000.0).format1f())
+    tokens >= 1_000 -> nativeString("\${(tokens / 1_000.0).format1f()}K", (tokens / 1_000.0).format1f())
+    else -> nativeString("\${tokens}T", tokens)
+  }
 
 @Composable
 private fun SlashCommandPanel(
@@ -2862,6 +3138,7 @@ private fun ChatInputPill(
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
   var attachmentMenuExpanded by rememberSaveable { mutableStateOf(false) }
+  var contextMeterExpanded by rememberSaveable { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -3011,34 +3288,16 @@ private fun ChatInputPill(
                 )
               }
             }
-            DropdownMenu(
+            ChatPermissionPickerDropdownMenu(
               expanded = permissionSelectorExpanded,
-              onDismissRequest = { onPermissionSelectorExpandedChange(false) },
-            ) {
-              PERMISSION_MODE_OPTIONS.forEach { option ->
-                val selected = option.value == permissionMode
-                val locked = option.value == "full" && !canSelectFull
-                DropdownMenuItem(
-                  enabled = !locked,
-                  leadingIcon = {
-                    Icon(option.icon, contentDescription = null, modifier = Modifier.size(ComposerIconSize))
-                  },
-                  text = { Text(option.label, style = ClawTheme.type.body) },
-                  trailingIcon = {
-                    if (selected) {
-                      Icon(Icons.Default.Check, contentDescription = null, tint = ClawTheme.colors.primary)
-                    } else if (locked) {
-                      Icon(Icons.Default.Lock, contentDescription = null, tint = ClawTheme.colors.textSubtle)
-                    }
-                  },
-                  onClick = {
-                    if (locked) return@DropdownMenuItem
-                    onPermissionModeChange(option.value)
-                    onPermissionSelectorExpandedChange(false)
-                  },
-                )
-              }
-            }
+              selectedMode = permissionMode,
+              canSelectFull = canSelectFull,
+              onDismiss = { onPermissionSelectorExpandedChange(false) },
+              onSelect = { mode ->
+                onPermissionModeChange(mode)
+                onPermissionSelectorExpandedChange(false)
+              },
+            )
           }
         }
         // trail: context, then the model/effort pickers, then the primary actions.
@@ -3058,21 +3317,33 @@ private fun ChatInputPill(
               val progressColor = ClawTheme.colors.primary
               // Web mobile shows only the ring icon (16px) in the footer; the
               // percentage lives inside the details popover, so keep it compact.
-              Box(
-                modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-                contentAlignment = Alignment.Center,
-              ) {
-                Canvas(modifier = Modifier.size(16.dp)) {
-                  val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                  drawCircle(color = trackColor, style = stroke)
-                  drawArc(
-                    color = progressColor,
-                    startAngle = -90f,
-                    sweepAngle = contextFraction * 360f,
-                    useCenter = false,
-                    style = stroke,
-                  )
+              Box(contentAlignment = Alignment.Center) {
+                Surface(
+                  onClick = { contextMeterExpanded = !contextMeterExpanded },
+                  modifier = Modifier.size(ComposerControlSize),
+                  shape = CircleShape,
+                  color = Color.Transparent,
+                  contentColor = ClawTheme.colors.textMuted,
+                ) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = description }) {
+                      val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                      drawCircle(color = trackColor, style = stroke)
+                      drawArc(
+                        color = progressColor,
+                        startAngle = -90f,
+                        sweepAngle = contextFraction * 360f,
+                        useCenter = false,
+                        style = stroke,
+                      )
+                    }
+                  }
                 }
+                ChatContextMeterDropdownMenu(
+                  expanded = contextMeterExpanded,
+                  usage = contextUsage,
+                  onDismiss = { contextMeterExpanded = false },
+                )
               }
             }
             Row(
@@ -3427,6 +3698,67 @@ internal fun contextMeterThinkingLabel(value: String): String {
     "medium" -> nativeString("Medium")
     "high" -> nativeString("High")
     else -> normalized
+  }
+}
+
+private fun formatCompactTokenCount(value: Long): String =
+  when {
+    value >= 1_000_000 -> nativeString("\${(value / 1_000_000.0).format1f()}M", (value / 1_000_000.0).format1f())
+    value >= 1_000 -> nativeString("\${(value / 1_000.0).format1f()}k", (value / 1_000.0).format1f())
+    else -> value.toString()
+  }
+
+private fun Double.format1f(): String = String.format(Locale.US, "%.1f", this)
+
+@Composable
+private fun ChatContextMeterDropdownMenu(
+  expanded: Boolean,
+  usage: ChatContextUsage,
+  onDismiss: () -> Unit,
+) {
+  val fraction = contextMeterWidth(usage) ?: return
+  val percent = (fraction * 100).roundToInt()
+  val used = usage.totalTokens ?: 0L
+  val limit = usage.contextTokens ?: 0L
+  val approximate = usage.totalTokensFresh == false
+  DropdownMenu(
+    expanded = expanded,
+    onDismissRequest = onDismiss,
+  ) {
+    Column(modifier = Modifier.widthIn(min = 260.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text(
+          text = nativeString("Context window"),
+          style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
+          color = ClawTheme.colors.text,
+        )
+        Text(
+          text = nativeString("\${formatCompactTokenCount(used)} / \${formatCompactTokenCount(limit)} · \${percent}%", formatCompactTokenCount(used), formatCompactTokenCount(limit), percent),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+      }
+      Box(
+        modifier = Modifier.fillMaxWidth().height(6.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(3.dp)),
+      ) {
+        val warning = fraction >= 0.85f
+        val fillColor = if (warning) ClawTheme.colors.warning else ClawTheme.colors.primary
+        Box(
+          modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(fillColor, RoundedCornerShape(3.dp)),
+        )
+      }
+      if (approximate) {
+        Text(
+          text = nativeString("Total is approximate; context may already be compacted."),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+      }
+    }
   }
 }
 
