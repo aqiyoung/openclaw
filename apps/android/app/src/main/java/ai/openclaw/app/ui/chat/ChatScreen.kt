@@ -119,7 +119,11 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Cable
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GppGood
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
@@ -2492,31 +2496,31 @@ private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
     PermissionModeOption(
       value = null,
       label = "默认",
-      description = "遵循 Agent 已配置的策略。",
+      description = "遵循代理配置的策略。",
       icon = Icons.Default.GppGood,
     ),
     PermissionModeOption(
       value = "read-only",
       label = "只读",
-      description = "仅可在会话根目录内读取；写入与命令被阻止。",
+      description = "在会话根目录内读取；写入和命令被阻止。",
       icon = Icons.Default.Lock,
     ),
     PermissionModeOption(
       value = "guarded",
       label = "受保护",
-      description = "超出会话根目录的请求需人工审核。",
+      description = "由人工审查超出会话根目录的请求。",
       icon = Icons.Default.SupervisorAccount,
     ),
     PermissionModeOption(
       value = "workspace",
       label = "工作区",
-      description = "由 AI 审核超出会话根目录的请求。",
+      description = "由 AI 审查员检查超出会话根目录的请求。",
       icon = Icons.Default.Build,
     ),
     PermissionModeOption(
       value = "full",
       label = "完全访问",
-      description = "无审核；文件与命令不受限制。",
+      description = "无审查员；文件和命令不受限制。",
       icon = Icons.Default.Warning,
     ),
   )
@@ -2526,6 +2530,137 @@ private fun permissionModeLabel(mode: String?): String =
 
 private fun permissionModeIcon(mode: String?): ImageVector =
   PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatAttachmentSheet(
+  onDismiss: () -> Unit,
+  onPickImages: () -> Unit,
+  onPickVideo: () -> Unit,
+  onPickAudioOrDocument: () -> Unit,
+) {
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    containerColor = ClawTheme.colors.surface,
+    contentColor = ClawTheme.colors.text,
+  ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.CameraAlt,
+        label = nativeString("拍照"),
+        enabled = false,
+        onClick = { },
+      )
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Photo,
+        label = nativeString("图片"),
+        onClick = {
+          onDismiss()
+          onPickImages()
+        },
+      )
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Videocam,
+        label = nativeString("视频"),
+        onClick = {
+          onDismiss()
+          onPickVideo()
+        },
+      )
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.AttachFile,
+        label = nativeString("文件"),
+        onClick = {
+          onDismiss()
+          onPickAudioOrDocument()
+        },
+      )
+      HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = ClawTheme.colors.border, thickness = 1.dp)
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Psychology,
+        label = nativeString("Skills"),
+        enabled = false,
+        onClick = { },
+      )
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Cable,
+        label = nativeString("连接器"),
+        badge = "0",
+        enabled = false,
+        onClick = { },
+      )
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Search,
+        label = nativeString("网页搜索"),
+        enabled = false,
+        onClick = { },
+      )
+      HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = ClawTheme.colors.border, thickness = 1.dp)
+      ChatAttachmentSheetItem(
+        icon = Icons.Default.Extension,
+        label = nativeString("管理插件"),
+        enabled = false,
+        onClick = { },
+      )
+      Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+      ) {
+        IconButton(onClick = onDismiss) {
+          Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = nativeString("关闭"),
+            tint = ClawTheme.colors.textMuted,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun ChatAttachmentSheetItem(
+  icon: ImageVector,
+  label: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  badge: String? = null,
+) {
+  Surface(
+    onClick = onClick,
+    enabled = enabled,
+    modifier = modifier.fillMaxWidth(),
+    color = Color.Transparent,
+    contentColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget).padding(horizontal = 20.dp, vertical = 12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(24.dp),
+        tint = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+      )
+      Text(
+        text = label,
+        style = ClawTheme.type.body,
+        modifier = Modifier.weight(1f),
+        color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+      )
+      badge?.let {
+        Text(
+          text = it,
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+      }
+    }
+  }
+}
 
 @Composable
 private fun ChatPermissionPickerDropdownMenu(
@@ -2541,14 +2676,14 @@ private fun ChatPermissionPickerDropdownMenu(
   ) {
     Column(modifier = Modifier.widthIn(min = 280.dp)) {
       Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
           text = nativeString("权限"),
-          style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
-          color = ClawTheme.colors.text,
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
         )
       }
       HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
@@ -2598,7 +2733,7 @@ private fun ChatPermissionPickerDropdownMenu(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = ClawTheme.colors.primary,
+                tint = ClawTheme.colors.textSubtle,
               )
               locked -> Icon(
                 imageVector = Icons.Default.Lock,
@@ -2606,13 +2741,19 @@ private fun ChatPermissionPickerDropdownMenu(
                 modifier = Modifier.size(20.dp),
                 tint = ClawTheme.colors.textSubtle,
               )
-              else -> Text(
-                text = "${index + 1}",
-                style = ClawTheme.type.caption,
-                color = ClawTheme.colors.textSubtle,
-                modifier = Modifier.widthIn(min = 20.dp),
-                textAlign = TextAlign.End,
-              )
+              else -> Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = ClawTheme.colors.surfacePressed,
+                modifier = Modifier.size(24.dp, 20.dp),
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Text(
+                    text = "${index + 1}",
+                    style = ClawTheme.type.caption,
+                    color = ClawTheme.colors.textMuted,
+                  )
+                }
+              }
             }
           }
         }
@@ -3138,7 +3279,7 @@ private fun ChatInputPill(
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
-  var attachmentMenuExpanded by rememberSaveable { mutableStateOf(false) }
+  var attachmentSheetExpanded by rememberSaveable { mutableStateOf(false) }
   var contextMeterExpanded by rememberSaveable { mutableStateOf(false) }
 
   Surface(
@@ -3226,7 +3367,7 @@ private fun ChatInputPill(
         ) {
           Box {
             Surface(
-              onClick = { attachmentMenuExpanded = true },
+              onClick = { attachmentSheetExpanded = true },
               modifier = Modifier.size(ComposerPlusSize),
               shape = CircleShape,
               color = Color.Transparent,
@@ -3240,33 +3381,12 @@ private fun ChatInputPill(
                 )
               }
             }
-            DropdownMenu(
-              expanded = attachmentMenuExpanded,
-              onDismissRequest = { attachmentMenuExpanded = false },
-            ) {
-              DropdownMenuItem(
-                text = { Text(nativeString("图片")) },
-                leadingIcon = { Icon(Icons.Default.Photo, contentDescription = null) },
-                onClick = {
-                  attachmentMenuExpanded = false
-                  onPickImages()
-                },
-              )
-              DropdownMenuItem(
-                text = { Text(nativeString("视频")) },
-                leadingIcon = { Icon(Icons.Default.Videocam, contentDescription = null) },
-                onClick = {
-                  attachmentMenuExpanded = false
-                  onPickVideo()
-                },
-              )
-              DropdownMenuItem(
-                text = { Text(nativeString("文件")) },
-                leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null) },
-                onClick = {
-                  attachmentMenuExpanded = false
-                  onPickAudioOrDocument()
-                },
+            if (attachmentSheetExpanded) {
+              ChatAttachmentSheet(
+                onDismiss = { attachmentSheetExpanded = false },
+                onPickImages = onPickImages,
+                onPickVideo = onPickVideo,
+                onPickAudioOrDocument = onPickAudioOrDocument,
               )
             }
           }
@@ -3679,7 +3799,6 @@ internal fun userFacingChatError(
 }
 
 internal fun contextMeterWidth(usage: ChatContextUsage): Float? {
-  if (usage.totalTokensFresh == false) return null
   val total = usage.totalTokens?.takeIf { it >= 0L } ?: return null
   val context = usage.contextTokens?.takeIf { it > 0L } ?: return null
   return (total.toDouble() / context.toDouble()).coerceIn(0.0, 1.0).toFloat()
@@ -3732,7 +3851,7 @@ private fun ChatContextMeterDropdownMenu(
     expanded = expanded,
     onDismissRequest = onDismiss,
   ) {
-    Column(modifier = Modifier.widthIn(min = 260.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = Modifier.widthIn(min = 260.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -3740,8 +3859,8 @@ private fun ChatContextMeterDropdownMenu(
       ) {
         Text(
           text = nativeString("上下文窗口"),
-          style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold),
-          color = ClawTheme.colors.text,
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
         )
         Text(
           text = if (percent != null) {
@@ -3750,17 +3869,17 @@ private fun ChatContextMeterDropdownMenu(
             nativeString("上下文 --")
           },
           style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
+          color = ClawTheme.colors.text,
         )
       }
       if (fraction != null) {
         Box(
-          modifier = Modifier.fillMaxWidth().height(6.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(3.dp)),
+          modifier = Modifier.fillMaxWidth().height(4.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(2.dp)),
         ) {
           val warning = fraction >= 0.85f
           val fillColor = if (warning) ClawTheme.colors.warning else ClawTheme.colors.primary
           Box(
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(fillColor, RoundedCornerShape(3.dp)),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(fillColor, RoundedCornerShape(2.dp)),
           )
         }
       }
@@ -3769,6 +3888,19 @@ private fun ChatContextMeterDropdownMenu(
           text = nativeString("总量为估算值，上下文可能已被压缩。"),
           style = ClawTheme.type.caption,
           color = ClawTheme.colors.textMuted,
+        )
+      }
+      HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+          text = nativeString("最新运行令牌"),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+        Text(
+          text = nativeString("输入 -- · 输出 -- · 成本 --"),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textSubtle,
         )
       }
     }
