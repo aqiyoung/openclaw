@@ -29,6 +29,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -396,6 +397,7 @@ internal fun ChatComposerMicButton(
   onToggleDictation: () -> Unit,
   onStartVoiceNote: () -> Unit,
   modifier: Modifier = Modifier,
+  size: Dp = ClawTheme.spacing.touchTarget,
 ) {
   val hapticFeedback = LocalHapticFeedback.current
   val interactionEnabled = dictationActive || dictationEnabled || voiceNoteEnabled
@@ -418,7 +420,7 @@ internal fun ChatComposerMicButton(
   Surface(
     modifier =
       modifier
-        .size(ClawTheme.spacing.touchTarget)
+        .size(size)
         .combinedClickable(
           enabled = interactionEnabled,
           onClickLabel = dictationActionLabel,

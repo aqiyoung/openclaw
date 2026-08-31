@@ -2993,10 +2993,24 @@ private fun ChatInputPill(
             }
           }
           Box {
-            ChatPermissionTriggerChip(
-              mode = permissionMode,
+            // Web mobile hides the permission label and keeps only the icon in
+            // the composer lead, so match that compact 32dp icon target.
+            val active = permissionMode != null
+            Surface(
               onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
-            )
+              modifier = Modifier.size(ComposerControlSize),
+              shape = CircleShape,
+              color = Color.Transparent,
+              contentColor = if (active) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = permissionModeIcon(permissionMode),
+                  contentDescription = nativeString("Permission mode"),
+                  modifier = Modifier.size(ComposerIconSize),
+                )
+              }
+            }
             DropdownMenu(
               expanded = permissionSelectorExpanded,
               onDismissRequest = { onPermissionSelectorExpandedChange(false) },
@@ -3034,19 +3048,21 @@ private fun ChatInputPill(
           horizontalArrangement = Arrangement.End,
         ) {
           Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap),
+            horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap, Alignment.End),
           ) {
             if (contextFraction != null && contextPercent != null) {
               val description = nativeString("Context \${contextPercent}% used", contextPercent)
               val trackColor = ClawTheme.colors.surfacePressed
               val progressColor = ClawTheme.colors.primary
-              Row(
+              // Web mobile shows only the ring icon (16px) in the footer; the
+              // percentage lives inside the details popover, so keep it compact.
+              Box(
                 modifier = Modifier.clearAndSetSemantics { contentDescription = description },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                contentAlignment = Alignment.Center,
               ) {
-                Canvas(modifier = Modifier.size(ComposerIconSize)) {
+                Canvas(modifier = Modifier.size(16.dp)) {
                   val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
                   drawCircle(color = trackColor, style = stroke)
                   drawArc(
@@ -3057,14 +3073,10 @@ private fun ChatInputPill(
                     style = stroke,
                   )
                 }
-                Text(
-                  text = nativeString("\${contextPercent}%", contextPercent),
-                  style = ClawTheme.type.caption,
-                  color = ClawTheme.colors.textMuted,
-                )
               }
             }
             Row(
+              modifier = Modifier.weight(1f, fill = false),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(ComposerChipGap),
             ) {
@@ -3074,8 +3086,8 @@ private fun ChatInputPill(
                 onClick = onOpenModelPicker,
                 modifier =
                   Modifier
-                    .heightIn(min = ComposerChipHeight)
-                    .widthIn(min = ComposerModelChipMinWidth),
+                    .weight(1f, fill = false)
+                    .heightIn(min = ComposerChipHeight),
               )
               if (thinkingSupported) {
                 ChatComposerFooterChip(
@@ -3097,6 +3109,7 @@ private fun ChatInputPill(
                 voiceNoteEnabled = recordVoiceNoteEnabled,
                 onToggleDictation = onToggleDictation,
                 onStartVoiceNote = onStartVoiceNote,
+                size = ComposerControlSize,
               )
               when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
                 ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
@@ -3157,7 +3170,7 @@ private fun LiveTalkButton(
     onClick = onClick,
     modifier =
       Modifier
-        .size(ClawTheme.spacing.touchTarget)
+        .size(ComposerSendSize)
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
     color = if (active) ClawTheme.colors.danger else ClawTheme.colors.surfaceRaised,
@@ -3181,7 +3194,7 @@ private fun LiveTalkButton(
 private fun StopButton(onClick: () -> Unit) {
   Surface(
     onClick = onClick,
-    modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+    modifier = Modifier.size(ComposerSendSize),
     shape = CircleShape,
     color = ClawTheme.colors.danger,
     contentColor = Color.White,
@@ -3361,7 +3374,7 @@ private fun SendButton(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = Modifier.size(35.dp),
+    modifier = Modifier.size(ComposerSendSize),
     shape = CircleShape,
     color = if (enabled) ClawTheme.colors.primary else ClawTheme.colors.surfacePressed,
     contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
