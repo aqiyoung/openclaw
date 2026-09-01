@@ -2671,6 +2671,7 @@ private fun ChatAttachmentSheetItem(
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatPermissionPickerDropdownMenu(
   expanded: Boolean,
@@ -3865,6 +3866,7 @@ private fun formatCompactTokenCount(value: Long): String =
 
 private fun Double.format1f(): String = String.format(Locale.US, "%.1f", this)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatContextMeterDropdownMenu(
   expanded: Boolean,
