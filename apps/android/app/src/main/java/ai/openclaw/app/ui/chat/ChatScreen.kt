@@ -85,6 +85,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -176,7 +178,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -2492,6 +2496,9 @@ private data class PermissionModeOption(
   val icon: ImageVector,
 )
 
+// Matches PERMISSION_MODES_DOCS_URL in the web permission picker.
+private const val PERMISSION_MODES_DOCS_URL = "https://docs.openclaw.ai/gateway/permission-modes"
+
 private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
   listOf(
     PermissionModeOption(
@@ -2671,23 +2678,32 @@ private fun ChatPermissionPickerDropdownMenu(
   onDismiss: () -> Unit,
   onSelect: (String?) -> Unit,
 ) {
+  val uriHandler = LocalUriHandler.current
   DropdownMenu(
     expanded = expanded,
     onDismissRequest = onDismiss,
+    modifier = Modifier.widthIn(min = 340.dp),
   ) {
-    Column(modifier = Modifier.widthIn(min = 300.dp).padding(8.dp)) {
+    Column(modifier = Modifier.padding(8.dp)) {
+      // Mirrors `.chat-controls__popover-title.chat-controls__permission-heading`:
+      // a quiet uppercase title on the left, the docs link on the right.
       Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
           text = nativeString("权限"),
-          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Bold),
+          style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
           color = ClawTheme.colors.textMuted,
         )
+        Text(
+          text = nativeString("了解详情"),
+          style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.clickable { uriHandler.openUri(PERMISSION_MODES_DOCS_URL) },
+        )
       }
-      HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
       PERMISSION_MODE_OPTIONS.forEachIndexed { index, option ->
         val selected = option.value == selectedMode
         val locked = option.value == "full" && !canSelectFull
@@ -2699,56 +2715,60 @@ private fun ChatPermissionPickerDropdownMenu(
             }
           },
           enabled = !locked,
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
           shape = RoundedCornerShape(10.dp),
-          color = if (selected) ClawTheme.colors.surfacePressed else Color.Transparent,
+          color = if (selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent,
           contentColor = if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.text,
         ) {
           Row(
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+            modifier = Modifier.padding(start = 9.dp, end = 9.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             Icon(
               imageVector = option.icon,
               contentDescription = null,
-              modifier = Modifier.size(20.dp),
-              tint = if (isFull) ClawTheme.colors.accent else ClawTheme.colors.text,
+              modifier = Modifier.size(16.dp),
+              tint = if (isFull) ClawTheme.colors.accent else ClawTheme.colors.textMuted,
             )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
               Text(
                 text = option.label,
-                style = ClawTheme.type.body,
+                style = ClawTheme.type.label.copy(fontSize = 13.sp, lineHeight = 16.sp),
                 color = if (locked) ClawTheme.colors.textSubtle else ClawTheme.colors.text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
               )
               Text(
                 text = option.description,
-                style = ClawTheme.type.caption,
+                style = ClawTheme.type.captionSmall,
                 color = ClawTheme.colors.textMuted,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
               )
             }
-            when {
-              selected -> Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = ClawTheme.colors.accent,
-              )
-              locked -> Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = ClawTheme.colors.textSubtle,
-              )
-              else -> Text(
-                text = "${index + 1}",
-                style = ClawTheme.type.caption,
-                color = ClawTheme.colors.textSubtle,
-              )
+            // `.chat-controls__permission-option-state`: a fixed 16px rail so
+            // the copy column does not shift between states.
+            Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+              when {
+                locked -> Icon(
+                  imageVector = Icons.Default.Lock,
+                  contentDescription = null,
+                  modifier = Modifier.size(14.dp),
+                  tint = ClawTheme.colors.textSubtle,
+                )
+                selected -> Icon(
+                  imageVector = Icons.Default.Check,
+                  contentDescription = null,
+                  modifier = Modifier.size(14.dp),
+                  tint = ClawTheme.colors.text,
+                )
+                else -> Text(
+                  text = "${index + 1}",
+                  style = ClawTheme.type.mono.copy(fontSize = 9.sp, fontWeight = FontWeight.Normal, lineHeight = 9.sp),
+                  color = ClawTheme.colors.textMuted,
+                )
+              }
             }
           }
         }
@@ -3436,8 +3456,8 @@ private fun ChatInputPill(
             } else {
               nativeString("上下文窗口")
             }
-            val trackColor = ClawTheme.colors.surfacePressed
-            val progressColor = ClawTheme.colors.primary
+            val trackColor = ClawTheme.colors.textMuted.copy(alpha = 0.22f)
+            val progressColor = contextMeterColor(contextFraction, contextUsage.totalTokensFresh == false)
             Box(contentAlignment = Alignment.Center) {
               Surface(
                 onClick = { contextMeterExpanded = !contextMeterExpanded },
@@ -3799,6 +3819,17 @@ internal fun contextMeterWidth(usage: ChatContextUsage): Float? {
   return (total.toDouble() / context.toDouble()).coerceIn(0.0, 1.0).toFloat()
 }
 
+// Mirrors the web `--ctx-color` ramp: muted until a *fresh* total crosses 85%,
+// then warn (#f59e0b) ramps to danger (#ef4444) between 85% and 95%. A stale
+// total stays muted because the session may already have compacted.
+@Composable
+private fun contextMeterColor(fraction: Float?, approximate: Boolean): Color =
+  if (fraction != null && !approximate && fraction >= 0.85f) {
+    lerp(ClawTheme.colors.warning, ClawTheme.colors.danger, ((fraction - 0.85f) / 0.1f).coerceIn(0f, 1f))
+  } else {
+    ClawTheme.colors.textMuted
+  }
+
 internal fun contextMeterLabel(
   usage: ChatContextUsage,
   thinkingLevel: String,
@@ -3842,39 +3873,45 @@ private fun ChatContextMeterDropdownMenu(
   val used = usage.totalTokens ?: 0L
   val limit = usage.contextTokens ?: 0L
   val approximate = usage.totalTokensFresh == false
+  val meterColor = contextMeterColor(fraction, approximate)
+  val prefix = if (approximate) "~" else ""
+  val detail =
+    if (percent != null) {
+      "$prefix${formatCompactTokenCount(used)} / ${formatCompactTokenCount(limit)} · $prefix$percent%"
+    } else {
+      "—"
+    }
   DropdownMenu(
     expanded = expanded,
     onDismissRequest = onDismiss,
+    modifier = Modifier.widthIn(min = 300.dp),
   ) {
-    Column(modifier = Modifier.widthIn(min = 300.dp).padding(14.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+    Column(modifier = Modifier.padding(14.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
       ) {
         Text(
           text = nativeString("上下文窗口"),
-          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Bold),
+          style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
           color = ClawTheme.colors.textMuted,
+          modifier = Modifier.weight(1f),
         )
         Text(
-          text = if (percent != null) {
-            nativeString("\${formatCompactTokenCount(used)} / \${formatCompactTokenCount(limit)} · \${percent}%", formatCompactTokenCount(used), formatCompactTokenCount(limit), percent)
-          } else {
-            nativeString("上下文 --")
-          },
-          style = ClawTheme.type.body.copy(fontSize = 13.sp),
+          text = detail,
+          style = ClawTheme.type.body.copy(fontSize = 13.sp, fontFeatureSettings = "tnum"),
           color = ClawTheme.colors.text,
+          maxLines = 1,
         )
       }
       Spacer(modifier = Modifier.height(8.dp))
-      val warning = fraction != null && fraction >= 0.85f
       Box(
-        modifier = Modifier.fillMaxWidth().height(5.dp).background(ClawTheme.colors.surfacePressed, RoundedCornerShape(percent = 50)),
+        modifier = Modifier.fillMaxWidth().height(5.dp).background(ClawTheme.colors.textMuted.copy(alpha = 0.22f), RoundedCornerShape(percent = 50)),
       ) {
         if (fraction != null) {
           Box(
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(if (warning) ClawTheme.colors.warning else ClawTheme.colors.primary, RoundedCornerShape(percent = 50)),
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction).background(meterColor, RoundedCornerShape(percent = 50)),
           )
         }
       }
@@ -3882,29 +3919,59 @@ private fun ChatContextMeterDropdownMenu(
       if (approximate) {
         Text(
           text = nativeString("总量为估算值，上下文可能已被压缩。"),
-          style = ClawTheme.type.caption,
+          style = ClawTheme.type.captionSmall,
           color = ClawTheme.colors.textMuted,
         )
         Spacer(modifier = Modifier.height(10.dp))
       }
-      HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
-      Spacer(modifier = Modifier.height(10.dp))
+      HorizontalDivider(color = ClawTheme.colors.border.copy(alpha = 0.72f), thickness = 1.dp)
+      Spacer(modifier = Modifier.height(14.dp))
       Text(
         text = nativeString("最新运行令牌"),
-        style = ClawTheme.type.caption,
+        style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
         color = ClawTheme.colors.textMuted,
       )
-      Spacer(modifier = Modifier.height(6.dp))
-      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(nativeString("输入"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text("--", style = ClawTheme.type.caption, color = ClawTheme.colors.text)
-        Text("·", style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text(nativeString("输出"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text("--", style = ClawTheme.type.caption, color = ClawTheme.colors.text)
-        Text("·", style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text(nativeString("成本"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text("--", style = ClawTheme.type.caption, color = ClawTheme.colors.text)
+      Spacer(modifier = Modifier.height(8.dp))
+      // `.context-usage__stats`: muted labels paired with strong tabular values,
+      // wrapping with an interpunct between pairs.
+      FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        ChatContextStat(nativeString("输入"), "—")
+        ChatContextStat(nativeString("输出"), "—")
+        ChatContextStat(nativeString("预估成本"), "—", showSeparator = false)
       }
+    }
+  }
+}
+
+@Composable
+private fun ChatContextStat(
+  label: String,
+  value: String,
+  showSeparator: Boolean = true,
+) {
+  Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Text(
+      text = label,
+      style = ClawTheme.type.caption.copy(fontSize = 12.sp),
+      color = ClawTheme.colors.textMuted,
+    )
+    Text(
+      text = value,
+      style = ClawTheme.type.caption.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+      color = ClawTheme.colors.text,
+    )
+    // Trailing separator kept inside the item so it never orphans onto the next
+    // line; the last pair omits it (`.context-usage__stats div:not(:last-child)`).
+    if (showSeparator) {
+      Text(
+        text = "·",
+        style = ClawTheme.type.caption.copy(fontSize = 12.sp),
+        color = ClawTheme.colors.textMuted,
+        modifier = Modifier.padding(start = 2.dp),
+      )
     }
   }
 }
