@@ -2680,17 +2680,13 @@ private fun ChatPermissionPickerDropdownMenu(
   onSelect: (String?) -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
-  DropdownMenu(
-    expanded = expanded,
-    onDismissRequest = onDismiss,
-    modifier = Modifier.widthIn(min = 340.dp),
-    offset = DpOffset(x = (-170).dp, y = (-12).dp),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface,
-    tonalElevation = 6.dp,
-    shadowElevation = 8.dp,
-  ) {
-    Column(modifier = Modifier.padding(8.dp)) {
+  if (expanded) {
+    ModalBottomSheet(
+      onDismissRequest = onDismiss,
+      containerColor = ClawTheme.colors.surface,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
       // Mirrors `.chat-controls__popover-title.chat-controls__permission-heading`:
       // a quiet uppercase title on the left, the docs link on the right.
       Row(
@@ -2779,6 +2775,7 @@ private fun ChatPermissionPickerDropdownMenu(
           }
         }
       }
+    }
     }
   }
 }
@@ -3887,17 +3884,13 @@ private fun ChatContextMeterDropdownMenu(
     } else {
       "—"
     }
-  DropdownMenu(
-    expanded = expanded,
-    onDismissRequest = onDismiss,
-    modifier = Modifier.widthIn(min = 300.dp),
-    offset = DpOffset(x = (-150).dp, y = (-12).dp),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface,
-    tonalElevation = 6.dp,
-    shadowElevation = 8.dp,
-  ) {
-    Column(modifier = Modifier.padding(14.dp)) {
+  if (expanded) {
+    ModalBottomSheet(
+      onDismissRequest = onDismiss,
+      containerColor = ClawTheme.colors.surface,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -3953,6 +3946,7 @@ private fun ChatContextMeterDropdownMenu(
         ChatContextStat(nativeString("输出"), "—")
         ChatContextStat(nativeString("预估成本"), "—", showSeparator = false)
       }
+    }
     }
   }
 }
