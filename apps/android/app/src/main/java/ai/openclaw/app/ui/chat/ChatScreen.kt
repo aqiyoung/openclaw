@@ -2550,7 +2550,7 @@ private fun ChatAttachmentSheet(
 ) {
   ModalBottomSheet(
     onDismissRequest = onDismiss,
-    containerColor = ClawTheme.colors.surface,
+    containerColor = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
   ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -2684,7 +2684,7 @@ private fun ChatPermissionPickerDropdownMenu(
   if (expanded) {
     ModalBottomSheet(
       onDismissRequest = onDismiss,
-      containerColor = ClawTheme.colors.surface,
+      containerColor = ClawTheme.colors.surfaceRaised,
       contentColor = ClawTheme.colors.text,
     ) {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -2831,7 +2831,7 @@ private fun BranchSwitcherSheet(
 ) {
   ModalBottomSheet(
     onDismissRequest = onDismiss,
-    containerColor = ClawTheme.colors.surface,
+    containerColor = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
   ) {
     Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
@@ -2929,7 +2929,7 @@ private fun ChatModelPickerSheet(
     }
   ModalBottomSheet(
     onDismissRequest = onDismiss,
-    containerColor = ClawTheme.colors.surface,
+    containerColor = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
   ) {
     Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
@@ -3889,7 +3889,7 @@ private fun ChatContextMeterDropdownMenu(
   if (expanded) {
     ModalBottomSheet(
       onDismissRequest = onDismiss,
-      containerColor = ClawTheme.colors.surface,
+      containerColor = ClawTheme.colors.surfaceRaised,
       contentColor = ClawTheme.colors.text,
     ) {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
