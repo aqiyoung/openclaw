@@ -189,6 +189,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -2683,6 +2684,11 @@ private fun ChatPermissionPickerDropdownMenu(
     expanded = expanded,
     onDismissRequest = onDismiss,
     modifier = Modifier.widthIn(min = 340.dp),
+    offset = DpOffset(x = (-170).dp, y = (-12).dp),
+    shape = RoundedCornerShape(ClawTheme.radii.lg),
+    containerColor = ClawTheme.colors.surface,
+    tonalElevation = 6.dp,
+    shadowElevation = 8.dp,
   ) {
     Column(modifier = Modifier.padding(8.dp)) {
       // Mirrors `.chat-controls__popover-title.chat-controls__permission-heading`:
@@ -3885,6 +3891,11 @@ private fun ChatContextMeterDropdownMenu(
     expanded = expanded,
     onDismissRequest = onDismiss,
     modifier = Modifier.widthIn(min = 300.dp),
+    offset = DpOffset(x = (-150).dp, y = (-12).dp),
+    shape = RoundedCornerShape(ClawTheme.radii.lg),
+    containerColor = ClawTheme.colors.surface,
+    tonalElevation = 6.dp,
+    shadowElevation = 8.dp,
   ) {
     Column(modifier = Modifier.padding(14.dp)) {
       Row(
