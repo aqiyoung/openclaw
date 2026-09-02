@@ -7,10 +7,8 @@ import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -157,15 +155,6 @@ internal fun AdaptiveNavigationShell(
               )
             },
             alwaysShowLabel = alwaysShowAdaptiveNavigationLabel(navigationMode),
-            colors = NavigationSuiteItemDefaults.colors(
-              navigationBarItemColors = NavigationBarItemDefaults.colors(
-                selectedIconColor = ClawTheme.colors.primary,
-                selectedTextColor = ClawTheme.colors.primary,
-                indicatorColor = Color.Transparent,
-                unselectedIconColor = ClawTheme.colors.textMuted,
-                unselectedTextColor = ClawTheme.colors.textMuted,
-              ),
-            ),
           )
         }
       },
