@@ -119,6 +119,17 @@ internal fun AdaptiveNavigationShell(
       }
     },
   ) {
+    // Pre-create item colors in @Composable scope (can't call @Composable
+    // functions inside navigationSuiteItems {} which is not @Composable).
+    val navItemColors = NavigationSuiteDefaults.itemColors(
+      navigationBarItemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = ClawTheme.colors.primary,
+        selectedTextColor = ClawTheme.colors.primary,
+        indicatorColor = Color.Transparent,
+        unselectedIconColor = ClawTheme.colors.textMuted,
+        unselectedTextColor = ClawTheme.colors.textMuted,
+      ),
+    )
     NavigationSuiteScaffold(
       navigationSuiteItems = {
         SidebarDestination.entries.forEach { destination ->
@@ -155,15 +166,7 @@ internal fun AdaptiveNavigationShell(
               )
             },
             alwaysShowLabel = alwaysShowAdaptiveNavigationLabel(navigationMode),
-            colors = NavigationSuiteDefaults.itemColors(
-              navigationBarItemColors = NavigationBarItemDefaults.colors(
-                selectedIconColor = ClawTheme.colors.primary,
-                selectedTextColor = ClawTheme.colors.primary,
-                indicatorColor = Color.Transparent,
-                unselectedIconColor = ClawTheme.colors.textMuted,
-                unselectedTextColor = ClawTheme.colors.textMuted,
-              ),
-            ),
+            colors = navItemColors,
           )
         }
       },
