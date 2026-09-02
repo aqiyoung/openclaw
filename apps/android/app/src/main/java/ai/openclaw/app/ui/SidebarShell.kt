@@ -14,7 +14,6 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -164,7 +163,7 @@ internal fun AdaptiveNavigationShell(
           navigationMode = navigationMode,
           compactNavigationVisible = compactNavigationVisible,
         ),
-      containerColor = lerp(ClawTheme.colors.surface, ClawTheme.colors.accent, 0.08f),
+      containerColor = ClawTheme.colors.surface,
       contentColor = ClawTheme.colors.text,
       content = content,
     )
