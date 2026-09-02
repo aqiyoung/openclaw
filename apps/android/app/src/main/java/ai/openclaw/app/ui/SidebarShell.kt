@@ -155,6 +155,15 @@ internal fun AdaptiveNavigationShell(
               )
             },
             alwaysShowLabel = alwaysShowAdaptiveNavigationLabel(navigationMode),
+            colors = NavigationSuiteDefaults.itemColors(
+              navigationBarItemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = ClawTheme.colors.primary,
+                selectedTextColor = ClawTheme.colors.primary,
+                indicatorColor = Color.Transparent,
+                unselectedIconColor = ClawTheme.colors.textMuted,
+                unselectedTextColor = ClawTheme.colors.textMuted,
+              ),
+            ),
           )
         }
       },
