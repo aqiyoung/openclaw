@@ -3440,104 +3440,89 @@ private fun ChatInputPill(
             )
           }
         }
-        // trail: context, then the model/effort pickers, then the primary actions.
+        // Flat trail: [Spacer weight=1f] [context ring] [model widthIn 60-120] [thinking] [mic+send]
+        // Context ring + actions are fixed-width (no weight) so they never drift.
+        // Spacer absorbs leftover horizontal space, pushing everything right.
         Row(
-          modifier = Modifier.weight(1f),
+          modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.End,
+          horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap),
         ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap, Alignment.End),
-          ) {
-            // Web mobile shows only the ring icon (16px) in the footer; the
-            // percentage lives inside the details popover, so keep it compact.
-            // Always render the ring (empty when usage isn't available yet) so
-            // the control never disappears from the composer.
-            val contextDescription = if (contextPercent != null) {
-              nativeString("上下文已用 \${contextPercent}%", contextPercent)
-            } else {
-              nativeString("上下文窗口")
-            }
-            val trackColor = ClawTheme.colors.textMuted.copy(alpha = 0.22f)
-            val progressColor = contextMeterColor(contextFraction, contextUsage.totalTokensFresh == false)
-            Box(contentAlignment = Alignment.Center) {
-              Surface(
-                onClick = { contextMeterExpanded = !contextMeterExpanded },
-                modifier = Modifier.size(ComposerControlSize),
-                shape = CircleShape,
-                color = Color.Transparent,
-                contentColor = ClawTheme.colors.textMuted,
-              ) {
-                Box(contentAlignment = Alignment.Center) {
-                  Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = contextDescription }) {
-                    val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                    drawCircle(color = trackColor, style = stroke)
-                    if (contextFraction != null) {
-                      drawArc(
-                        color = progressColor,
-                        startAngle = -90f,
-                        sweepAngle = contextFraction * 360f,
-                        useCenter = false,
-                        style = stroke,
-                      )
-                    }
+          Spacer(modifier = Modifier.weight(1f))
+          // Context ring (fixed)
+          val contextDescription = if (contextPercent != null) {
+            nativeString("上下文已用 \${contextPercent}%", contextPercent)
+          } else {
+            nativeString("上下文窗口")
+          }
+          val trackColor = ClawTheme.colors.textMuted.copy(alpha = 0.22f)
+          val progressColor = contextMeterColor(contextFraction, contextUsage.totalTokensFresh == false)
+          Box(contentAlignment = Alignment.Center) {
+            Surface(
+              onClick = { contextMeterExpanded = !contextMeterExpanded },
+              modifier = Modifier.size(ComposerControlSize),
+              shape = CircleShape,
+              color = Color.Transparent,
+              contentColor = ClawTheme.colors.textMuted,
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.size(16.dp).clearAndSetSemantics { contentDescription = contextDescription }) {
+                  val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                  drawCircle(color = trackColor, style = stroke)
+                  if (contextFraction != null) {
+                    drawArc(
+                      color = progressColor,
+                      startAngle = -90f,
+                      sweepAngle = contextFraction * 360f,
+                      useCenter = false,
+                      style = stroke,
+                    )
                   }
                 }
               }
-              ChatContextMeterDropdownMenu(
-                expanded = contextMeterExpanded,
-                usage = contextUsage,
-                onDismiss = { contextMeterExpanded = false },
-              )
             }
-            Row(
-              modifier = Modifier.weight(1f, fill = false),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(ComposerChipGap),
-            ) {
-              ChatComposerFooterChip(
-                label = selectedModelLabel,
-                enabled = modelPickerEnabled,
-                onClick = onOpenModelPicker,
-                modifier =
-                  Modifier
-                    .weight(1f, fill = false)
-                    .heightIn(min = ComposerChipHeight),
-              )
-              if (thinkingSupported) {
-                ChatComposerFooterChip(
-                  label = contextMeterThinkingLabel(thinkingLevel),
-                  enabled = true,
-                  onClick = onToggleThinkingSelector,
-                  modifier = Modifier.heightIn(min = ComposerChipHeight),
-                )
+            ChatContextMeterDropdownMenu(
+              expanded = contextMeterExpanded,
+              usage = contextUsage,
+              onDismiss = { contextMeterExpanded = false },
+            )
+          }
+          // Model chip (fixed width, no weight)
+          ChatComposerFooterChip(
+            label = selectedModelLabel,
+            enabled = modelPickerEnabled,
+            onClick = onOpenModelPicker,
+            modifier = Modifier.widthIn(min = 60.dp, max = 120.dp).heightIn(min = ComposerChipHeight),
+          )
+          if (thinkingSupported) {
+            ChatComposerFooterChip(
+              label = contextMeterThinkingLabel(thinkingLevel),
+              enabled = true,
+              onClick = onToggleThinkingSelector,
+              modifier = Modifier.heightIn(min = ComposerChipHeight),
+            )
+          }
+          // Primary actions (fixed)
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+          ) {
+            ChatComposerMicButton(
+              dictationActive = dictationActive,
+              dictationEnabled = dictationEnabled,
+              voiceNoteEnabled = recordVoiceNoteEnabled,
+              onToggleDictation = onToggleDictation,
+              onStartVoiceNote = onStartVoiceNote,
+              size = ComposerControlSize,
+            )
+            when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
+              ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+              ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+              ChatComposerTrailingAction.StopTalk -> {
+                if (runActive) StopButton(onClick = onAbort)
+                LiveTalkButton(active = true, onClick = onToggleTalk)
               }
-            }
-            // Upstream keeps these side by side: mobile sets flex-direction row.
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-              ChatComposerMicButton(
-                dictationActive = dictationActive,
-                dictationEnabled = dictationEnabled,
-                voiceNoteEnabled = recordVoiceNoteEnabled,
-                onToggleDictation = onToggleDictation,
-                onStartVoiceNote = onStartVoiceNote,
-                size = ComposerControlSize,
-              )
-              when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
-                ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-                ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-                ChatComposerTrailingAction.StopTalk -> {
-                  // Talk keeps the morph slot, but run abort must stay reachable while both overlap.
-                  if (runActive) StopButton(onClick = onAbort)
-                  LiveTalkButton(active = true, onClick = onToggleTalk)
-                }
-                ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
-              }
+              ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
             }
           }
         }
