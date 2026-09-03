@@ -105,7 +105,7 @@ class ChatController internal constructor(
     { _, method, paramsJson -> requestGateway(method, paramsJson) },
   private val captureSettingsRequestLease: (gatewayScope: ChatCacheScope?) -> GatewaySession.RequestLease? =
     { gatewayScope ->
-      GatewaySession.RequestLease(endpointStableId = gatewayScope?.gatewayId.orEmpty()) { method, paramsJson, _ ->
+      GatewaySession.RequestLease(endpointStableId = gatewayScope?.gatewayId.orEmpty()) { method, paramsJson, _, _ ->
         if (gatewayScope == null) {
           requestGateway(method, paramsJson)
         } else {

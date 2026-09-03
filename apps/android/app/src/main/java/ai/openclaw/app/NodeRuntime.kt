@@ -1493,7 +1493,7 @@ class NodeRuntime private constructor(
         when (mode) {
           NodeRuntimeMode.Live -> operatorSession.captureRequestLease(gatewayId)
           NodeRuntimeMode.ScreenshotFixture ->
-            GatewaySession.RequestLease(endpointStableId = AndroidScreenshotFixture.gatewayId) { method, paramsJson, _ ->
+            GatewaySession.RequestLease(endpointStableId = AndroidScreenshotFixture.gatewayId) { method, paramsJson, _, _ ->
               AndroidScreenshotFixture.request(method, paramsJson)
             }
         }
