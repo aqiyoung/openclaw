@@ -38,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -204,11 +203,11 @@ private fun SystemAgentConversation(
     }
   // Preserve a visible message when its preceding transient anchor retires.
   // Keep active navigation in charge; native requests can cancel a scroll.
-  SideEffect(rows) {
-    if (listState.isScrollInProgress) return@SideEffect
+  LaunchedEffect(rows) {
+    if (listState.isScrollInProgress) return@LaunchedEffect
     val visibleItems = listState.layoutInfo.visibleItemsInfo
-    val firstKey = visibleItems.firstOrNull { it.index == listState.firstVisibleItemIndex }?.key ?: return@SideEffect
-    if (rows.any { it.key == firstKey }) return@SideEffect
+    val firstKey = visibleItems.firstOrNull { it.index == listState.firstVisibleItemIndex }?.key ?: return@LaunchedEffect
+    if (rows.any { it.key == firstKey }) return@LaunchedEffect
     for (item in visibleItems) {
       val index = rows.indexOfFirst { it is SystemAgentConversationRow.Message && it.key == item.key }
       if (index >= 0) {
