@@ -3370,20 +3370,16 @@ private fun ChatInputPill(
       // Footer region. Upstream uses `margin-top: auto` on the footer row to
       // dock it at the bottom of the input container; SpaceBetween gives the
       // same behavior without forcing the composer to expand vertically.
+      // Footer single-row layout (web mobile):
+      //   left group (fixed): + / permission / context ring
+      //   middle (stretch):   model chip
+      //   right group (fixed): mic + send
       Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .heightIn(min = ComposerControlSize)
-            .padding(horizontal = ComposerFooterPaddingInline, vertical = ComposerFooterPaddingBlock),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ComposerFooterColumnGap),
-      ) {
-        // lead: the (+) attachment trigger beside the permission picker.
-        Row(
+          modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(0.dp),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+          // ---- Left group (fixed) ----
           Box {
             Surface(
               onClick = { attachmentSheetExpanded = true },
@@ -3410,8 +3406,6 @@ private fun ChatInputPill(
             }
           }
           Box {
-            // Web mobile hides the permission label and keeps only the icon in
-            // the composer lead, so match that compact 32dp icon target.
             val active = permissionMode != null
             Surface(
               onClick = { onPermissionSelectorExpandedChange(!permissionSelectorExpanded) },
@@ -3439,17 +3433,6 @@ private fun ChatInputPill(
               },
             )
           }
-        }
-        // Flat trail: [Spacer weight=1f] [context ring] [model widthIn 60-120] [thinking] [mic+send]
-        // Context ring + actions are fixed-width (no weight) so they never drift.
-        // Spacer absorbs leftover horizontal space, pushing everything right.
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(ComposerTrailGap),
-        ) {
-          Spacer(modifier = Modifier.weight(1f))
-          // Context ring (fixed)
           val contextDescription = if (contextPercent != null) {
             nativeString("上下文已用 \${contextPercent}%", contextPercent)
           } else {
@@ -3487,46 +3470,41 @@ private fun ChatInputPill(
               onDismiss = { contextMeterExpanded = false },
             )
           }
-          // Model chip (fixed width, no weight)
+          // ---- Middle: model chip (stretches, capped 180dp) ----
           ChatComposerFooterChip(
             label = selectedModelLabel,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
-            modifier = Modifier.widthIn(min = 60.dp, max = 120.dp).heightIn(min = ComposerChipHeight),
+            modifier = Modifier.weight(1f, fill = true).widthIn(max = 180.dp).heightIn(min = ComposerChipHeight),
           )
           if (thinkingSupported) {
             ChatComposerFooterChip(
               label = contextMeterThinkingLabel(thinkingLevel),
               enabled = true,
               onClick = onToggleThinkingSelector,
-              modifier = Modifier.heightIn(min = ComposerChipHeight),
+              modifier = Modifier.weight(1f, fill = true).widthIn(max = 120.dp).heightIn(min = ComposerChipHeight),
             )
           }
-          // Primary actions (fixed)
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-          ) {
-            ChatComposerMicButton(
-              dictationActive = dictationActive,
-              dictationEnabled = dictationEnabled,
-              voiceNoteEnabled = recordVoiceNoteEnabled,
-              onToggleDictation = onToggleDictation,
-              onStartVoiceNote = onStartVoiceNote,
-              size = ComposerControlSize,
-            )
-            when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
-              ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
-              ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-              ChatComposerTrailingAction.StopTalk -> {
-                if (runActive) StopButton(onClick = onAbort)
-                LiveTalkButton(active = true, onClick = onToggleTalk)
-              }
-              ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
+          // ---- Right group (fixed): mic + send ----
+          ChatComposerMicButton(
+            dictationActive = dictationActive,
+            dictationEnabled = dictationEnabled,
+            voiceNoteEnabled = recordVoiceNoteEnabled,
+            onToggleDictation = onToggleDictation,
+            onStartVoiceNote = onStartVoiceNote,
+            size = ComposerControlSize,
+          )
+          when (resolveChatComposerTrailingAction(talkActive = talkActive, runActive = runActive, sendEnabled = sendEnabled)) {
+            ChatComposerTrailingAction.Send -> SendButton(enabled = true, onClick = onSend)
+            ChatComposerTrailingAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+            ChatComposerTrailingAction.StopTalk -> {
+              if (runActive) StopButton(onClick = onAbort)
+              LiveTalkButton(active = true, onClick = onToggleTalk)
             }
+            ChatComposerTrailingAction.Stop -> StopButton(onClick = onAbort)
           }
         }
-      }
+
     }
   }
 }
