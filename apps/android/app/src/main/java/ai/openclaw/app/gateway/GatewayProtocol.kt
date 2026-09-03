@@ -584,6 +584,13 @@ enum class GatewayMethod(
   DeliveryFailuresResubmit("delivery.failures.resubmit"),
 }
 
+@Serializable
+data class TalkSessionCancelOutputResult(
+  val ok: Boolean,
+  val status: String? = null,
+  val turnId: String? = null,
+)
+
 enum class GatewayEvent(
   val rawValue: String,
 ) {

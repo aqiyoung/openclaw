@@ -177,7 +177,7 @@ internal fun AdaptiveNavigationShell(
           navigationMode = navigationMode,
           compactNavigationVisible = compactNavigationVisible,
         ),
-      containerColor = ClawTheme.colors.surfaceRaised,
+      containerColor = ClawTheme.colors.accent,
       contentColor = ClawTheme.colors.text,
       content = content,
     )

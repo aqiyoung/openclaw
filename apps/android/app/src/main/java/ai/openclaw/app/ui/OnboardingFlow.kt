@@ -1771,6 +1771,7 @@ private fun SetupCodeEntryScreen(
             value = setupCode,
             onValueChange = onSetupCodeChange,
             placeholder = nativeString("Paste setup code"),
+            secret = true,
           )
         }
         error?.let { message ->
@@ -1844,7 +1845,7 @@ private fun ManualGatewaySetupScreen(
         }
         item {
           LabeledField(label = nativeString("Token")) {
-            ClawTextField(value = token, onValueChange = onTokenChange, placeholder = nativeString("Paste token"))
+            ClawTextField(value = token, onValueChange = onTokenChange, placeholder = nativeString("Paste token"), secret = true)
             Text(
               text = nativeString("Paste a shared Gateway token or operator-issued token."),
               style = ClawTheme.type.caption,
@@ -1854,7 +1855,7 @@ private fun ManualGatewaySetupScreen(
         }
         item {
           LabeledField(label = nativeString("Password")) {
-            ClawTextField(value = password, onValueChange = onPasswordChange, placeholder = nativeString("Password optional"))
+            ClawTextField(value = password, onValueChange = onPasswordChange, placeholder = nativeString("Password optional"), secret = true)
           }
         }
         item {

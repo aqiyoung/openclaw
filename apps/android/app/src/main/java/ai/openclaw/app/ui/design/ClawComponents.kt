@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Home
@@ -36,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,6 +49,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -530,7 +535,6 @@ internal fun ClawSegmentedControl(
   }
 }
 
-/** Token-styled text field used by settings and prototype screens. */
 @Composable
 internal fun ClawTextField(
   value: String,
@@ -540,40 +544,54 @@ internal fun ClawTextField(
   minLines: Int = 1,
   label: String? = null,
   enabled: Boolean = true,
+  secret: Boolean = false,
+  maxLines: Int = Int.MAX_VALUE,
 ) {
-  val fieldModifier =
-    if (label == null) modifier else modifier.semantics { contentDescription = label }
-  BasicTextField(
-    value = value,
-    onValueChange = onValueChange,
-    enabled = enabled,
-    modifier =
-      fieldModifier
-        .fillMaxWidth()
-        .clip(RoundedCornerShape(ClawTheme.radii.control))
-        .background(ClawTheme.colors.surfaceRaised)
-        .border(1.dp, ClawTheme.colors.border, RoundedCornerShape(ClawTheme.radii.control))
-        .padding(horizontal = 11.dp, vertical = 8.dp),
-    textStyle =
-      ClawTheme.type.body.copy(
-        color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
-      ),
-    cursorBrush = SolidColor(ClawTheme.colors.primary),
-    minLines = minLines,
-    decorationBox = { innerTextField ->
-      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        label?.let {
-          Text(text = it, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        }
-        Box(modifier = Modifier.fillMaxWidth()) {
-          if (value.isEmpty()) {
-            Text(text = placeholder, style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+  // Compose's String editor retains its initial password semantics.
+  // Recreate it when sensitivity changes; the caller still owns the text.
+  key(secret) {
+    val fieldModifier =
+      if (label == null) modifier else modifier.semantics { contentDescription = label }
+    BasicTextField(
+      value = value,
+      onValueChange = onValueChange,
+      enabled = enabled,
+      modifier =
+        fieldModifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(ClawTheme.radii.control))
+          .background(ClawTheme.colors.surfaceRaised)
+          .border(1.dp, ClawTheme.colors.border, RoundedCornerShape(ClawTheme.radii.control))
+          .padding(horizontal = 11.dp, vertical = 8.dp),
+      textStyle =
+        ClawTheme.type.body.copy(
+          color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+        ),
+      cursorBrush = SolidColor(ClawTheme.colors.primary),
+      keyboardOptions =
+        if (secret) {
+          KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+        } else {
+          KeyboardOptions.Default
+        },
+      visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+      minLines = minLines,
+      maxLines = maxLines,
+      decorationBox = { innerTextField ->
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          label?.let {
+            Text(text = it, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
           }
-          innerTextField()
+          Box(modifier = Modifier.fillMaxWidth()) {
+            if (value.isEmpty()) {
+              Text(text = placeholder, style = ClawTheme.type.body, color = ClawTheme.colors.textSubtle)
+            }
+            innerTextField()
+          }
         }
-      }
-    },
-  )
+      },
+    )
+  }
 }
 
 /** Local design-system preview surface for visual smoke checks. */
