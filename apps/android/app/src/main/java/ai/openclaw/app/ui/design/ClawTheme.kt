@@ -322,6 +322,8 @@ private fun clawMaterialColorScheme(
     outline = colors.border,
     error = colors.danger,
     onError = colors.primaryText,
+    secondaryContainer = Color.Transparent,
+    onSecondaryContainer = colors.text,
   )
 } else {
   lightColorScheme(
@@ -336,5 +338,7 @@ private fun clawMaterialColorScheme(
     outline = colors.border,
     error = colors.danger,
     onError = colors.primaryText,
+    secondaryContainer = Color.Transparent,
+    onSecondaryContainer = colors.text,
   )
 }
