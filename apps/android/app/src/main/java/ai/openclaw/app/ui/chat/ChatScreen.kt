@@ -93,12 +93,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -188,6 +191,8 @@ import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -202,8 +207,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.CancellationException
@@ -2517,11 +2529,7 @@ private fun ChatAttachmentSheet(
   onPickVideo: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
 ) {
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    containerColor = ClawTheme.colors.surfaceRaised,
-    contentColor = ClawTheme.colors.text,
-  ) {
+  ChatComposerPopover(onDismiss = onDismiss) {
     Column(modifier = Modifier.fillMaxWidth()) {
       ChatAttachmentSheetItem(
         icon = Icons.Default.CameraAlt,
@@ -2640,6 +2648,55 @@ private fun ChatAttachmentSheetItem(
   }
 }
 
+/**
+ * Web-style composer popover (`.chat-controls__model-menu` / `.chat-controls__effort-menu`
+ * on mobile): a fixed-position card floating above the composer instead of a bottom
+ * sheet — `position: fixed; left: 12px; right: 12px; bottom: calc(96px + safe-area);
+ * max-height: 440px`, radius-md corners, a 1px border, and a medium drop shadow.
+ */
+@Composable
+private fun ChatComposerPopover(
+  onDismiss: () -> Unit,
+  content: @Composable () -> Unit,
+) {
+  val configuration = LocalConfiguration.current
+  val density = LocalDensity.current
+  val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+  val bottomGapPx = with(density) { (96.dp + navBarBottom).roundToPx() }
+  val cardWidth = (configuration.screenWidthDp - 24).dp
+
+  Popup(
+    onDismissRequest = onDismiss,
+    properties = PopupProperties(focusable = true),
+    popupPositionProvider =
+      object : PopupPositionProvider {
+        override fun calculatePosition(
+          anchorBounds: IntRect,
+          windowSize: IntSize,
+          layoutDirection: LayoutDirection,
+          popupContentSize: IntSize,
+        ): IntOffset =
+          IntOffset(
+            x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0),
+            y = (windowSize.height - bottomGapPx - popupContentSize.height).coerceAtLeast(0),
+          )
+      },
+  ) {
+    Surface(
+      modifier =
+        Modifier
+          .width(cardWidth)
+          .shadow(elevation = 8.dp, shape = RoundedCornerShape(ClawTheme.radii.sheet)),
+      shape = RoundedCornerShape(ClawTheme.radii.sheet),
+      border = BorderStroke(1.dp, ClawTheme.colors.border.copy(alpha = 0.82f)),
+      color = ClawTheme.colors.surfaceRaised,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      content()
+    }
+  }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatPermissionPickerDropdownMenu(
@@ -2651,11 +2708,7 @@ private fun ChatPermissionPickerDropdownMenu(
 ) {
   val uriHandler = LocalUriHandler.current
   if (expanded) {
-    ModalBottomSheet(
-      onDismissRequest = onDismiss,
-      containerColor = ClawTheme.colors.surfaceRaised,
-      contentColor = ClawTheme.colors.text,
-    ) {
+    ChatComposerPopover(onDismiss = onDismiss) {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
       // Mirrors `.chat-controls__popover-title.chat-controls__permission-heading`:
       // a quiet uppercase title on the left, the docs link on the right.
@@ -2896,12 +2949,8 @@ private fun ChatModelPickerSheet(
     remember(filteredModels) {
       filteredModels.groupBy { modelProviderDisplayLabel(it.provider) }.toSortedMap()
     }
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    containerColor = ClawTheme.colors.surfaceRaised,
-    contentColor = ClawTheme.colors.text,
-  ) {
-    Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+  ChatComposerPopover(onDismiss = onDismiss) {
+    Column(modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp)) {
       // Header
       Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
@@ -3875,11 +3924,7 @@ private fun ChatContextMeterDropdownMenu(
       "—"
     }
   if (expanded) {
-    ModalBottomSheet(
-      onDismissRequest = onDismiss,
-      containerColor = ClawTheme.colors.surfaceRaised,
-      contentColor = ClawTheme.colors.text,
-    ) {
+    ChatComposerPopover(onDismiss = onDismiss) {
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
@@ -3961,11 +4006,7 @@ private fun ChatThinkingLevelSheet(
       .orEmpty()
   val selectedIndex = chatThinkingSelectedIndex(options, selectedId)
   if (expanded) {
-    ModalBottomSheet(
-      onDismissRequest = onDismiss,
-      containerColor = ClawTheme.colors.surfaceRaised,
-      contentColor = ClawTheme.colors.text,
-    ) {
+    ChatComposerPopover(onDismiss = onDismiss) {
       Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp)) {
         Row(
           modifier = Modifier.fillMaxWidth(),

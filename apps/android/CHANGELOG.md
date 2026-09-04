@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 2026.9.4.9 - 2026-09-04
+
+Replaces the composer bottom sheets with the web mobile popover style. On the web (`.chat-controls__model-menu` / `.chat-controls__effort-menu`, mobile breakpoint), tapping a composer control opens a fixed-position card floating above the composer — `left/right: 12px`, `bottom: calc(96px + safe-area)`, `max-height: 440px`, radius-md corners, a 1px border, and a medium drop shadow — not a bottom sheet.
+
+Adds a shared `ChatComposerPopover` container (focusable `Popup` + custom position provider) and converts five composer popups to it:
+
+- Thinking level (effort picker)
+- Model picker (max height aligned to the web's 440px)
+- Permission mode picker
+- Context meter
+- Attachment (+) menu
+
+The branch switcher and background tasks sheets keep the bottom-sheet presentation (they are header-level surfaces without a composer popover counterpart on the web).
+
+Bumps to 2026.9.4.9 / versionCode 2026090409.
+
 ## 2026.9.4.8 - 2026-09-04
 
 Fixes the v4.6 / v4.7 release build, which failed at `compileKotlin` with three errors rooted in the new `ChatEffortSlider` introduced in 2026.9.4.6:
