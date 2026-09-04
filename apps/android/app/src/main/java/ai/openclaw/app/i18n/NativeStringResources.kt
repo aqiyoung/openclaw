@@ -573,6 +573,7 @@ internal val nativeStringResourceIds: Map<String, Int> =
     "Failed: secure endpoint reached, but TLS fingerprint verification timed out. Check Tailscale Serve or gateway TLS and retry." to R.string.native_259ccea050255e4f,
     "Failure Alert" to R.string.native_dc6409a0d1c41734,
     "Fast mode" to R.string.native_1b7f9ecb7cd6a212,
+    "Fast responses: \${state}" to R.string.native_5f9666ecbe286e79,
     "Faster" to R.string.native_8d0160c0d84236dd,
     "File" to R.string.native_50009ce1da4d15e1,
     "Files" to R.string.native_abc7e9892806b047,

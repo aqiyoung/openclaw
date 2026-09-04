@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 2026.9.4.7 - 2026-09-04
+
+Polishes the v4.6 thinking control to track the upstream web mobile design more closely:
+
+- Adds a 10dp fast-mode lightning badge in the bottom-right of the collapsed gauge trigger, matching the upstream `.chat-controls__effort-fast-badge`.
+- Switches the bolt icon, the selected effort value, and the fast-mode toggle fill to the theme `accent` color (the same role the upstream uses for `var(--accent)`).
+- Adds a switch role and state description to the fast-mode toggle, with a "Fast responses: ${state}" aria-label template translated to "快速响应：%1$s" / "快速回應：%1$s".
+- Refines the effort slider: the track background uses text at 7% alpha (matching the upstream `--text 7%`), the thumb gets a soft drop shadow like the web's 0 1px 4px rgba(0,0,0,0.35) shadow, and the thumb is centered with 3dp vertical margin in the 26dp track.
+- The toggle thumb is now positioned with 3dp padding and an explicit 14dp translate, matching the upstream `top:3, left:3, transform: translateX(14px)`.
+
 ## 2026.9.4.6 - 2026-09-04
 
 Replaces the thinking-level trigger with a half-circle dial gauge that matches the upstream web mobile control. The expanded panel is rewritten to the web effort picker: an "Effort" slider with stop dots, Faster / Smarter scale labels, and a Fast mode toggle row with the lightning icon and helper text.

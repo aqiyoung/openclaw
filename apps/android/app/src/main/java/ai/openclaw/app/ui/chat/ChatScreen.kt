@@ -173,6 +173,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -189,9 +190,12 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -3446,23 +3450,48 @@ private fun ChatInputPill(
             modifier = Modifier.weight(1f, fill = true).widthIn(max = 180.dp).heightIn(min = ComposerChipHeight),
           )
           if (thinkingSupported) {
-            Box {
-              val thinkingOff = thinkingLevel.trim().lowercase(Locale.US) == "off"
-              val fraction = chatThinkingEffortFraction(thinkingOptions, thinkingLevel)
+            val languageTag = currentAppLanguage().languageTag
+            val triggerLabel = thinkingOptions
+              .firstOrNull { it.id.trim().lowercase(Locale.US) == thinkingLevel.trim().lowercase(Locale.US) }
+              ?.let { option -> chatThinkingOptionLabel(option, languageTag) }
+              .orEmpty()
+            val ariaTitle = if (triggerLabel.isNotEmpty()) {
+              "${nativeString("Thinking level")}: $triggerLabel"
+            } else {
+              nativeString("Thinking level")
+            }
+            Box(modifier = Modifier.size(ComposerControlSize)) {
               Surface(
                 onClick = { thinkingSheetExpanded = !thinkingSheetExpanded },
-                modifier = Modifier.size(ComposerControlSize),
+                modifier = Modifier.fillMaxSize().semantics { contentDescription = ariaTitle },
                 shape = CircleShape,
                 color = Color.Transparent,
                 contentColor = ClawTheme.colors.text,
               ) {
                 Box(contentAlignment = Alignment.Center) {
+                  val thinkingOff = thinkingLevel.trim().lowercase(Locale.US) == "off"
+                  val fraction = chatThinkingEffortFraction(thinkingOptions, thinkingLevel)
                   ChatThinkingGauge(
                     off = thinkingOff,
                     effortFraction = fraction,
-                    modifier = Modifier
-                      .size(ComposerIconSize)
-                      .clearAndSetSemantics { contentDescription = nativeString("Thinking level") },
+                    modifier = Modifier.size(ComposerIconSize),
+                  )
+                }
+              }
+              if (fastModeActive) {
+                Box(
+                  modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 1.dp, bottom = 2.dp)
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(ClawTheme.colors.surface),
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Bolt,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    tint = ClawTheme.colors.accent,
                   )
                 }
               }
@@ -3936,7 +3965,7 @@ private fun ChatThinkingLevelSheet(
       containerColor = ClawTheme.colors.surfaceRaised,
       contentColor = ClawTheme.colors.text,
     ) {
-      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+      Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp)) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           verticalAlignment = Alignment.CenterVertically,
@@ -3944,13 +3973,13 @@ private fun ChatThinkingLevelSheet(
         ) {
           Text(
             text = nativeString("Effort"),
-            style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
-            color = ClawTheme.colors.textMuted,
+            style = ClawTheme.type.body.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
+            color = ClawTheme.colors.text,
           )
           Text(
             text = selectedLabel,
-            style = ClawTheme.type.body.copy(fontSize = 13.sp, fontFeatureSettings = "tnum"),
-            color = if (normalizedSelected == "off") ClawTheme.colors.danger else ClawTheme.colors.primary,
+            style = ClawTheme.type.body.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+            color = if (normalizedSelected == "off") ClawTheme.colors.danger else ClawTheme.colors.accent,
             maxLines = 1,
           )
         }
@@ -3965,17 +3994,17 @@ private fun ChatThinkingLevelSheet(
         )
         Spacer(modifier = Modifier.height(2.dp))
         Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Text(
             text = nativeString("Faster"),
-            style = ClawTheme.type.captionSmall,
+            style = ClawTheme.type.captionSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium),
             color = ClawTheme.colors.textMuted,
           )
           Text(
             text = nativeString("Smarter"),
-            style = ClawTheme.type.captionSmall,
+            style = ClawTheme.type.captionSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium),
             color = ClawTheme.colors.textMuted,
           )
         }
@@ -3990,7 +4019,7 @@ private fun ChatThinkingLevelSheet(
             imageVector = Icons.Default.Bolt,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = ClawTheme.colors.primary,
+            tint = ClawTheme.colors.accent,
           )
           Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -4000,13 +4029,17 @@ private fun ChatThinkingLevelSheet(
             )
             Text(
               text = nativeString("Responds faster, uses more credits."),
-              style = ClawTheme.type.captionSmall,
+              style = ClawTheme.type.captionSmall.copy(fontSize = 10.sp),
               color = ClawTheme.colors.textMuted,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
             )
           }
-          ChatFastModeToggle(active = fastModeActive, onChange = onFastModeChange)
+          ChatFastModeToggle(
+            active = fastModeActive,
+            onChange = onFastModeChange,
+            stateLabel = if (fastModeActive) nativeString("On") else nativeString("Off"),
+          )
         }
       }
     }
@@ -4091,8 +4124,8 @@ private fun ChatEffortSlider(
           .fillMaxWidth()
           .height(26.dp)
           .clip(RoundedCornerShape(percent = 50))
-          .border(1.dp, ClawTheme.colors.border, RoundedCornerShape(percent = 50))
-          .background(ClawTheme.colors.surfaceRaised, RoundedCornerShape(percent = 50)),
+          .border(1.dp, ClawTheme.colors.border.copy(alpha = 0.7f), RoundedCornerShape(percent = 50))
+          .background(ClawTheme.colors.text.copy(alpha = 0.07f), RoundedCornerShape(percent = 50)),
     ) {
       Box(
         modifier =
@@ -4116,6 +4149,8 @@ private fun ChatEffortSlider(
         Modifier
           .offset(x = (maxWidth - 28.dp) * dragFraction.coerceIn(0f, 1f))
           .size(width = 28.dp, height = 20.dp)
+          .padding(vertical = 3.dp)
+          .shadow(elevation = 2.dp, shape = RoundedCornerShape(percent = 50))
           .clip(RoundedCornerShape(percent = 50))
           .background(ClawTheme.colors.text, RoundedCornerShape(percent = 50)),
     )
@@ -4126,26 +4161,34 @@ private fun ChatEffortSlider(
 private fun ChatFastModeToggle(
   active: Boolean,
   onChange: (Boolean) -> Unit,
+  stateLabel: String,
 ) {
   Surface(
     onClick = { onChange(!active) },
-    modifier = Modifier.size(width = 36.dp, height = 22.dp),
+    modifier = Modifier
+      .size(width = 36.dp, height = 22.dp)
+      .semantics {
+        this.role = Role.Switch
+        this.contentDescription = nativeString("Fast responses: \${state}", stateLabel)
+        this.stateDescription = stateLabel
+      },
     shape = RoundedCornerShape(percent = 50),
-    color = if (active) ClawTheme.colors.primary.copy(alpha = 0.58f) else ClawTheme.colors.text.copy(alpha = 0.12f),
+    color = if (active) ClawTheme.colors.accent.copy(alpha = 0.58f) else ClawTheme.colors.text.copy(alpha = 0.12f),
     contentColor = Color.Transparent,
-    border = BorderStroke(1.dp, if (active) ClawTheme.colors.primary else ClawTheme.colors.border),
+    border = BorderStroke(1.dp, if (active) ClawTheme.colors.accent else ClawTheme.colors.border),
   ) {
     Box(
-      modifier = Modifier.fillMaxSize().padding(start = 3.dp),
+      modifier = Modifier.fillMaxSize().padding(3.dp),
       contentAlignment = Alignment.CenterStart,
     ) {
       Box(
         modifier =
           Modifier
             .size(14.dp)
+            .offset(x = if (active) 14.dp else 0.dp)
+            .shadow(elevation = 1.dp, shape = CircleShape)
             .clip(CircleShape)
-            .background(ClawTheme.colors.text, CircleShape)
-            .offset(x = if (active) 14.dp else 0.dp),
+            .background(ClawTheme.colors.text, CircleShape),
       )
     }
   }
