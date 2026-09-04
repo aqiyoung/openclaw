@@ -2,5 +2,10 @@
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground" />
+    <!--
+      No <monochrome> layer on purpose: Android 12+ "Themed icons" tints the
+      monochrome drawable with the wallpaper-extracted palette, which repainted
+      the launcher / lock-screen icon in the system purple. Dropping the layer
+      keeps the full-color icon on home screen, lock screen and Recents.
+    -->
 </adaptive-icon>

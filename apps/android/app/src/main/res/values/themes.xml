@@ -3,5 +3,47 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+
+        <!--
+          Claw light palette.
+          Theme.Material3.DayNight.NoActionBar ships the M3 *baseline* purple for every
+          color role that is not overridden here. Anything drawn by the View layer
+          (text selection handles + caret, native tooltips, ProgressBar, Switch,
+          WebView default background and form controls) reads those attributes, so
+          they are all pinned to ClawDesignTheme's tokens to keep purple out.
+        -->
+        <item name="android:windowBackground">#FFFAFBFC</item>
+        <item name="android:colorBackground">#FFFAFBFC</item>
+        <item name="colorPrimary">#FF1B5ACB</item>
+        <item name="colorOnPrimary">#FFFFFFFF</item>
+        <item name="colorPrimaryContainer">#FFEAF2FF</item>
+        <item name="colorOnPrimaryContainer">#FF111318</item>
+        <item name="colorSecondary">#FF505865</item>
+        <item name="colorOnSecondary">#FFFFFFFF</item>
+        <item name="colorSecondaryContainer">#FFE9EDF3</item>
+        <item name="colorOnSecondaryContainer">#FF111318</item>
+        <item name="colorTertiary">#FF1B5ACB</item>
+        <item name="colorOnTertiary">#FFFFFFFF</item>
+        <item name="colorTertiaryContainer">#FFEAF2FF</item>
+        <item name="colorOnTertiaryContainer">#FF111318</item>
+        <item name="colorError">#FFB82929</item>
+        <item name="colorOnError">#FFFFFFFF</item>
+        <item name="colorErrorContainer">#FFFFE9E9</item>
+        <item name="colorOnErrorContainer">#FFB82929</item>
+        <item name="colorSurface">#FFFFFEFB</item>
+        <item name="colorOnSurface">#FF111318</item>
+        <item name="colorSurfaceVariant">#FFFFFFFF</item>
+        <item name="colorOnSurfaceVariant">#FF505865</item>
+        <item name="colorOutline">#FFDDE3EC</item>
+        <item name="colorOutlineVariant">#FFC7D0DC</item>
+        <item name="android:colorAccent">#FF1B5ACB</item>
+        <item name="android:colorControlActivated">#FF1B5ACB</item>
+        <item name="android:colorControlNormal">#FF505865</item>
+        <item name="android:colorControlHighlight">#33EAF2FF</item>
+        <item name="android:textColorPrimary">#FF111318</item>
+        <item name="android:textColorSecondary">#FF505865</item>
+        <item name="android:textColorTertiary">#FF8993A2</item>
+        <item name="android:textColorHint">#FF8993A2</item>
+        <item name="android:textColorHighlight">#331B5ACB</item>
     </style>
 </resources>
