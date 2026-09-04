@@ -582,6 +582,20 @@ enum class GatewayMethod(
   PortalOpen("portal.open"),
   PortalClose("portal.close"),
   DeliveryFailuresResubmit("delivery.failures.resubmit"),
+  UsersMentionable("users.mentionable"),
+  MentionsList("mentions.list"),
+  MentionsDismiss("mentions.dismiss"),
+  ModelsAuthOrderSet("models.authOrderSet"),
+  UsersListAuthLinks("users.listAuthLinks"),
+  UsersListModelAccounts("users.listModelAccounts"),
+  UsersSelectModelAccount("users.selectModelAccount"),
+  UsersLinkAuthProfile("users.linkAuthProfile"),
+  UsersUnlinkAuthProfile("users.unlinkAuthProfile"),
+  UsersAuthConnectStart("users.authConnect.start"),
+  UsersAuthConnectAnswer("users.authConnect.answer"),
+  UsersAuthConnectStatus("users.authConnect.status"),
+  UsersAuthConnectCancel("users.authConnect.cancel"),
+  UsersAuthConnectCatalog("users.authConnect.catalog"),
 }
 
 @Serializable
@@ -643,4 +657,6 @@ enum class GatewayEvent(
   TerminalExit("terminal.exit"),
   UpdateAvailable("update.available"),
   PortalChanged("portal.changed"),
+  NodeHostStats("node.hostStats"),
+  MentionsChanged("mentions.changed"),
 }

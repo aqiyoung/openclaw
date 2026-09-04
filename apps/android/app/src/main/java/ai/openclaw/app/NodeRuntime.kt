@@ -83,6 +83,7 @@ import ai.openclaw.app.node.LocationCaptureManager
 import ai.openclaw.app.node.LocationHandler
 import ai.openclaw.app.node.MobileUiHandler
 import ai.openclaw.app.node.MotionHandler
+import ai.openclaw.app.node.NodeHostStatsReporter
 import ai.openclaw.app.node.NodePresenceAliveBeacon
 import ai.openclaw.app.node.NotificationsHandler
 import ai.openclaw.app.node.PhotosHandler
@@ -156,6 +157,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -1376,6 +1378,7 @@ class NodeRuntime private constructor(
   private val canvasRehydrateSeq = AtomicLong(0)
 
   @Volatile private var nodePresenceAliveLastSuccessAtMs: Long? = null
+  private var nodeHostStatsJob: Job? = null
   private var operatorConnected = false
   private var operatorStatusText: String = "Offline"
   private var nodeStatusText: String = "Offline"
@@ -1726,6 +1729,7 @@ class NodeRuntime private constructor(
         notificationOutbox.onConnected()
         resetLocalCanvas()
         publishNodePresenceAliveBeacon(NodePresenceAliveBeacon.Trigger.Connect)
+        startNodeHostStatsReporting()
         val endpoint = connectedEndpoint
         val auth = activeGatewayAuth
         if (operatorConnected) {
@@ -1736,6 +1740,8 @@ class NodeRuntime private constructor(
       },
       onDisconnected = { message ->
         invalidateNodeCapabilityApprovalState()
+        nodeHostStatsJob?.cancel()
+        nodeHostStatsJob = null
         didAutoRequestCanvasRehydrate = false
         _canvasA2uiHydrated.value = false
         _canvasRehydratePending.value = false
@@ -3115,6 +3121,37 @@ class NodeRuntime private constructor(
       stopActiveVoiceSession()
       publishNodePresenceAliveBeacon(NodePresenceAliveBeacon.Trigger.Background, throttleRecentSuccess = true)
     }
+  }
+
+  private fun startNodeHostStatsReporting() {
+    nodeHostStatsJob?.cancel()
+    nodeHostStatsJob = null
+    val gatewayId = nodeSession.currentEndpointStableId() ?: return
+    nodeHostStatsJob =
+      scope.launch {
+        var loggedFailure = false
+        while (isActive && _nodeConnected.value) {
+          val sent =
+            try {
+              nodeSession.sendNodeEventForEndpoint(
+                expectedEndpointStableId = gatewayId,
+                event = NodeHostStatsReporter.EVENT_NAME,
+                payloadJson = NodeHostStatsReporter.makePayloadJson(NodeHostStatsReporter.sample(appContext)),
+                // This job owns the shared limit for sampling and transport warnings.
+                logFailure = false,
+              )
+            } catch (err: CancellationException) {
+              throw err
+            } catch (_: Exception) {
+              false
+            }
+          if (!sent && !loggedFailure) {
+            Log.w("OpenClawNode", "node.host.stats could not be published")
+            loggedFailure = true
+          }
+          delay(NodeHostStatsReporter.INTERVAL_MS)
+        }
+      }
   }
 
   private fun publishNodePresenceAliveBeacon(
