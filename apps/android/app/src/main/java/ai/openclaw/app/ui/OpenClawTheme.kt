@@ -5,14 +5,10 @@ import ai.openclaw.app.ui.design.ClawDesignTheme
 import ai.openclaw.app.ui.design.ClawTheme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -27,9 +23,7 @@ fun OpenClawTheme(
   themeMode: AppearanceThemeMode = AppearanceThemeMode.Dark,
   content: @Composable () -> Unit,
 ) {
-  val context = LocalContext.current
   val isDark = themeMode.isDark(systemDark = isSystemInDarkTheme())
-  val colorScheme = if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 
   OpenClawSystemBarAppearance(lightAppearance = !isDark)
 
@@ -38,7 +32,11 @@ fun OpenClawTheme(
       LocalMobileColors provides mobileColorsFromClawTheme(ClawTheme.colors, ClawTheme.type),
       LocalResolvedAppearanceIsDark provides isDark,
     ) {
-      MaterialTheme(colorScheme = colorScheme, content = content)
+      // No inner MaterialTheme here: ClawDesignTheme already installs MaterialTheme with the
+      // Claw-mapped color scheme. A previous wrapper used dynamic wallpaper colors, which
+      // repainted every Material surface (nav bar, menus, selection toolbar) in wallpaper
+      // purple; all Material components now follow the app palette.
+      content()
     }
   }
 }
