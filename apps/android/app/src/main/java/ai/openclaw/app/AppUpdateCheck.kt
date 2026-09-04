@@ -105,7 +105,7 @@ object AppUpdateCheck {
         } ?: continue
         val info = parseRelease(body, currentVersion)
         if (info != null) return@withContext info
-        failures.add("API $url → 解析失败 (无 tag_name / 非法 JSON)")
+        failures.add("API $url → parse failed (no tag_name / invalid JSON)")
       } catch (e: Exception) {
         failures.add("API $url → ${e.message ?: e.javaClass.simpleName}")
       }
@@ -130,19 +130,21 @@ object AppUpdateCheck {
         } ?: continue
         val info = parseMeta(body, currentVersion)
         if (info != null) return@withContext info
-        failures.add("META $url → 解析失败 (无 tag / 非法 JSON)")
+        failures.add("META $url → parse failed (no tag / invalid JSON)")
       } catch (e: Exception) {
         failures.add("META $url → ${e.message ?: e.javaClass.simpleName}")
       }
     }
 
     // 全部失败: 把每层失败原因带出来, 便于真机诊断 (对齐 sanyelive failures 列表).
+    // 用户可读的提示文案由 AppUpdateFailedDialog 里的 nativeString 负责,
+    // 这里只携带诊断细节, 避免与弹窗文案重复.
     val detail = if (failures.isNotEmpty()) "\n" + failures.joinToString("\n") else ""
     AppUpdateInfo(
       latestVersion = currentVersion, hasUpdate = false,
       releaseName = null, releaseUrl = null, releaseNotes = null,
       isCritical = false,
-      error = "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。${detail}",
+      error = detail,
     )
   }
 

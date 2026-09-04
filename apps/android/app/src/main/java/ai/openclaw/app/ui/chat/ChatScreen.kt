@@ -2504,38 +2504,38 @@ private val PERMISSION_MODE_OPTIONS: List<PermissionModeOption> =
   listOf(
     PermissionModeOption(
       value = null,
-      label = "默认",
-      description = "遵循代理配置的策略。",
+      label = nativeString("Default"),
+      description = nativeString("Follow the policy set by the agent."),
       icon = Icons.Default.GppGood,
     ),
     PermissionModeOption(
       value = "read-only",
-      label = "只读",
-      description = "在会话根目录内读取；写入和命令被阻止。",
+      label = nativeString("Read-only"),
+      description = nativeString("Read inside the session root; writes and commands are blocked."),
       icon = Icons.Default.Lock,
     ),
     PermissionModeOption(
       value = "guarded",
-      label = "受保护",
-      description = "由人工审查超出会话根目录的请求。",
+      label = nativeString("Guarded"),
+      description = nativeString("A human reviews requests that leave the session root."),
       icon = Icons.Default.SupervisorAccount,
     ),
     PermissionModeOption(
       value = "workspace",
-      label = "工作区",
-      description = "由 AI 审查员检查超出会话根目录的请求。",
+      label = nativeString("Workspace"),
+      description = nativeString("An AI reviewer audits requests that leave the session root."),
       icon = Icons.Default.Build,
     ),
     PermissionModeOption(
       value = "full",
-      label = "完全访问",
-      description = "无审查员；文件和命令不受限制。",
+      label = nativeString("Full access"),
+      description = nativeString("No reviewer; files and commands are unrestricted."),
       icon = Icons.Default.Warning,
     ),
   )
 
 private fun permissionModeLabel(mode: String?): String =
-  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: "默认"
+  PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.label ?: nativeString("Default")
 
 private fun permissionModeIcon(mode: String?): ImageVector =
   PERMISSION_MODE_OPTIONS.firstOrNull { it.value == mode }?.icon ?: Icons.Default.GppGood
@@ -2556,13 +2556,13 @@ private fun ChatAttachmentSheet(
     Column(modifier = Modifier.fillMaxWidth()) {
       ChatAttachmentSheetItem(
         icon = Icons.Default.CameraAlt,
-        label = nativeString("拍照"),
+        label = nativeString("Camera"),
         enabled = false,
         onClick = { },
       )
       ChatAttachmentSheetItem(
         icon = Icons.Default.Photo,
-        label = nativeString("图片"),
+        label = nativeString("Images"),
         onClick = {
           onDismiss()
           onPickImages()
@@ -2570,7 +2570,7 @@ private fun ChatAttachmentSheet(
       )
       ChatAttachmentSheetItem(
         icon = Icons.Default.Videocam,
-        label = nativeString("视频"),
+        label = nativeString("Video"),
         onClick = {
           onDismiss()
           onPickVideo()
@@ -2578,7 +2578,7 @@ private fun ChatAttachmentSheet(
       )
       ChatAttachmentSheetItem(
         icon = Icons.Default.AttachFile,
-        label = nativeString("文件"),
+        label = nativeString("File"),
         onClick = {
           onDismiss()
           onPickAudioOrDocument()
@@ -2593,21 +2593,21 @@ private fun ChatAttachmentSheet(
       )
       ChatAttachmentSheetItem(
         icon = Icons.Default.Cable,
-        label = nativeString("连接器"),
+        label = nativeString("Connectors"),
         badge = "0",
         enabled = false,
         onClick = { },
       )
       ChatAttachmentSheetItem(
         icon = Icons.Default.Search,
-        label = nativeString("网页搜索"),
+        label = nativeString("Web search"),
         enabled = false,
         onClick = { },
       )
       HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = ClawTheme.colors.border, thickness = 1.dp)
       ChatAttachmentSheetItem(
         icon = Icons.Default.Extension,
-        label = nativeString("管理插件"),
+        label = nativeString("Manage plugins"),
         enabled = false,
         onClick = { },
       )
@@ -2618,7 +2618,7 @@ private fun ChatAttachmentSheet(
         IconButton(onClick = onDismiss) {
           Icon(
             imageVector = Icons.Default.Close,
-            contentDescription = nativeString("关闭"),
+            contentDescription = nativeString("Close"),
             tint = ClawTheme.colors.textMuted,
           )
         }
@@ -2696,12 +2696,12 @@ private fun ChatPermissionPickerDropdownMenu(
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(
-          text = nativeString("权限"),
+          text = nativeString("Permissions"),
           style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
           color = ClawTheme.colors.textMuted,
         )
         Text(
-          text = nativeString("了解详情"),
+          text = nativeString("Learn more"),
           style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
           color = ClawTheme.colors.textMuted,
           modifier = Modifier.clickable { uriHandler.openUri(PERMISSION_MODES_DOCS_URL) },
@@ -2767,7 +2767,7 @@ private fun ChatPermissionPickerDropdownMenu(
                   tint = ClawTheme.colors.text,
                 )
                 else -> Text(
-                  text = "${index + 1}",
+                  text = nativeString("\$index", index + 1),
                   style = ClawTheme.type.mono.copy(fontSize = 9.sp, fontWeight = FontWeight.Normal, lineHeight = 9.sp),
                   color = ClawTheme.colors.textMuted,
                 )
@@ -3140,7 +3140,7 @@ private fun ChatModelPickerRow(
           )
           model.contextTokens?.let { tokens ->
             Text(
-              text = "· ${formatCompactContextWindow(tokens)}",
+              text = nativeString("· \$tokens", formatCompactContextWindow(tokens)),
               style = ClawTheme.type.caption,
               color = ClawTheme.colors.textMuted,
               maxLines = 1,
@@ -3391,7 +3391,7 @@ private fun ChatInputPill(
               Box(contentAlignment = Alignment.Center) {
                 Icon(
                   imageVector = Icons.Default.Add,
-                  contentDescription = nativeString("添加附件"),
+                  contentDescription = nativeString("Add attachment"),
                   modifier = Modifier.size(ComposerIconSize),
                 )
               }
@@ -3417,7 +3417,7 @@ private fun ChatInputPill(
               Box(contentAlignment = Alignment.Center) {
                 Icon(
                   imageVector = permissionModeIcon(permissionMode),
-                  contentDescription = nativeString("权限模式"),
+                  contentDescription = nativeString("Permission mode"),
                   modifier = Modifier.size(ComposerIconSize),
                 )
               }
@@ -3434,9 +3434,9 @@ private fun ChatInputPill(
             )
           }
           val contextDescription = if (contextPercent != null) {
-            nativeString("上下文已用 \${contextPercent}%", contextPercent)
+            nativeString("Context used \${contextPercent}%", contextPercent)
           } else {
-            nativeString("上下文窗口")
+            nativeString("Context window")
           }
           val trackColor = ClawTheme.colors.textMuted.copy(alpha = 0.22f)
           val progressColor = contextMeterColor(contextFraction, contextUsage.totalTokensFresh == false)
@@ -3862,7 +3862,7 @@ private fun ChatContextMeterDropdownMenu(
         horizontalArrangement = Arrangement.spacedBy(20.dp),
       ) {
         Text(
-          text = nativeString("上下文窗口"),
+          text = nativeString("Context window"),
           style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
           color = ClawTheme.colors.textMuted,
           modifier = Modifier.weight(1f),
@@ -3887,7 +3887,7 @@ private fun ChatContextMeterDropdownMenu(
       Spacer(modifier = Modifier.height(10.dp))
       if (approximate) {
         Text(
-          text = nativeString("总量为估算值，上下文可能已被压缩。"),
+          text = nativeString("Totals are estimates; the context may already be compacted."),
           style = ClawTheme.type.captionSmall,
           color = ClawTheme.colors.textMuted,
         )
@@ -3896,7 +3896,7 @@ private fun ChatContextMeterDropdownMenu(
       HorizontalDivider(color = ClawTheme.colors.border.copy(alpha = 0.72f), thickness = 1.dp)
       Spacer(modifier = Modifier.height(14.dp))
       Text(
-        text = nativeString("最新运行令牌"),
+        text = nativeString("Latest run tokens"),
         style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
         color = ClawTheme.colors.textMuted,
       )
@@ -3907,9 +3907,9 @@ private fun ChatContextMeterDropdownMenu(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
-        ChatContextStat(nativeString("输入"), "—")
-        ChatContextStat(nativeString("输出"), "—")
-        ChatContextStat(nativeString("预估成本"), "—", showSeparator = false)
+        ChatContextStat(nativeString("Input"), "—")
+        ChatContextStat(nativeString("Output"), "—")
+        ChatContextStat(nativeString("Estimated cost"), "—", showSeparator = false)
       }
     }
     }
@@ -3937,7 +3937,7 @@ private fun ChatContextStat(
     // line; the last pair omits it (`.context-usage__stats div:not(:last-child)`).
     if (showSeparator) {
       Text(
-        text = "·",
+        text = nativeString("·"),
         style = ClawTheme.type.caption.copy(fontSize = 12.sp),
         color = ClawTheme.colors.textMuted,
         modifier = Modifier.padding(start = 2.dp),

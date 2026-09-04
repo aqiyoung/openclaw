@@ -26997,6 +26997,186 @@
       "id": "native.apple.e97067187c9a359d",
       "source": "\\(preview)…",
       "translated": "\\(preview)…"
+    },
+    {
+      "id": "native.android.72bb90897ab1eadc",
+      "source": "Read-only",
+      "translated": "只读"
+    },
+    {
+      "id": "native.android.35d309ba5fab3077",
+      "source": "Guarded",
+      "translated": "受保护"
+    },
+    {
+      "id": "native.android.f19611c61ca5f369",
+      "source": "Full access",
+      "translated": "完全访问"
+    },
+    {
+      "id": "native.android.8a908deccf029c7c",
+      "source": "Follow the policy set by the agent.",
+      "translated": "遵循代理配置的策略。"
+    },
+    {
+      "id": "native.android.6c129ea8bf09f52e",
+      "source": "Read inside the session root; writes and commands are blocked.",
+      "translated": "在会话根目录内读取；写入和命令被阻止。"
+    },
+    {
+      "id": "native.android.7534ed3acfd0388e",
+      "source": "A human reviews requests that leave the session root.",
+      "translated": "由人工审查超出会话根目录的请求。"
+    },
+    {
+      "id": "native.android.83a7d0dfd7d17511",
+      "source": "An AI reviewer audits requests that leave the session root.",
+      "translated": "由 AI 审查员检查超出会话根目录的请求。"
+    },
+    {
+      "id": "native.android.e8e62463e3210cdc",
+      "source": "No reviewer; files and commands are unrestricted.",
+      "translated": "无审查员；文件和命令不受限制。"
+    },
+    {
+      "id": "native.android.a137f17a19a09cbe",
+      "source": "·",
+      "translated": "·"
+    },
+    {
+      "id": "native.android.0d377ca6d116b0cf",
+      "source": "$index",
+      "translated": "$index"
+    },
+    {
+      "id": "native.android.82ffa5f574a8c4a6",
+      "source": "· $tokens",
+      "translated": "· $tokens"
+    },
+    {
+      "id": "native.android.be7e2f20129365c2",
+      "source": "Images",
+      "translated": "图片"
+    },
+    {
+      "id": "native.android.50009ce1da4d15e1",
+      "source": "File",
+      "translated": "文件"
+    },
+    {
+      "id": "native.android.c3d2e79ebdd046c6",
+      "source": "Connectors",
+      "translated": "连接器"
+    },
+    {
+      "id": "native.android.7711faa74a10416c",
+      "source": "Web search",
+      "translated": "网页搜索"
+    },
+    {
+      "id": "native.android.01ef57b01c9f11ce",
+      "source": "Manage plugins",
+      "translated": "管理插件"
+    },
+    {
+      "id": "native.android.1445799c033a2d17",
+      "source": "Learn more",
+      "translated": "了解详情"
+    },
+    {
+      "id": "native.android.c7a8e6db5cbb4c71",
+      "source": "Permission mode",
+      "translated": "权限模式"
+    },
+    {
+      "id": "native.android.7696d0855331622d",
+      "source": "Context window",
+      "translated": "上下文窗口"
+    },
+    {
+      "id": "native.android.665d73f9cdd02683",
+      "source": "Context used ${contextPercent}%",
+      "translated": "上下文已用 ${contextPercent}%"
+    },
+    {
+      "id": "native.android.62b5c329e8d01fa8",
+      "source": "Totals are estimates; the context may already be compacted.",
+      "translated": "总量为估算值，上下文可能已被压缩。"
+    },
+    {
+      "id": "native.android.969b6403862b70df",
+      "source": "Latest run tokens",
+      "translated": "最新运行令牌"
+    },
+    {
+      "id": "native.android.36ecb4f8669133ce",
+      "source": "Input",
+      "translated": "输入"
+    },
+    {
+      "id": "native.android.9ccba222f889a6c0",
+      "source": "Estimated cost",
+      "translated": "预估成本"
+    },
+    {
+      "id": "native.android.f26f3275e735bdf6",
+      "source": "Check for updates",
+      "translated": "检查更新"
+    },
+    {
+      "id": "native.android.497a19986d82eb1f",
+      "source": "Checking for updates…",
+      "translated": "正在检查更新…"
+    },
+    {
+      "id": "native.android.2a13f74be0bbe049",
+      "source": "Check for a new version",
+      "translated": "检查新版本"
+    },
+    {
+      "id": "native.android.4346538c16287e7c",
+      "source": "New version found",
+      "translated": "发现新版本"
+    },
+    {
+      "id": "native.android.0141116233234f4c",
+      "source": "$currentVersion -> ${info.latestVersion}",
+      "translated": "$currentVersion → ${info.latestVersion}"
+    },
+    {
+      "id": "native.android.df7d1cc1aa81245a",
+      "source": "You're up to date",
+      "translated": "已是最新版本"
+    },
+    {
+      "id": "native.android.a9244f84ea74f0f3",
+      "source": "Go to download",
+      "translated": "前往下载"
+    },
+    {
+      "id": "native.android.73b6e48a1b552d11",
+      "source": "Later",
+      "translated": "稍后"
+    },
+    {
+      "id": "native.android.45fd5081ff0d4c06",
+      "source": "Update check failed",
+      "translated": "检查更新失败"
+    },
+    {
+      "id": "native.android.a74487de8969b1f1",
+      "source": "Current version",
+      "translated": "当前版本"
+    },
+    {
+      "id": "native.android.f22b279f9e024573",
+      "source": "Unable to reach the update service. Check your network or open the GitHub releases page manually.",
+      "translated": "无法连接更新服务，请检查网络或手动打开 GitHub 发布页面。"
+    },
+    {
+      "id": "native.android.d3672d7c01fb8a2f",
+      "source": "Open manually",
+      "translated": "手动打开"
     }
   ]
 }
