@@ -2,21 +2,11 @@
 
 ## Unreleased
 
-## 2026.9.4.9 - 2026-09-04
+## 2026.9.4.10 - 2026-09-04
 
-Replaces the composer bottom sheets with the web mobile popover style. On the web (`.chat-controls__model-menu` / `.chat-controls__effort-menu`, mobile breakpoint), tapping a composer control opens a fixed-position card floating above the composer — `left/right: 12px`, `bottom: calc(96px + safe-area)`, `max-height: 440px`, radius-md corners, a 1px border, and a medium drop shadow — not a bottom sheet.
+Reverts 2026.9.4.9: composer popups (thinking level, model picker, permission picker, context meter, attachment menu) are back to the bottom-sheet presentation, which is the preferred UX. The `ChatComposerPopover` floating-card container introduced in 2026.9.4.9 is removed.
 
-Adds a shared `ChatComposerPopover` container (focusable `Popup` + custom position provider) and converts five composer popups to it:
-
-- Thinking level (effort picker)
-- Model picker (max height aligned to the web's 440px)
-- Permission mode picker
-- Context meter
-- Attachment (+) menu
-
-The branch switcher and background tasks sheets keep the bottom-sheet presentation (they are header-level surfaces without a composer popover counterpart on the web).
-
-Bumps to 2026.9.4.9 / versionCode 2026090409.
+Bumps to 2026.9.4.10 / versionCode 2026090410.
 
 ## 2026.9.4.8 - 2026-09-04
 
