@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 2026.9.4.8 - 2026-09-04
+
+Fixes the v4.6 / v4.7 release build, which failed at `compileKotlin` with three errors rooted in the new `ChatEffortSlider` introduced in 2026.9.4.6:
+
+- `size.width.coerceAtLeast(1f)` in the tap/drag handlers passed a `Float` literal to `Int.coerceAtLeast`, which only has `(Int)` and `(Long)` overloads. Switched to `coerceAtLeast(1)`; the surrounding division still promotes to `Float` because `offset.x` is `Float`.
+- `.border(1.dp, ...)` in the slider track was missing the `androidx.compose.foundation.border` import (only `background` was imported). Added the import.
+
+Verified locally with `:app:compileThirdPartyDebugKotlin` (green) before pushing the tag.
+
 ## 2026.9.4.7 - 2026-09-04
 
 Polishes the v4.6 thinking control to track the upstream web mobile design more closely:

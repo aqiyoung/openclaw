@@ -82,6 +82,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -4103,7 +4104,7 @@ private fun ChatEffortSlider(
         .pointerInput(stopCount, enabled) {
           if (enabled) {
             detectTapGestures { offset ->
-              onSelectIndex(((offset.x / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f) * (stopCount - 1)).roundToInt())
+              onSelectIndex(((offset.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f) * (stopCount - 1)).roundToInt())
             }
           }
         }
@@ -4113,7 +4114,7 @@ private fun ChatEffortSlider(
               onDragEnd = { onSelectIndex((dragFractionState.value.coerceIn(0f, 1f) * (stopCount - 1)).roundToInt()) },
             ) { change, _ ->
               change.consume()
-              dragFractionState.value = (change.position.x / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f)
+              dragFractionState.value = (change.position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)
             }
           }
         },
