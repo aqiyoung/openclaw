@@ -78,11 +78,14 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.clickable
@@ -95,6 +98,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -113,6 +117,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
@@ -176,7 +181,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
@@ -2340,6 +2347,7 @@ private fun ChatComposer(
       matchingSlashCommands(input = value, commands = commands)
     }
   var permissionSelectorExpanded by rememberSaveable { mutableStateOf(false) }
+  var fastModeActive by rememberSaveable { mutableStateOf(false) }
 
   val dictationActive =
     dictationState is ChatDictationState.Starting || dictationState is ChatDictationState.Listening
@@ -2420,6 +2428,8 @@ private fun ChatComposer(
           thinkingSupported = thinkingSupported,
           thinkingOptions = thinkingOptions,
           onThinkingLevelChange = onThinkingLevelChange,
+          fastModeActive = fastModeActive,
+          onFastModeChange = { fastModeActive = it },
           contextUsage = contextUsage,
           permissionMode = permissionMode,
           permissionSelectorExpanded = permissionSelectorExpanded,
@@ -3244,6 +3254,8 @@ private fun ChatInputPill(
   thinkingSupported: Boolean,
   thinkingOptions: List<ChatThinkingLevelOption>,
   onThinkingLevelChange: (String) -> Unit,
+  fastModeActive: Boolean,
+  onFastModeChange: (Boolean) -> Unit,
   contextUsage: ChatContextUsage,
   permissionMode: String?,
   permissionSelectorExpanded: Boolean,
@@ -3435,19 +3447,22 @@ private fun ChatInputPill(
           )
           if (thinkingSupported) {
             Box {
-              val thinkingActive = thinkingLevel.trim().lowercase(Locale.US) != "off"
+              val thinkingOff = thinkingLevel.trim().lowercase(Locale.US) == "off"
+              val fraction = chatThinkingEffortFraction(thinkingOptions, thinkingLevel)
               Surface(
                 onClick = { thinkingSheetExpanded = !thinkingSheetExpanded },
                 modifier = Modifier.size(ComposerControlSize),
                 shape = CircleShape,
                 color = Color.Transparent,
-                contentColor = if (thinkingActive) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+                contentColor = ClawTheme.colors.text,
               ) {
                 Box(contentAlignment = Alignment.Center) {
-                  Icon(
-                    imageVector = Icons.Default.Psychology,
-                    contentDescription = nativeString("Thinking level"),
-                    modifier = Modifier.size(ComposerIconSize),
+                  ChatThinkingGauge(
+                    off = thinkingOff,
+                    effortFraction = fraction,
+                    modifier = Modifier
+                      .size(ComposerIconSize)
+                      .clearAndSetSemantics { contentDescription = nativeString("Thinking level") },
                   )
                 }
               }
@@ -3455,6 +3470,8 @@ private fun ChatInputPill(
                 expanded = thinkingSheetExpanded,
                 options = thinkingOptions,
                 selectedId = thinkingLevel,
+                fastModeActive = fastModeActive,
+                onFastModeChange = onFastModeChange,
                 onSelect = { selectedId ->
                   onThinkingLevelChange(selectedId)
                   thinkingSheetExpanded = false
@@ -3900,10 +3917,11 @@ private fun ChatThinkingLevelSheet(
   expanded: Boolean,
   options: List<ChatThinkingLevelOption>,
   selectedId: String,
+  fastModeActive: Boolean,
+  onFastModeChange: (Boolean) -> Unit,
   onSelect: (String) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val rows = remember(options) { chatThinkingOptionRows(options) }
   val normalizedSelected = selectedId.trim().lowercase(Locale.US)
   val languageTag = currentAppLanguage().languageTag
   val selectedLabel =
@@ -3911,6 +3929,7 @@ private fun ChatThinkingLevelSheet(
       .firstOrNull { it.id.trim().lowercase(Locale.US) == normalizedSelected }
       ?.let { option -> chatThinkingOptionLabel(option, languageTag) }
       .orEmpty()
+  val selectedIndex = chatThinkingSelectedIndex(options, selectedId)
   if (expanded) {
     ModalBottomSheet(
       onDismissRequest = onDismiss,
@@ -3924,7 +3943,7 @@ private fun ChatThinkingLevelSheet(
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Text(
-            text = nativeString("Thinking level"),
+            text = nativeString("Effort"),
             style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
             color = ClawTheme.colors.textMuted,
           )
@@ -3935,23 +3954,18 @@ private fun ChatThinkingLevelSheet(
             maxLines = 1,
           )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        rows.forEach { row ->
-          val labels = row.map { option -> chatThinkingOptionLabel(option, languageTag) }
-          ClawSegmentedControl(
-            options = labels,
-            selected = selectedLabel,
-            onSelect = { selected ->
-              row.firstOrNull { option -> chatThinkingOptionLabel(option, languageTag) == selected }?.let {
-                onSelect(it.id)
-              }
-            },
-            modifier = Modifier.fillMaxWidth(),
-          )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        ChatEffortSlider(
+          options = options,
+          selectedIndex = selectedIndex,
+          enabled = true,
+          onSelectIndex = { index ->
+            options.getOrNull(index)?.let { onSelect(it.id) }
+          },
+        )
+        Spacer(modifier = Modifier.height(2.dp))
         Row(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Text(
@@ -3965,7 +3979,174 @@ private fun ChatThinkingLevelSheet(
             color = ClawTheme.colors.textMuted,
           )
         }
+        Spacer(modifier = Modifier.height(10.dp))
+        HorizontalDivider(color = ClawTheme.colors.border.copy(alpha = 0.7f), thickness = 1.dp)
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Icon(
+            imageVector = Icons.Default.Bolt,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = ClawTheme.colors.primary,
+          )
+          Column(modifier = Modifier.weight(1f)) {
+            Text(
+              text = nativeString("Fast mode"),
+              style = ClawTheme.type.body.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+              color = ClawTheme.colors.text,
+            )
+            Text(
+              text = nativeString("Responds faster, uses more credits."),
+              style = ClawTheme.type.captionSmall,
+              color = ClawTheme.colors.textMuted,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          ChatFastModeToggle(active = fastModeActive, onChange = onFastModeChange)
+        }
       }
+    }
+  }
+}
+
+@Composable
+private fun ChatThinkingGauge(
+  off: Boolean,
+  effortFraction: Float,
+  modifier: Modifier = Modifier,
+) {
+  val dialColor = ClawTheme.colors.textMuted
+  val needleColor = ClawTheme.colors.text
+  val angleDegrees = -120f + effortFraction.coerceIn(0f, 1f) * 240f
+  Canvas(modifier = modifier) {
+    val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val radius = size.minDimension / 2f
+    drawArc(
+      color = dialColor.copy(alpha = if (off) 0.55f else 1f),
+      startAngle = 150f,
+      sweepAngle = 240f,
+      useCenter = false,
+      topLeft = Offset(center.x - radius, center.y - radius),
+      size = Size(radius * 2f, radius * 2f),
+      style = stroke,
+    )
+    rotate(degrees = angleDegrees, pivot = center) {
+      drawLine(
+        color = needleColor.copy(alpha = if (off) 0.7f else 1f),
+        start = center,
+        end = Offset(center.x, center.y - radius),
+        strokeWidth = 2.dp.toPx(),
+        cap = StrokeCap.Round,
+      )
+    }
+    drawCircle(color = needleColor.copy(alpha = if (off) 0.7f else 1f), radius = 1.6.dp.toPx(), center = center)
+  }
+}
+
+@Composable
+private fun ChatEffortSlider(
+  options: List<ChatThinkingLevelOption>,
+  selectedIndex: Int,
+  enabled: Boolean,
+  onSelectIndex: (Int) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val stopCount = options.size
+  if (stopCount == 0) return
+  val baseFraction = if (stopCount > 1) selectedIndex.toFloat() / (stopCount - 1) else 0f
+  val dragFractionState = remember { mutableStateOf(baseFraction) }
+  LaunchedEffect(selectedIndex, stopCount) { dragFractionState.value = baseFraction }
+  val dragFraction = dragFractionState.value
+  BoxWithConstraints(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .height(26.dp)
+        .pointerInput(stopCount, enabled) {
+          if (enabled) {
+            detectTapGestures { offset ->
+              onSelectIndex(((offset.x / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f) * (stopCount - 1)).roundToInt())
+            }
+          }
+        }
+        .pointerInput(stopCount, enabled) {
+          if (enabled) {
+            detectHorizontalDragGestures(
+              onDragEnd = { onSelectIndex((dragFractionState.value.coerceIn(0f, 1f) * (stopCount - 1)).roundToInt()) },
+            ) { change, _ ->
+              change.consume()
+              dragFractionState.value = (change.position.x / size.width.coerceAtLeast(1f)).coerceIn(0f, 1f)
+            }
+          }
+        },
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .height(26.dp)
+          .clip(RoundedCornerShape(percent = 50))
+          .border(1.dp, ClawTheme.colors.border, RoundedCornerShape(percent = 50))
+          .background(ClawTheme.colors.surfaceRaised, RoundedCornerShape(percent = 50)),
+    ) {
+      Box(
+        modifier =
+          Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(dragFraction.coerceIn(0f, 1f).coerceAtLeast(0.0001f))
+            .background(ClawTheme.colors.text.copy(alpha = 0.18f), RoundedCornerShape(percent = 50)),
+      )
+    }
+    Row(
+      modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      repeat(stopCount) {
+        Box(modifier = Modifier.size(4.dp).background(ClawTheme.colors.text.copy(alpha = 0.28f), CircleShape))
+      }
+    }
+    Box(
+      modifier =
+        Modifier
+          .offset(x = (maxWidth - 28.dp) * dragFraction.coerceIn(0f, 1f))
+          .size(width = 28.dp, height = 20.dp)
+          .clip(RoundedCornerShape(percent = 50))
+          .background(ClawTheme.colors.text, RoundedCornerShape(percent = 50)),
+    )
+  }
+}
+
+@Composable
+private fun ChatFastModeToggle(
+  active: Boolean,
+  onChange: (Boolean) -> Unit,
+) {
+  Surface(
+    onClick = { onChange(!active) },
+    modifier = Modifier.size(width = 36.dp, height = 22.dp),
+    shape = RoundedCornerShape(percent = 50),
+    color = if (active) ClawTheme.colors.primary.copy(alpha = 0.58f) else ClawTheme.colors.text.copy(alpha = 0.12f),
+    contentColor = Color.Transparent,
+    border = BorderStroke(1.dp, if (active) ClawTheme.colors.primary else ClawTheme.colors.border),
+  ) {
+    Box(
+      modifier = Modifier.fillMaxSize().padding(start = 3.dp),
+      contentAlignment = Alignment.CenterStart,
+    ) {
+      Box(
+        modifier =
+          Modifier
+            .size(14.dp)
+            .clip(CircleShape)
+            .background(ClawTheme.colors.text, CircleShape)
+            .offset(x = if (active) 14.dp else 0.dp),
+      )
     }
   }
 }
@@ -4014,6 +4195,28 @@ internal fun chatThinkingOptionRows(options: List<ChatThinkingLevelOption>): Lis
   if (options.isEmpty()) return emptyList()
   if (options.size <= 4) return listOf(options)
   return options.chunked((options.size + 1) / 2)
+}
+
+/** Effort gauge fraction (0..1). Mirrors web `selection.index / (options-1)`; off anchors to 0. */
+internal fun chatThinkingEffortFraction(
+  options: List<ChatThinkingLevelOption>,
+  selectedId: String,
+): Float {
+  if (options.size < 2) return 0f
+  val normalized = selectedId.trim().lowercase(Locale.US)
+  val index =
+    options.indexOfFirst { it.id.trim().lowercase(Locale.US) == normalized }
+      .takeIf { it >= 0 }
+      ?: 0
+  return index.toFloat() / (options.size - 1)
+}
+
+internal fun chatThinkingSelectedIndex(
+  options: List<ChatThinkingLevelOption>,
+  selectedId: String,
+): Int {
+  val normalized = selectedId.trim().lowercase(Locale.US)
+  return options.indexOfFirst { it.id.trim().lowercase(Locale.US) == normalized }.coerceAtLeast(0)
 }
 
 internal fun chatThinkingOptionLabel(

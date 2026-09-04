@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.9.4.6 - 2026-09-04
+
+Replaces the thinking-level trigger with a half-circle dial gauge that matches the upstream web mobile control. The expanded panel is rewritten to the web effort picker: an "Effort" slider with stop dots, Faster / Smarter scale labels, and a Fast mode toggle row with the lightning icon and helper text.
+
+Localizes the new composer strings (Effort, Fast mode, Faster, Smarter, fast mode help) into Simplified and Traditional Chinese.
+
 ## 2026.9.4.5 - 2026-09-04
 
 Fixes the chat composer send button overflowing the right edge of the input pill on narrow screens.
