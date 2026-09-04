@@ -2339,10 +2339,6 @@ private fun ChatComposer(
     remember(value, commands) {
       matchingSlashCommands(input = value, commands = commands)
     }
-  var thinkingSelectorExpanded by rememberSaveable { mutableStateOf(false) }
-  LaunchedEffect(thinkingSupported) {
-    if (!thinkingSupported) thinkingSelectorExpanded = false
-  }
   var permissionSelectorExpanded by rememberSaveable { mutableStateOf(false) }
 
   val dictationActive =
@@ -2379,17 +2375,6 @@ private fun ChatComposer(
     }
     if (attachments.isNotEmpty()) {
       AttachmentStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
-    }
-
-    if (thinkingSelectorExpanded && thinkingSupported) {
-      ChatThinkingLevelSelector(
-        options = thinkingOptions,
-        selectedId = thinkingLevel,
-        onSelect = { selectedId ->
-          onThinkingLevelChange(selectedId)
-          thinkingSelectorExpanded = false
-        },
-      )
     }
 
     if (shouldShowSlashCommandMenu(value)) {
@@ -2433,7 +2418,8 @@ private fun ChatComposer(
           onOpenModelPicker = onOpenModelPicker,
           thinkingLevel = thinkingLevel,
           thinkingSupported = thinkingSupported,
-          onToggleThinkingSelector = { thinkingSelectorExpanded = !thinkingSelectorExpanded },
+          thinkingOptions = thinkingOptions,
+          onThinkingLevelChange = onThinkingLevelChange,
           contextUsage = contextUsage,
           permissionMode = permissionMode,
           permissionSelectorExpanded = permissionSelectorExpanded,
@@ -2453,38 +2439,6 @@ private fun ChatComposer(
         status = offlineStatus,
         onFixConnection = onFixConnection,
         onCopyDiagnostics = onCopyDiagnostics,
-      )
-    }
-  }
-}
-
-@Composable
-private fun ChatThinkingLevelSelector(
-  options: List<ChatThinkingLevelOption>,
-  selectedId: String,
-  onSelect: (String) -> Unit,
-) {
-  val rows = remember(options) { chatThinkingOptionRows(options) }
-  val normalizedSelected = selectedId.trim().lowercase(Locale.US)
-  val languageTag = currentAppLanguage().languageTag
-  val selectedLabel =
-    options
-      .firstOrNull { it.id.trim().lowercase(Locale.US) == normalizedSelected }
-      ?.let { option -> chatThinkingOptionLabel(option, languageTag) }
-      .orEmpty()
-  Column(
-    modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-  ) {
-    rows.forEach { row ->
-      val labels = row.map { option -> chatThinkingOptionLabel(option, languageTag) }
-      ClawSegmentedControl(
-        options = labels,
-        selected = selectedLabel,
-        onSelect = { selected ->
-          row.firstOrNull { option -> chatThinkingOptionLabel(option, languageTag) == selected }?.let { onSelect(it.id) }
-        },
-        modifier = Modifier.fillMaxWidth(),
       )
     }
   }
@@ -3288,7 +3242,8 @@ private fun ChatInputPill(
   onOpenModelPicker: () -> Unit,
   thinkingLevel: String,
   thinkingSupported: Boolean,
-  onToggleThinkingSelector: () -> Unit,
+  thinkingOptions: List<ChatThinkingLevelOption>,
+  onThinkingLevelChange: (String) -> Unit,
   contextUsage: ChatContextUsage,
   permissionMode: String?,
   permissionSelectorExpanded: Boolean,
@@ -3300,6 +3255,7 @@ private fun ChatInputPill(
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
   var attachmentSheetExpanded by rememberSaveable { mutableStateOf(false) }
   var contextMeterExpanded by rememberSaveable { mutableStateOf(false) }
+  var thinkingSheetExpanded by rememberSaveable { mutableStateOf(false) }
 
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
@@ -3375,7 +3331,7 @@ private fun ChatInputPill(
       //   middle (stretch):   model chip
       //   right group (fixed): mic + send
       Row(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = ComposerFooterPaddingInline),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -3478,12 +3434,34 @@ private fun ChatInputPill(
             modifier = Modifier.weight(1f, fill = true).widthIn(max = 180.dp).heightIn(min = ComposerChipHeight),
           )
           if (thinkingSupported) {
-            ChatComposerFooterChip(
-              label = contextMeterThinkingLabel(thinkingLevel),
-              enabled = true,
-              onClick = onToggleThinkingSelector,
-              modifier = Modifier.weight(1f, fill = true).widthIn(max = 120.dp).heightIn(min = ComposerChipHeight),
-            )
+            Box {
+              val thinkingActive = thinkingLevel.trim().lowercase(Locale.US) != "off"
+              Surface(
+                onClick = { thinkingSheetExpanded = !thinkingSheetExpanded },
+                modifier = Modifier.size(ComposerControlSize),
+                shape = CircleShape,
+                color = Color.Transparent,
+                contentColor = if (thinkingActive) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+              ) {
+                Box(contentAlignment = Alignment.Center) {
+                  Icon(
+                    imageVector = Icons.Default.Psychology,
+                    contentDescription = nativeString("Thinking level"),
+                    modifier = Modifier.size(ComposerIconSize),
+                  )
+                }
+              }
+              ChatThinkingLevelSheet(
+                expanded = thinkingSheetExpanded,
+                options = thinkingOptions,
+                selectedId = thinkingLevel,
+                onSelect = { selectedId ->
+                  onThinkingLevelChange(selectedId)
+                  thinkingSheetExpanded = false
+                },
+                onDismiss = { thinkingSheetExpanded = false },
+              )
+            }
           }
           // ---- Right group (fixed): mic + send ----
           ChatComposerMicButton(
@@ -3912,6 +3890,82 @@ private fun ChatContextMeterDropdownMenu(
         ChatContextStat(nativeString("Estimated cost"), "—", showSeparator = false)
       }
     }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatThinkingLevelSheet(
+  expanded: Boolean,
+  options: List<ChatThinkingLevelOption>,
+  selectedId: String,
+  onSelect: (String) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val rows = remember(options) { chatThinkingOptionRows(options) }
+  val normalizedSelected = selectedId.trim().lowercase(Locale.US)
+  val languageTag = currentAppLanguage().languageTag
+  val selectedLabel =
+    options
+      .firstOrNull { it.id.trim().lowercase(Locale.US) == normalizedSelected }
+      ?.let { option -> chatThinkingOptionLabel(option, languageTag) }
+      .orEmpty()
+  if (expanded) {
+    ModalBottomSheet(
+      onDismissRequest = onDismiss,
+      containerColor = ClawTheme.colors.surfaceRaised,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Text(
+            text = nativeString("Thinking level"),
+            style = ClawTheme.type.captionSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp),
+            color = ClawTheme.colors.textMuted,
+          )
+          Text(
+            text = selectedLabel,
+            style = ClawTheme.type.body.copy(fontSize = 13.sp, fontFeatureSettings = "tnum"),
+            color = if (normalizedSelected == "off") ClawTheme.colors.danger else ClawTheme.colors.primary,
+            maxLines = 1,
+          )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        rows.forEach { row ->
+          val labels = row.map { option -> chatThinkingOptionLabel(option, languageTag) }
+          ClawSegmentedControl(
+            options = labels,
+            selected = selectedLabel,
+            onSelect = { selected ->
+              row.firstOrNull { option -> chatThinkingOptionLabel(option, languageTag) == selected }?.let {
+                onSelect(it.id)
+              }
+            },
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Text(
+            text = nativeString("Faster"),
+            style = ClawTheme.type.captionSmall,
+            color = ClawTheme.colors.textMuted,
+          )
+          Text(
+            text = nativeString("Smarter"),
+            style = ClawTheme.type.captionSmall,
+            color = ClawTheme.colors.textMuted,
+          )
+        }
+      }
     }
   }
 }

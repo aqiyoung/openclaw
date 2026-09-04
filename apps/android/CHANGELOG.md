@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.9.4.5 - 2026-09-04
+
+Fixes the chat composer send button overflowing the right edge of the input pill on narrow screens.
+
+Replaces the inline thinking-level chip in the composer footer with a circular button (matching the web mobile control) that opens a bottom sheet panel with the thinking level selector and faster/smarter orientation labels.
+
 ## 2026.7.4 - 2026-07-30
 
 Adds inline audio/video playback and uploads, session dashboards, run telemetry, chat rewind/fork, a Settings repair assistant, and Wear instant Talk.
