@@ -3780,9 +3780,8 @@ private fun SendButton(
     enabled = enabled,
     modifier = Modifier.size(ComposerSendSize),
     shape = CircleShape,
-    color = if (enabled) ClawTheme.colors.primary else ClawTheme.colors.surfacePressed,
-    contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
-    border = BorderStroke(1.dp, if (enabled) ClawTheme.colors.primary else ClawTheme.colors.border),
+    color = if (enabled) ClawTheme.colors.accent else ClawTheme.colors.surfacePressed,
+    contentColor = if (enabled) Color.White else ClawTheme.colors.textSubtle,
   ) {
     Box(contentAlignment = Alignment.Center) {
       Icon(imageVector = Icons.Default.KeyboardArrowUp, contentDescription = nativeString("Send"), modifier = Modifier.size(18.dp))
