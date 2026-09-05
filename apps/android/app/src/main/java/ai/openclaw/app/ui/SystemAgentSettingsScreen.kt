@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -99,7 +100,7 @@ internal fun SystemAgentSettingsScreen(
       }
 
       when (state.access) {
-        SystemAgentChatAccess.Ready ->
+        SystemAgentChatAccess.Ready -> {
           key(state.sessionId) {
             SystemAgentConversation(
               state = state,
@@ -111,7 +112,11 @@ internal fun SystemAgentSettingsScreen(
               onOpenChat = viewModel::openSystemAgentChatHandoff,
             )
           }
-        else -> SystemAgentAccessGate(state = state)
+        }
+
+        else -> {
+          SystemAgentAccessGate(state = state)
+        }
       }
     }
   }
@@ -172,7 +177,7 @@ private sealed class SystemAgentConversationRow(
   data class Question(
     val messageId: String,
     val question: SystemAgentChatQuestion,
-  ) : SystemAgentConversationRow("question:\$messageId")
+  ) : SystemAgentConversationRow("question:$messageId")
 }
 
 @Composable
@@ -203,11 +208,11 @@ private fun SystemAgentConversation(
     }
   // Preserve a visible message when its preceding transient anchor retires.
   // Keep active navigation in charge; native requests can cancel a scroll.
-  LaunchedEffect(rows) {
-    if (listState.isScrollInProgress) return@LaunchedEffect
+  SideEffect(rows) {
+    if (listState.isScrollInProgress) return@SideEffect
     val visibleItems = listState.layoutInfo.visibleItemsInfo
-    val firstKey = visibleItems.firstOrNull { it.index == listState.firstVisibleItemIndex }?.key ?: return@LaunchedEffect
-    if (rows.any { it.key == firstKey }) return@LaunchedEffect
+    val firstKey = visibleItems.firstOrNull { it.index == listState.firstVisibleItemIndex }?.key ?: return@SideEffect
+    if (rows.any { it.key == firstKey }) return@SideEffect
     for (item in visibleItems) {
       val index = rows.indexOfFirst { it is SystemAgentConversationRow.Message && it.key == item.key }
       if (index >= 0) {
@@ -318,7 +323,7 @@ private fun SystemAgentQuestionCard(
 ) {
   ClawPanel(modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-      Text(question.header.uppercase(), style = ClawTheme.type.caption, color = ClawTheme.colors.primary)
+      Text(question.header.uppercase(), style = ClawTheme.type.caption, color = ClawTheme.colors.text)
       Text(question.question, style = ClawTheme.type.body, color = ClawTheme.colors.text)
       question.options.forEach { option ->
         ClawSecondaryButton(

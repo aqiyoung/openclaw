@@ -12,21 +12,6 @@ import ai.openclaw.app.i18n.nativeStringResource
 import ai.openclaw.app.ui.design.ClawTheme
 import ai.openclaw.app.ui.image.RemoteImageResult
 import ai.openclaw.app.ui.image.safeRemoteImageStore
-import ai.openclaw.app.ui.mobileAccent
-import ai.openclaw.app.ui.mobileAccentSoft
-import ai.openclaw.app.ui.mobileBorder
-import ai.openclaw.app.ui.mobileBorderStrong
-import ai.openclaw.app.ui.mobileCallout
-import ai.openclaw.app.ui.mobileCaption1
-import ai.openclaw.app.ui.mobileCaption2
-import ai.openclaw.app.ui.mobileCardSurface
-import ai.openclaw.app.ui.mobileCodeBg
-import ai.openclaw.app.ui.mobileCodeBorder
-import ai.openclaw.app.ui.mobileCodeText
-import ai.openclaw.app.ui.mobileDanger
-import ai.openclaw.app.ui.mobileText
-import ai.openclaw.app.ui.mobileTextSecondary
-import ai.openclaw.app.ui.mobileWarning
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,13 +20,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
@@ -49,70 +39,66 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-private data class ChatBubbleStyle(
-  val alignEnd: Boolean,
-  val containerColor: Color,
-  val borderColor: Color,
-  val roleColor: Color,
-)
-
 @Composable
 private fun ChatBubbleContainer(
-  style: ChatBubbleStyle,
-  roleLabel: String,
+  user: Boolean,
+  speaker: String,
   modifier: Modifier = Modifier,
+  borderColor: Color? = null,
   content: @Composable () -> Unit,
 ) {
   Row(
     modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = if (style.alignEnd) Arrangement.End else Arrangement.Start,
+    horizontalArrangement = if (user) Arrangement.End else Arrangement.Start,
   ) {
     Surface(
       shape = RoundedCornerShape(12.dp),
-      border = BorderStroke(1.dp, style.borderColor),
-      color = style.containerColor,
+      border = BorderStroke(1.dp, borderColor ?: if (user) ClawTheme.colors.accentBorder else ClawTheme.colors.borderStrong),
+      color = if (user) ClawTheme.colors.accentSoft else ClawTheme.colors.surfaceRaised,
       tonalElevation = 0.dp,
       shadowElevation = 0.dp,
-      modifier = Modifier.fillMaxWidth(0.90f),
+      modifier =
+        Modifier
+          .fillMaxWidth(0.90f)
+          .semantics(mergeDescendants = true) { contentDescription = speaker },
     ) {
       Column(
         modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
       ) {
-        Text(
-          text = nativeString(roleLabel),
-          style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-          color = style.roleColor,
-        )
         content()
       }
     }
@@ -214,8 +200,14 @@ private fun ChatLinkPreview(
       ) {
         Text(domain, style = ClawTheme.type.captionSmall, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         when (val preview = result) {
-          null -> Text(nativeString("Loading preview…"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-          LinkPreviewResult.Failed -> Text(nativeString("No preview available"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+          null -> {
+            Text(nativeString("Loading preview…"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+          }
+
+          LinkPreviewResult.Failed -> {
+            Text(nativeString("No preview available"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+          }
+
           is LinkPreviewResult.Loaded -> {
             preview.metadata.title?.let { title ->
               Text(
@@ -260,11 +252,11 @@ fun ChatTypingIndicatorBubble(
   val phrase = workingPhraseText(seed = runKey, elapsedMs = elapsedMs)
   val tokens = outputTokens?.let { localizedChatOutputTokens(it) }
   ChatBubbleContainer(
-    style = bubbleStyle("assistant"),
-    roleLabel = nativeString("OpenClaw"),
+    user = false,
+    speaker = nativeString("OpenClaw"),
   ) {
     Row(
-      modifier = Modifier.clearAndSetSemantics { contentDescription = nativeString("Working") },
+      modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = nativeString("Working") },
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -296,10 +288,19 @@ fun ChatOutboxBubble(
   val statusColor = if (failed) ClawTheme.colors.danger else ClawTheme.colors.warning
   val statusLabel =
     when (item.status) {
-      ChatOutboxStatus.Queued -> nativeString("Queued — sends when reconnected")
-      ChatOutboxStatus.Sending -> nativeString("Sending…")
-      ChatOutboxStatus.Accepted -> nativeString("Sent — confirming delivery…")
-      ChatOutboxStatus.Failed ->
+      ChatOutboxStatus.Queued -> {
+        nativeString("Queued — sends when reconnected")
+      }
+
+      ChatOutboxStatus.Sending -> {
+        nativeString("Sending…")
+      }
+
+      ChatOutboxStatus.Accepted -> {
+        nativeString("Sent — confirming delivery…")
+      }
+
+      ChatOutboxStatus.Failed -> {
         chatOutboxDisplayError(item.lastError)
           ?.trim()
           ?.takeIf { it.isNotEmpty() }
@@ -312,11 +313,13 @@ fun ChatOutboxBubble(
               }
             nativeString("Failed — \$it", localized)
           } ?: nativeString("Failed")
+      }
     }
 
   ChatBubbleContainer(
-    style = bubbleStyle("user").copy(borderColor = statusColor.copy(alpha = 0.6f)),
-    roleLabel = nativeString("You"),
+    user = true,
+    speaker = nativeString("You"),
+    borderColor = statusColor.copy(alpha = 0.6f),
   ) {
     if (item.text.isNotBlank()) {
       ChatMarkdown(text = item.text, textColor = ClawTheme.colors.text)
@@ -339,12 +342,12 @@ fun ChatOutboxBubble(
         modifier = Modifier.weight(1f),
       )
       if (failed && retryEnabled) {
-        ChatOutboxAction(label = nativeString("Retry"), color = ClawTheme.colors.accent, onClick = onRetry)
+        ChatOutboxAction(label = nativeString("Retry"), borderColor = ClawTheme.colors.accent, onClick = onRetry)
       }
       // Sending rows are mid-dispatch and accepted rows may already be delivered; both stay
       // action-free until reconciliation resolves them, so a delete can never race a send.
       if (item.status == ChatOutboxStatus.Queued || failed) {
-        ChatOutboxAction(label = nativeString("Delete"), color = ClawTheme.colors.textMuted, onClick = onDelete)
+        ChatOutboxAction(label = nativeString("Delete"), borderColor = ClawTheme.colors.textMuted, onClick = onDelete)
       }
     }
   }
@@ -353,15 +356,15 @@ fun ChatOutboxBubble(
 @Composable
 private fun ChatOutboxAction(
   label: String,
-  color: Color,
+  borderColor: Color,
   onClick: () -> Unit,
 ) {
   Surface(
     onClick = onClick,
     shape = RoundedCornerShape(8.dp),
     color = Color.Transparent,
-    contentColor = color,
-    border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
+    contentColor = ClawTheme.colors.text,
+    border = BorderStroke(1.dp, borderColor.copy(alpha = 0.5f)),
   ) {
     Text(
       text = label,
@@ -370,26 +373,6 @@ private fun ChatOutboxAction(
     )
   }
 }
-
-@Composable
-private fun bubbleStyle(role: String): ChatBubbleStyle =
-  when (role) {
-    "user" ->
-      ChatBubbleStyle(
-        alignEnd = true,
-        containerColor = ClawTheme.colors.successSoft,
-        borderColor = ClawTheme.colors.accent,
-        roleColor = ClawTheme.colors.accent,
-      )
-
-    else ->
-      ChatBubbleStyle(
-        alignEnd = false,
-        containerColor = ClawTheme.colors.surfaceRaised,
-        borderColor = ClawTheme.colors.borderStrong,
-        roleColor = ClawTheme.colors.textMuted,
-      )
-  }
 
 @Composable
 internal fun ChatBase64Image(
@@ -434,8 +417,11 @@ internal fun ChatManagedImage(
   }
 
   when {
-    image != null -> ChatImagePreview(image = checkNotNull(image), description = label, stateKey = artifactId)
-    failed ->
+    image != null -> {
+      ChatImagePreview(image = checkNotNull(image), description = label, stateKey = artifactId)
+    }
+
+    failed -> {
       Surface(
         onClick = { retryGeneration += 1 },
         shape = RoundedCornerShape(10.dp),
@@ -450,13 +436,16 @@ internal fun ChatManagedImage(
           color = ClawTheme.colors.textMuted,
         )
       }
-    else ->
+    }
+
+    else -> {
       Text(
         nativeString("Loading image…"),
         modifier = Modifier.padding(12.dp),
         style = ClawTheme.type.caption,
         color = ClawTheme.colors.textMuted,
       )
+    }
   }
 }
 
@@ -540,11 +529,10 @@ fun ChatCodeBlock(
   isComplete: Boolean = true,
 ) {
   val display = code.trimEnd()
-  // Syntax roles reuse semantic colors that keep at least 4.5:1 contrast against codeBg;
-  // changing these mappings can make highlighted code less readable than plain code.
+  // A custom accent may be too light for keywords on the code surface.
   val tokenColors =
     CodeTokenColors(
-      keyword = ClawTheme.colors.accent,
+      keyword = ClawTheme.colors.codeText,
       string = ClawTheme.colors.success,
       comment = ClawTheme.colors.textMuted,
       number = ClawTheme.colors.danger,
@@ -555,6 +543,7 @@ fun ChatCodeBlock(
     remember(display, language, isComplete, tokenColors) {
       if (isComplete) buildHighlightedCode(display, language, tokenColors) else AnnotatedString(display)
     }
+  val ranges = remember(display) { chatTextLayoutRanges(display, maxLines = 256) }
   Surface(
     shape = RoundedCornerShape(8.dp),
     color = ClawTheme.colors.codeBg,
@@ -569,12 +558,74 @@ fun ChatCodeBlock(
           color = ClawTheme.colors.textMuted,
         )
       }
-      Text(
-        text = highlighted,
-        fontFamily = FontFamily.Monospace,
-        style = ClawTheme.type.body,
-        color = ClawTheme.colors.codeText,
-      )
+      if (ranges.size == 1) {
+        SelectionContainer {
+          ChatCodeText(highlighted)
+        }
+      } else {
+        val scroll = rememberLazyListState()
+        val scope = rememberCoroutineScope()
+        val context = LocalContext.current
+        val onManualNavigation = LocalChatReaderNavigation.current
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          TextButton(onClick = {
+            onManualNavigation()
+            scope.launch { scroll.scrollToItem(0) }
+          }) { Text(nativeString("Start of code")) }
+          TextButton(onClick = {
+            onManualNavigation()
+            scope.launch { scroll.scrollToItem(ranges.size) }
+          }) { Text(nativeString("End of code")) }
+        }
+        TextButton(onClick = { copyChatText(context, code) }) { Text(nativeString("Copy code")) }
+        // Quoted Markdown asks for intrinsic height; the fixed viewport answers that
+        // without forwarding an unsupported intrinsic query into the lazy layout.
+        LazyColumn(state = scroll, modifier = Modifier.fillMaxWidth().height(400.dp)) {
+          items(ranges.size) { index ->
+            val range = ranges[index]
+            val end = range.last + 1
+            // A forced character boundary can fall immediately before a line break.
+            // The new layout already starts a line; account for that one separator only.
+            val visibleStart =
+              when {
+                index > 0 && display[range.first - 1] != '\n' && display.startsWith("\r\n", range.first) -> range.first + 2
+                index > 0 && display[range.first - 1] != '\n' && display[range.first] == '\n' -> range.first + 1
+                else -> range.first
+              }
+            // The next layout starts the next line. Do not render the boundary line
+            // break twice; source ranges and full-message actions still retain it.
+            val visibleEnd =
+              if (end < display.length && display[end - 1] == '\n') {
+                if (end > range.first + 1 && display[end - 2] == '\r') end - 2 else end - 1
+              } else {
+                end
+              }
+            // Selection cannot span recycled layouts. Copy code retains the full
+            // source even in workspace previews, which have no message-action menu.
+            // A separator-only range before an over-budget grapheme is already
+            // represented by its neighbors; an empty Text would add a blank line.
+            if (visibleStart <= visibleEnd) {
+              SelectionContainer {
+                ChatCodeText(highlighted.subSequence(visibleStart, visibleEnd))
+              }
+            }
+          }
+          // A terminal anchor lets End reveal the bottom of even a tall final layout.
+          item { Spacer(Modifier.height(1.dp)) }
+        }
+      }
     }
   }
+}
+
+@Composable
+private fun ChatCodeText(text: AnnotatedString) {
+  Text(
+    text = text,
+    fontFamily = FontFamily.Monospace,
+    // Every layout is part of the same code block; trimming each fragment's first
+    // and last line would change spacing at otherwise invisible boundaries.
+    style = ClawTheme.type.body.copy(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Proportional, LineHeightStyle.Trim.None)),
+    color = ClawTheme.colors.codeText,
+  )
 }

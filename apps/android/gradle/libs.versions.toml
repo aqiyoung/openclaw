@@ -28,7 +28,7 @@ kotest = "6.2.4"
 ksp = "2.3.11"
 ktlint-cli = "1.8.0"
 ktlint-gradle = "14.2.0"
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 material = "1.14.0"
 media3 = "1.11.0"
 okhttp = "5.5.0"
@@ -50,7 +50,6 @@ androidx-camera-video = { module = "androidx.camera:camera-video", version.ref =
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "androidx-compose-bom" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
-androidx-compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
