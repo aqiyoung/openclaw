@@ -2486,6 +2486,33 @@ private fun aboutUpdateText(latestVersion: String?): String =
     nativeString("A Gateway update is available. Run the update from the Web UI or CLI when you are ready.")
   }
 
+@Composable
+internal fun <T> SettingsSummaryContent(
+  state: GatewaySummaryState<T>,
+  connected: Boolean,
+  disconnectedText: String,
+  content: @Composable (T) -> Unit,
+) {
+  val summary = state.summary
+  when {
+    !connected -> {
+      ClawPanel {
+        Text(text = disconnectedText, style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+      }
+    }
+
+    summary != null -> {
+      content(summary)
+    }
+
+    !state.refreshing && state.errorText == null -> {
+      ClawPanel {
+        Text(text = nativeString("Load from gateway"), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+      }
+    }
+  }
+}
+
 /**
  * Shared settings detail shell with back navigation, title, subtitle, and section content.
  */
