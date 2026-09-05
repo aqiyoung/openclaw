@@ -1,12 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { aroundEach, describe, expect, it } from "vitest";
 import {
   classifyFailoverReason,
   isFailoverErrorMessage,
   isTimeoutErrorMessage,
 } from "../failover/classify.js";
+import { withPreparedFailoverProviders } from "../test-helpers/provider-failover-generation.js";
 import { classifyProviderRuntimeFailureKind } from "./provider-runtime-failure.js";
 
 describe("classifyProviderRuntimeFailureKind", () => {
+  aroundEach((runTest) =>
+    withPreparedFailoverProviders(["openai", "google", "anthropic"], runTest),
+  );
+
+  it("classifies complete HTML after an HTTP reason phrase as upstream_html", () => {
+    const raw = "HTTP 502 Bad Gateway\n\n<!doctype html><html><body>down</body></html>";
+
+    expect(classifyProviderRuntimeFailureKind(raw)).toBe("upstream_html");
+  });
+
   it("classifies generic resource-exhausted codes as rate_limit", () => {
     expect(
       classifyProviderRuntimeFailureKind({

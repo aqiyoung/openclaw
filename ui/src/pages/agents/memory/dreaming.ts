@@ -11,6 +11,7 @@ import type { ConfigSnapshot } from "../../../api/types.ts";
 import { t } from "../../../i18n/index.ts";
 import { copyToClipboard } from "../../../lib/clipboard.ts";
 import type { RuntimeConfigCapability } from "../../../lib/config/runtime-config-capability.ts";
+import { formatUiError } from "../../../lib/format-error.ts";
 import {
   canCallGatewayMethod,
   isGatewayMethodAdvertised,
@@ -62,6 +63,7 @@ export type WikiImportInsights = {
   totalItems: number;
   totalClusters: number;
   clusters: WikiImportInsightCluster[];
+  truncated: boolean;
 };
 
 type WikiOverviewItem = {
@@ -101,6 +103,7 @@ export type WikiOverview = {
   totalQuestions: number;
   totalContradictions: number;
   clusters: WikiOverviewCluster[];
+  truncated: boolean;
 };
 
 type DreamingResourceKey = "dreamingStatus" | "dreamDiary" | "wikiImportInsights" | "wikiOverview";
@@ -420,7 +423,7 @@ async function loadDreamingResource<Key extends DreamingResourceKey>(
     state[agentKey] = agentId;
   } catch (error) {
     if (state.resourceRequests[key] === request && resolveSelectedAgentId(state) === agentId) {
-      state[errorKey] = String(error);
+      state[errorKey] = formatUiError(error);
     }
   } finally {
     if (state.resourceRequests[key] === request) {
@@ -489,7 +492,7 @@ async function runDreamDiaryAction(
     };
     return true;
   } catch (err) {
-    const message = String(err);
+    const message = formatUiError(err);
     state.dreamingStatusError = message;
     state.lastError = message;
     state.dreamDiaryActionArchivePath = null;

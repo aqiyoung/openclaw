@@ -3,19 +3,17 @@ import type { ReplyDispatchKind } from "../../auto-reply/reply/reply-dispatcher.
 import type { ReplyPayload } from "../../auto-reply/types.js";
 import type {
   ChannelMessageUnknownSendReconciliationResult,
+  OutboundReplyFacts,
   RenderedMessageBatchPlanItem,
 } from "../../channels/message/types.js";
 import type { ReplyToMode } from "../../config/types.js";
 import type { PluginHookReplyPayloadSendingContext } from "../../plugins/hook-types.js";
 import type { DeliveryQueueCompletionRetention } from "../delivery-queue-sqlite.js";
-import type {
-  DeliveryQueueFailureRetention,
-  DeliveryQueueTerminalPolicy,
-} from "../delivery-queue-sqlite.types.js";
 import type { DurableDeliveryCompletion } from "./delivery-completion.js";
 import type { OutboundDeliveryFormattingOptions } from "./formatting.js";
 import type { OutboundIdentity } from "./identity.js";
 import type { DeliveryMirror } from "./mirror.js";
+import type { IndexedOutboundAuditTerminal } from "./outbound-audit.js";
 import type { PreparedOutboundBatch } from "./prepared-batch.js";
 import type { OutboundSessionContext } from "./session-context.js";
 
@@ -49,8 +47,7 @@ export type QueuedDeliveryPayload = {
   payloads?: ReplyPayload[];
   renderedBatchPlan?: QueuedRenderedMessageBatchPlan;
   threadId?: string | number | null;
-  replyToId?: string | null;
-  replyToMode?: ReplyToMode;
+  reply?: OutboundReplyFacts;
   formatting?: OutboundDeliveryFormattingOptions;
   identity?: OutboundIdentity;
   bestEffort?: boolean;
@@ -73,6 +70,8 @@ export type QueuedDeliveryPayload = {
 
 type LegacyQueuedDeliveryPayload = Omit<QueuedDeliveryPayload, "preparedBatch" | "payloads"> & {
   payloads: ReplyPayload[];
+  replyToId?: string | null;
+  replyToMode?: ReplyToMode;
   replyPayloadSendingHook?: QueuedReplyPayloadSendingHook;
 };
 
@@ -93,9 +92,16 @@ export interface LegacyQueuedDelivery extends LegacyQueuedDeliveryPayload {
 
 export type LegacyQueuedDeliveryPreparation = LegacyQueuedDelivery & {
   legacyPreparationState: "claimed" | "modifiers_started";
+  retainOnFailure?: true;
   legacyPreparationOwnerId?: string;
   legacyPreparationLeaseExpiresAt?: number;
 };
+
+export type DeliveryFailureSettlement = {
+  error: string;
+  unknownSendCleanup?: true;
+  terminals?: readonly IndexedOutboundAuditTerminal[];
+} & ({ outcome: "unknown" } | { outcome: "failed"; rejectionError?: string });
 
 export type QueuedDelivery = Omit<QueuedDeliveryPayload, "preparedBatch" | "payloads"> & {
   preparedBatch: PreparedOutboundBatch;
@@ -110,7 +116,11 @@ export type QueuedDelivery = Omit<QueuedDeliveryPayload, "preparedBatch" | "payl
   platformSendAttemptId?: string;
   platformSendStartedAt?: number;
   effectiveReplyToId?: string | null;
-  recoveryState?: "producer_claimed" | "send_attempt_started" | "unknown_after_send";
-  terminalPolicy?: DeliveryQueueTerminalPolicy;
-  failureRetention?: DeliveryQueueFailureRetention;
+  recoveryState?:
+    | "producer_claimed"
+    | "send_attempt_started"
+    | "unknown_after_send"
+    | "settlement_pending";
+  settlement?: DeliveryFailureSettlement;
+  retainOnFailure?: true;
 };

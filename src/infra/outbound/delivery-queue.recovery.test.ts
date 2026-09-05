@@ -9,47 +9,43 @@ import {
   beginConversationDeliveryOperation,
   getConversationDeliveryOperation,
   markConversationDeliveryRejected,
+  markConversationDeliverySent,
   markConversationDeliverySuppressed,
 } from "../../config/sessions/conversation-delivery-store.js";
-import { upsertSessionEntryCore } from "../../config/sessions/session-accessor.js";
+import {
+  loadSessionEntry,
+  replaceSessionEntry,
+  upsertSessionEntryCore,
+} from "../../config/sessions/session-accessor.js";
 import { buildConversationRef } from "../../routing/conversation-ref.js";
+import { createDeferredCore } from "../../shared/deferred.js";
 import { closeOpenClawAgentDatabasesForTest } from "../../state/openclaw-agent-db.js";
-import { openOpenClawStateDatabase } from "../../state/openclaw-state-db.js";
+import {
+  closeOpenClawStateDatabaseForTest,
+  openOpenClawStateDatabase,
+} from "../../state/openclaw-state-db.js";
 import { normalizeSessionDeliveryState } from "../../utils/delivery-context.shared.js";
-import { sweepDeliveryFailureMaintenance } from "../delivery-queue-failure-maintenance.js";
 import {
   OutboundDeliveryError,
   PlatformMessageNotDispatchedError,
   type OutboundPayloadDeliveryOutcome,
 } from "./deliver-types.js";
 import { attachOutboundDeliveryCommitHook } from "./delivery-commit-hooks.js";
-import {
-  finalizeOutboundFailedDelivery,
-  resubmitOutboundDelivery,
-} from "./delivery-queue-failures.js";
 import { pruneOrphanedDeliveryQueueMedia } from "./delivery-queue-media-spool.js";
-import {
-  loadDeliveryQueueMediaRetentionSnapshot,
-  OUTBOUND_DELIVERY_QUEUE_NAME,
-} from "./delivery-queue-media-staging.js";
+import { OUTBOUND_DELIVERY_QUEUE_NAME } from "./delivery-queue-media-staging.js";
+import { recoverPendingDeliveries, type DeliverFn } from "./delivery-queue-recovery.js";
 import {
   ackDelivery,
   claimDeliveryPlatformSendAttempt,
   enqueueDelivery,
   enqueueDeliveryOnce,
-  loadPendingDeliveries,
   markDeliveryPlatformOutcomeUnknown,
   markDeliveryPlatformSendDispatched,
   markDeliveryPlatformSendAttemptStarted,
-  moveToFailed,
   reserveDeliveryAttempt,
 } from "./delivery-queue-storage.js";
 import {
-  reconcileOutboundFailedDeliveryFinalizations,
-  recoverPendingDeliveries,
-  type DeliverFn,
-} from "./delivery-queue.js";
-import {
+  loadPendingDeliveries,
   asDeliverFn,
   createRecoveryLog,
   installDeliveryQueueTmpDirHooks,
@@ -164,16 +160,6 @@ describe("delivery-queue recovery", () => {
       tmpDir(),
     );
   }
-  async function createSpoolArtifact(suffix: string) {
-    const artifact = path.join(
-      tmpDir(),
-      "delivery-queue-media",
-      `00000000-0000-4000-8000-${suffix.padStart(12, "0")}.ogg`,
-    );
-    await fs.mkdir(path.dirname(artifact), { recursive: true });
-    await fs.writeFile(artifact, "audio-bytes");
-    return artifact;
-  }
   function enqueueDemoRecoveryDelivery(
     texts: string[] = ["x"],
     params: Partial<Parameters<typeof enqueueDelivery>[0]> = {},
@@ -227,7 +213,7 @@ describe("delivery-queue recovery", () => {
   }
   async function expectFailedQueue(id: string) {
     expect(await loadPendingDeliveries(tmpDir())).toHaveLength(0);
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
+    expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
   }
   async function expectPendingEntry(expected: Record<string, unknown>) {
     const entries = await loadPendingDeliveries(tmpDir());
@@ -323,6 +309,10 @@ describe("delivery-queue recovery", () => {
       });
       return { summary, log };
     } finally {
+      // Reset modules gives recovery its own SQLite cache; close that handle before discarding it.
+      const { closeOpenClawStateDatabaseForTest: closeRecoveryDatabase } =
+        await import("../../state/openclaw-state-db.js");
+      closeRecoveryDatabase();
       vi.doUnmock("./delivery-queue-storage.js");
       vi.resetModules();
     }
@@ -370,12 +360,75 @@ describe("delivery-queue recovery", () => {
           agentId: "main",
           operationId,
           storePath,
+          routeFingerprint: "route-recovery",
         },
       },
       operationId,
       tmpDir(),
     );
     return scope;
+  }
+  async function createPendingFinalRecoveryFixture(
+    deliveryId: string,
+    options: { withWriterAuthority?: boolean } = {},
+  ) {
+    const sessionKey = "agent:main:demo-channel-a:direct:pending-final";
+    const storePath = path.join(tmpDir(), "pending-final-sessions.json");
+    const lifecycleRevision = "pending-final-recovery-revision";
+    const writerRunId = "pending-final-recovery-writer";
+    const completion = {
+      kind: "pending-final" as const,
+      deliveryId,
+      intentId: "pending-final-recovery-intent",
+      sessionId: "pending-final-recovery-session",
+      sessionKey,
+      storePath,
+      ...(options.withWriterAuthority
+        ? {
+            sessionWriterDeliveryAuthority: {
+              agentId: "main",
+              expectedLifecycleRevision: lifecycleRevision,
+              expectedSessionId: "pending-final-recovery-session",
+              expectedWriterRunId: writerRunId,
+              sessionKey,
+              storePath,
+            },
+          }
+        : {}),
+    };
+    const context = { channel: "demo-channel-a", to: "+1" };
+    await replaceSessionEntry(
+      { sessionKey, storePath },
+      {
+        sessionId: completion.sessionId,
+        status: "running",
+        updatedAt: Date.now(),
+        ...(options.withWriterAuthority
+          ? { activeWriterRunId: writerRunId, lifecycleRevision }
+          : {}),
+        pendingFinalDelivery: {
+          kind: "replayable",
+          text: "recovered delivery identity may have been lost",
+          context,
+          createdAt: Date.now(),
+          intentId: completion.intentId,
+          deliveries: [{ id: deliveryId, state: "prepared" }],
+        },
+      },
+    );
+    await enqueueDeliveryOnce(
+      {
+        channel: "demo-channel-a",
+        to: "+1",
+        queuePolicy: "required",
+        maxRetries: 1,
+        payloads: [{ text: "recovered delivery identity may have been lost" }],
+        deliveryCompletion: completion,
+      },
+      deliveryId,
+      tmpDir(),
+    );
+    return { completion, context };
   }
   it("recovers entries from a simulated crash", async () => {
     await enqueueCrashRecoveryEntries();
@@ -398,7 +451,14 @@ describe("delivery-queue recovery", () => {
   it("finalizes a persisted conversation operation during queue recovery", async () => {
     const scope = await createConversationRecoveryFixture("operation-recovery");
     const deliveryResult = { channel: "reef" as const, messageId: "reef-platform" };
-    const deliver = vi.fn(async (params: { onDeliveryResult?: (result: unknown) => unknown }) => {
+    const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+      expect(params.deliveryCompletion).toBeUndefined();
+      expect(params.conversationDeliveryAttemptAuthority).toEqual({
+        agentId: "main",
+        operationId: "operation-recovery",
+        storePath: scope.storePath,
+        routeFingerprint: "route-recovery",
+      });
       await params.onDeliveryResult?.(deliveryResult);
       return [deliveryResult];
     });
@@ -415,29 +475,249 @@ describe("delivery-queue recovery", () => {
       closeOpenClawAgentDatabasesForTest();
     }
   });
-  it.each([
-    "acks a persisted suppressed conversation operation without replaying it",
-    "acks a persisted rejected conversation operation without replaying it",
-  ])("%s", async (name) => {
-    const rejected = name.includes("rejected");
-    const operationId = rejected ? "operation-rejected" : "operation-suppressed";
+  it("settles an explicit recovered no-send as suppression without replay", async () => {
+    const operationId = "operation-recovered-no-send";
     const scope = await createConversationRecoveryFixture(operationId);
-    await runIf(rejected, () =>
-      markConversationDeliveryRejected(scope, operationId, "atomic message limit"),
+    const { auditEvents, unsubscribe } = captureAuditEvents();
+    const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+      await markDeliveryPlatformSendAttemptStarted(
+        operationId,
+        tmpDir(),
+        undefined,
+        params.deliveryProducerClaimId,
+      );
+      await params.onPlatformSendStart?.({});
+      params.onPayloadDeliveryOutcome?.({
+        index: 0,
+        status: "suppressed",
+        reason: "adapter_returned_no_send",
+      });
+      return [];
+    });
+
+    try {
+      const first = await runRecovery({ deliver });
+
+      expect(first.result).toEqual(RECOVERY_SUMMARY.recovered);
+      expect(getConversationDeliveryOperation(scope, operationId)).toMatchObject({
+        status: "suppressed",
+      });
+      expect(await loadPendingDeliveries(tmpDir())).toEqual([]);
+      expectPayloadAudits(auditEvents, operationId, [
+        {
+          status: "blocked",
+          outcome: "suppressed",
+          reasonCode: "no_visible_payload",
+          resultCount: 0,
+        },
+      ]);
+
+      closeOpenClawAgentDatabasesForTest();
+      closeOpenClawStateDatabaseForTest();
+      const second = await runRecovery({ deliver });
+      expect(second.result).toEqual(RECOVERY_SUMMARY.empty);
+      expect(deliver).toHaveBeenCalledOnce();
+      expect(getConversationDeliveryOperation(scope, operationId)?.status).toBe("suppressed");
+      expect(auditEvents).toHaveLength(1);
+    } finally {
+      unsubscribe();
+      closeOpenClawAgentDatabasesForTest();
+    }
+  });
+  it.each([undefined, "adapter_returned_no_identity"] as const)(
+    "keeps an uncertainty notice owed when recovery returns no delivery identity (%s)",
+    async (reason) => {
+      const deliveryId = "pending-final-unknown-recovery";
+      const { completion, context } = await createPendingFinalRecoveryFixture(deliveryId);
+      const { auditEvents, unsubscribe } = captureAuditEvents();
+      const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+        expect(params.deliveryCompletion).toBeUndefined();
+        await markDeliveryPlatformSendAttemptStarted(deliveryId, tmpDir());
+        await params.onPlatformSendStart?.({});
+        if (reason) {
+          params.onPayloadDeliveryOutcome?.({ index: 0, status: "suppressed", reason });
+        }
+        return [];
+      });
+
+      const { result } = await runRecovery({ deliver });
+
+      expect(
+        loadSessionEntry({ sessionKey: completion.sessionKey, storePath: completion.storePath }),
+      ).toMatchObject({
+        pendingFinalDelivery: {
+          deliveries: [{ id: deliveryId, state: "unknown" }],
+        },
+        pendingDeliveryNotice: {
+          intentId: completion.intentId,
+          state: "owed",
+          context,
+        },
+      });
+      expect(result).toEqual(RECOVERY_SUMMARY.failed);
+      await expectPendingEntry({
+        id: deliveryId,
+        recoveryState: "unknown_after_send",
+        retryCount: 1,
+      });
+      expect(auditEvents).not.toContainEqual(
+        expect.objectContaining({ action: "message.outbound.finished" }),
+      );
+
+      setQueuedEntryState(tmpDir(), deliveryId, {
+        retryCount: 1,
+        enqueuedAt: 0,
+        lastAttemptAt: 0,
+        availableAt: 0,
+      });
+      const second = await runRecovery({ deliver });
+      unsubscribe();
+
+      expect(second.result).toEqual(RECOVERY_SUMMARY.failed);
+      expect(deliver).toHaveBeenCalledOnce();
+      expect(auditEvents.filter((event) => event.action === "message.outbound.finished")).toEqual([
+        expect.objectContaining({
+          sourceId: `message:outbound:queue:${deliveryId}:payload:0`,
+          outcome: "unknown",
+        }),
+      ]);
+    },
+  );
+  it.each(["onDirectAdapterHandoff", "onPlatformSendDispatch"] as const)(
+    "rejects a recovered pending final before %s after writer replacement",
+    async (transportBoundary) => {
+      const deliveryId = `pending-final-stale-recovery-${transportBoundary}`;
+      const { completion } = await createPendingFinalRecoveryFixture(deliveryId, {
+        withWriterAuthority: true,
+      });
+      const current = loadSessionEntry({
+        sessionKey: completion.sessionKey,
+        storePath: completion.storePath,
+      });
+      if (!current) {
+        throw new Error("test invariant: pending-final recovery session must exist");
+      }
+      await replaceSessionEntry(
+        { sessionKey: completion.sessionKey, storePath: completion.storePath },
+        {
+          ...current,
+          activeWriterRunId: "replacement-writer",
+          lifecycleRevision: "replacement-revision",
+          updatedAt: Date.now(),
+        },
+      );
+      const platformSend = vi.fn();
+      const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+        await params[transportBoundary]?.();
+        await platformSend();
+        return [];
+      });
+
+      const { result } = await runRecovery({ deliver });
+
+      expect(deliver).toHaveBeenCalledOnce();
+      expect(platformSend).not.toHaveBeenCalled();
+      expect(result).toEqual(RECOVERY_SUMMARY.failed);
+    },
+  );
+  it("rejects a recovered pending final when its writer changes after the awaited handoff", async () => {
+    const deliveryId = "pending-final-stale-after-handoff";
+    const { completion } = await createPendingFinalRecoveryFixture(deliveryId, {
+      withWriterAuthority: true,
+    });
+    const platformSend = vi.fn();
+    const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+      await params.onDirectAdapterHandoff?.();
+      const current = loadSessionEntry({
+        sessionKey: completion.sessionKey,
+        storePath: completion.storePath,
+      });
+      if (!current) {
+        throw new Error("test invariant: pending-final recovery session must exist");
+      }
+      await replaceSessionEntry(
+        { sessionKey: completion.sessionKey, storePath: completion.storePath },
+        {
+          ...current,
+          activeWriterRunId: "replacement-writer",
+          lifecycleRevision: "replacement-revision",
+          updatedAt: Date.now(),
+        },
+      );
+      params.assertDirectAdapterHandoff?.();
+      await platformSend();
+      return [];
+    });
+
+    const { result } = await runRecovery({ deliver });
+
+    expect(deliver).toHaveBeenCalledOnce();
+    expect(platformSend).not.toHaveBeenCalled();
+    expect(result).toEqual(RECOVERY_SUMMARY.failed);
+  });
+  it.each(["suppressed", "rejected", "sent"] as const)(
+    "acks a persisted %s conversation operation without replaying it",
+    async (state) => {
+      const rejected = state === "rejected";
+      const operationId = `operation-${state}`;
+      const scope = await createConversationRecoveryFixture(operationId);
+      await runIf(rejected, () =>
+        markConversationDeliveryRejected(scope, operationId, "atomic message limit"),
+      );
+      await runIf(state === "suppressed", () =>
+        markConversationDeliverySuppressed(scope, operationId),
+      );
+      await runIf(state === "sent", () =>
+        markConversationDeliverySent(scope, operationId, "reef-platform"),
+      );
+      const deliver = vi.fn();
+      closeOpenClawAgentDatabasesForTest();
+      closeOpenClawStateDatabaseForTest();
+      const { auditEvents, unsubscribe } = captureAuditEvents();
+      try {
+        const { result } = await runRecovery({ deliver });
+        expect(result).toMatchObject(rejected ? { failed: 1 } : { recovered: 1 });
+        expect(deliver).not.toHaveBeenCalled();
+        expect(getConversationDeliveryOperation(scope, operationId)).toMatchObject(
+          rejected
+            ? { status: "rejected", rejectionError: "atomic message limit" }
+            : { status: state },
+        );
+        expect(await loadPendingDeliveries(tmpDir())).toHaveLength(0);
+        expectPayloadAudits(auditEvents, operationId, [
+          rejected
+            ? { outcome: "failed", resultCount: 0 }
+            : state === "sent"
+              ? { outcome: "sent", resultCount: 1 }
+              : { outcome: "suppressed", reasonCode: "no_visible_payload", resultCount: 0 },
+        ]);
+        closeOpenClawAgentDatabasesForTest();
+        closeOpenClawStateDatabaseForTest();
+        expect((await runRecovery({ deliver })).result).toEqual(RECOVERY_SUMMARY.empty);
+        expect(auditEvents).toHaveLength(1);
+      } finally {
+        unsubscribe();
+        closeOpenClawAgentDatabasesForTest();
+      }
+    },
+  );
+  it("retires a stale pending-final owner without claiming suppression", async () => {
+    const { completion } = await createPendingFinalRecoveryFixture("stale-pending-final");
+    await replaceSessionEntry(
+      { sessionKey: completion.sessionKey, storePath: completion.storePath },
+      { sessionId: "replacement-session", updatedAt: Date.now() },
     );
-    await runIf(!rejected, () => markConversationDeliverySuppressed(scope, operationId));
+    closeOpenClawAgentDatabasesForTest();
+    closeOpenClawStateDatabaseForTest();
+    const { auditEvents, unsubscribe } = captureAuditEvents();
     const deliver = vi.fn();
     try {
-      const { result } = await runRecovery({ deliver });
-      expect(result).toMatchObject(rejected ? { failed: 1 } : { recovered: 1 });
+      expect((await runRecovery({ deliver })).result).toEqual(RECOVERY_SUMMARY.recovered);
       expect(deliver).not.toHaveBeenCalled();
-      expect(getConversationDeliveryOperation(scope, operationId)).toMatchObject(
-        rejected
-          ? { status: "rejected", rejectionError: "atomic message limit" }
-          : { status: "suppressed" },
-      );
-      expect(await loadPendingDeliveries(tmpDir())).toHaveLength(0);
+      expect(await loadPendingDeliveries(tmpDir())).toEqual([]);
+      expect(auditEvents).toEqual([]);
     } finally {
+      unsubscribe();
       closeOpenClawAgentDatabasesForTest();
     }
   });
@@ -446,24 +726,23 @@ describe("delivery-queue recovery", () => {
     ["checks bounded provider admission before replaying a reconciliable platform attempt", true],
   ])("%s", async (_, stableAttempt) => {
     const capture = stableAttempt ? undefined : captureAuditEvents();
-    const rejectedArtifact = stableAttempt ? undefined : await createSpoolArtifact("41");
     const id = stableAttempt
       ? "cron-direct-delivery:v1:blocked-reconciled-admission"
       : await enqueueRecoveryDelivery({
           channel: "slack",
           to: "C123",
           accountId: "enterprise",
-          payloads: [{ text: "blocked", mediaUrl: rejectedArtifact, audioAsVoice: true }],
+          payloads: [{ text: "blocked" }],
         });
-    const producerClaimId = stableAttempt
-      ? await enqueueClaimedRecoveryDelivery(id, {
-          channel: "slack",
-          to: "C123",
-          accountId: "enterprise",
-          payloads: [{ text: "disabled account must never be replayed" }],
-          completionRetention: BOUNDED_COMPLETION_RETENTION,
-        })
-      : undefined;
+    if (stableAttempt) {
+      await enqueueClaimedRecoveryDelivery(id, {
+        channel: "slack",
+        to: "C123",
+        accountId: "enterprise",
+        payloads: [{ text: "disabled account must never be replayed" }],
+        completionRetention: BOUNDED_COMPLETION_RETENTION,
+      });
+    }
     if (!stableAttempt) {
       setQueuedEntryState(tmpDir(), id, {
         retryCount: MAX_RETRIES,
@@ -499,70 +778,21 @@ describe("delivery-queue recovery", () => {
     );
     expect(reconcileUnknownSend).not.toHaveBeenCalled();
     expect(deliver).not.toHaveBeenCalled();
+    expect(result).toEqual(RECOVERY_SUMMARY.failed);
     if (stableAttempt) {
-      expect((await loadPendingDeliveries(tmpDir()))[0]).toMatchObject({
-        id,
-        recoveryState: "send_attempt_started",
-        platformSendAttemptId: producerClaimId,
-      });
-    } else {
-      expect(result).toEqual(RECOVERY_SUMMARY.failed);
+      expect(await loadPendingDeliveries(tmpDir())).toEqual([]);
       expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
-      const retainedFailure = readQueuedEntry(tmpDir(), id);
-      expect(retainedFailure).not.toHaveProperty("lastError");
-      expect(retainedFailure).toMatchObject({
-        terminalPolicy: {
-          detail: "compacted",
-          replay: "ambiguous",
-          reason: "admission_rejected",
-          evidence: "unknown_after_send",
-        },
-      });
+    } else {
+      expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
       expectPayloadAudits(capture?.auditEvents ?? [], id, [
         { status: "unknown", outcome: "unknown", failureStage: "queue" },
       ]);
-      await expect(fs.stat(rejectedArtifact!)).rejects.toMatchObject({ code: "ENOENT" });
       resolveOutboundChannelMessageAdapterMock.mockReturnValue({
         durableFinal: { admitDeferredDelivery: () => ({ status: "allowed" }) },
       });
       await runRecovery({ deliver });
       expect(deliver).not.toHaveBeenCalled();
     }
-  });
-  it("retains replay-safe media when recovery admission rejects before side effects", async () => {
-    const artifact = await createSpoolArtifact("42");
-    const id = await enqueueRecoveryDelivery({
-      channel: "slack",
-      to: "C123",
-      accountId: "enterprise",
-      payloads: [{ text: "blocked", mediaUrl: artifact, audioAsVoice: true }],
-    });
-    resolveOutboundChannelMessageAdapterMock.mockReturnValue({
-      durableFinal: {
-        admitDeferredDelivery: () => ({
-          status: "permanent_rejection" as const,
-          reason: "unsupported_enterprise_slack_delivery",
-        }),
-      },
-    });
-
-    const { result } = await runRecovery({ deliver: vi.fn() });
-
-    expect(result).toEqual(RECOVERY_SUMMARY.failed);
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
-    expect(readQueuedEntry(tmpDir(), id)).toMatchObject({
-      terminalPolicy: {
-        detail: "full",
-        replay: "safe",
-        fence: { kind: "none" },
-        reason: "admission_rejected",
-      },
-    });
-    await expect(fs.stat(artifact)).resolves.toBeDefined();
-    await expect(resubmitOutboundDelivery(id, tmpDir())).resolves.toEqual({ ok: true });
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("pending");
-    await ackDelivery(id, tmpDir());
-    await expect(fs.stat(artifact)).rejects.toMatchObject({ code: "ENOENT" });
   });
   it.each([
     ["paces startup replay instead of draining eligible entries back-to-back", 60_000],
@@ -612,7 +842,7 @@ describe("delivery-queue recovery", () => {
     expect(deliver).not.toHaveBeenCalled();
     expect(result.skippedMaxRetries).toBe(1);
     expect(result.deferredBackoff).toBe(0);
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
+    expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
     expectPayloadAudits(auditEvents, id, [{ outcome: "failed", failureStage: "queue" }]);
   });
   it.each([
@@ -635,7 +865,7 @@ describe("delivery-queue recovery", () => {
       shouldDeliver ? { recovered: 1, skippedMaxRetries: 0 } : { skippedMaxRetries: 1 },
     );
     if (checkStatus) {
-      expect(readOutboundQueueStatus(tmpDir(), id)).toBe(shouldDeliver ? undefined : "failed");
+      expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
     }
   });
   it("dead-letters max-retry entries even when conversation owner state is missing", async () => {
@@ -654,7 +884,7 @@ describe("delivery-queue recovery", () => {
       const { result } = await runRecovery({ deliver: vi.fn(), log });
       expect(result.skippedMaxRetries).toBe(1);
       expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
-      expectMockMessageContaining(log.warn, "owner state could not be marked unknown");
+      expect(readQueuedEntry(tmpDir(), id)).not.toHaveProperty("settlement");
     } finally {
       closeOpenClawAgentDatabasesForTest();
     }
@@ -727,7 +957,37 @@ describe("delivery-queue recovery", () => {
     await runRecovery({ deliver: replay });
     expect(replay).not.toHaveBeenCalled();
     expect(await loadPendingDeliveries(tmpDir())).toHaveLength(0);
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
+    expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
+  });
+  it("keeps a partially sent batch unknown when a later send has a permanent rejection", async () => {
+    const id = await enqueueDemoRecoveryDelivery(["first", "second"]);
+    const rejection = new PlatformMessageNotDispatchedError(
+      "Slack outbound delivery rejected: messages_tab_disabled",
+      { cause: new Error("messages_tab_disabled"), retryable: false },
+    );
+    const partialFailure = new OutboundDeliveryError("second send failed", {
+      cause: rejection,
+      results: [{ channel: "demo-channel-c", messageId: "m1" }],
+      payloadOutcomes: [
+        { index: 0, status: "sent", results: [{ channel: "demo-channel-c", messageId: "m1" }] },
+        {
+          index: 1,
+          status: "failed",
+          error: rejection,
+          sentBeforeError: false,
+          stage: "platform_send",
+        },
+      ],
+      stage: "platform_send",
+    });
+
+    const { result } = await runRecovery({
+      deliver: vi.fn().mockRejectedValue(partialFailure),
+    });
+
+    expect(result).toMatchObject({ recovered: 0, failed: 1 });
+    await expectPendingEntry({ id, recoveryState: "unknown_after_send", retryCount: 0 });
+    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("pending");
   });
   it("keeps a best-effort recovery failure retryable when no payload was sent", async () => {
     await enqueueDemoRecoveryDelivery(["first"], { bestEffort: true });
@@ -743,34 +1003,57 @@ describe("delivery-queue recovery", () => {
       lastError: "network down",
     });
   });
-  it.each([
-    {
-      name: "clears send evidence for an all-pre-connect best-effort recovery failure",
-      error: Object.assign(new Error("getaddrinfo EAI_AGAIN"), {
-        code: "EAI_AGAIN",
-        syscall: "getaddrinfo",
-      }),
-    },
-    {
-      name: "clears send evidence for an all-not-dispatched best-effort recovery failure",
-      error: new PlatformMessageNotDispatchedError("upload timed out before completion dispatch", {
-        cause: new Error("request timed out"),
-      }),
-    },
-  ])("$name", async ({ error }) => {
-    const id = await enqueueDemoRecoveryDelivery(["first"], { bestEffort: true });
-    const deliver = vi.fn(async (params: PayloadOutcomeSink) => {
+  it.each(
+    [
+      {
+        name: "classifies a pre-connect best-effort recovery failure",
+        error: Object.assign(new Error("getaddrinfo EAI_AGAIN"), {
+          code: "EAI_AGAIN",
+          syscall: "getaddrinfo",
+        }),
+      },
+      {
+        name: "classifies a provider-not-dispatched best-effort recovery failure",
+        error: new PlatformMessageNotDispatchedError(
+          "upload timed out before completion dispatch",
+          {
+            cause: new Error("request timed out"),
+          },
+        ),
+      },
+    ].flatMap((failure) => [
+      { ...failure, precedingReason: undefined },
+      { ...failure, precedingReason: "adapter_returned_no_send" as const },
+      { ...failure, precedingReason: "adapter_returned_no_identity" as const },
+    ]),
+  )("$name (preceding outcome: $precedingReason)", async ({ error, precedingReason }) => {
+    const id = await enqueueDemoRecoveryDelivery(
+      precedingReason ? ["first", "second"] : ["first"],
+      {
+        bestEffort: true,
+      },
+    );
+    const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
       await markDeliveryPlatformSendAttemptStarted(id, tmpDir());
-      reportPayloadFailure(params, error);
+      await params.onPlatformSendStart?.({});
+      if (precedingReason) {
+        params.onPayloadDeliveryOutcome?.({
+          index: 0,
+          status: "suppressed",
+          reason: precedingReason,
+        });
+      }
+      reportPayloadFailure(params, error, { index: precedingReason ? 1 : 0 });
       return [];
     });
     const { result } = await runRecovery({ deliver });
     expect(result).toMatchObject({ recovered: 0, failed: 1 });
-    await expectPendingEntry({
+    const ambiguous = precedingReason === "adapter_returned_no_identity";
+    const entry = await expectPendingEntry({
       retryCount: 1,
-      recoveryState: undefined,
-      platformSendStartedAt: undefined,
+      recoveryState: ambiguous ? "unknown_after_send" : undefined,
     });
+    expect(entry?.platformSendStartedAt).toEqual(ambiguous ? expect.any(Number) : undefined);
   });
   it("preserves send evidence when a marked recovery batch has an ambiguous failure", async () => {
     const id = await enqueueDemoRecoveryDelivery(["first", "second"], { bestEffort: true });
@@ -800,23 +1083,28 @@ describe("delivery-queue recovery", () => {
     });
     expect(typeof entry?.platformSendStartedAt).toBe("number");
   });
-  it("does not ack a partially sent best-effort recovery batch", async () => {
-    const id = await enqueueDemoRecoveryDelivery(["first", "second"], { bestEffort: true });
-    const deliver = vi.fn(async (params: PayloadOutcomeSink) => {
-      reportPayloadFailure(params, new Error("second send failed"), {
-        index: 1,
-        sentBeforeError: true,
+  it.each([false, true])(
+    "does not ack a partially sent best-effort recovery batch (identified: %s)",
+    async (identified) => {
+      const id = await enqueueDemoRecoveryDelivery(["first", "second"], { bestEffort: true });
+      const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+        await markDeliveryPlatformSendAttemptStarted(id, tmpDir());
+        await params.onPlatformSendStart?.({});
+        reportPayloadFailure(params, new Error("second send failed"), {
+          index: 1,
+          sentBeforeError: true,
+        });
+        return identified ? [{ channel: "demo-channel-c", messageId: "m1" }] : [];
       });
-      return [{ channel: "demo-channel-c", messageId: "m1" }];
-    });
-    const { result } = await runRecovery({ deliver });
-    expect(result).toMatchObject({ recovered: 0, failed: 1 });
-    await expectPendingEntry({ id, recoveryState: "unknown_after_send", retryCount: 0 });
-    const replay = vi.fn();
-    await runRecovery({ deliver: replay });
-    expect(replay).not.toHaveBeenCalled();
-    expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
-  });
+      const { result } = await runRecovery({ deliver });
+      expect(result).toMatchObject({ recovered: 0, failed: 1 });
+      await expectPendingEntry({ id, recoveryState: "unknown_after_send", retryCount: 0 });
+      const replay = vi.fn();
+      await runRecovery({ deliver: replay });
+      expect(replay).not.toHaveBeenCalled();
+      expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
+    },
+  );
   it.each([
     [
       "moves entries abandoned after platform send may have started to failed without reconciliation",
@@ -1061,7 +1349,7 @@ describe("delivery-queue recovery", () => {
     const id = await enqueueRecoveryDelivery({
       accountId: "acct-1",
       payloads: [{ text: "maybe sent" }],
-      replyToId: "root-message",
+      reply: { source: "implicit", replyToId: "root-message", mode: "all" },
       threadId: "thread-1",
       silent: true,
       maxRetries: 1,
@@ -1149,9 +1437,21 @@ describe("delivery-queue recovery", () => {
     expect(entry?.lastError).toContain("provider lookup timed out");
   });
   it("dead-letters an exhausted unknown send after retryable reconciliation fails", async () => {
+    const artifact = path.join(
+      tmpDir(),
+      "delivery-queue-media",
+      "00000000-0000-4000-8000-000000000099.ogg",
+    );
+    await fs.mkdir(path.dirname(artifact), { recursive: true });
+    await fs.writeFile(artifact, "private media");
+    const oldArtifactTime = new Date(Date.now() - 2 * 24 * 60 * 60_000);
+    await fs.utimes(artifact, oldArtifactTime, oldArtifactTime);
     const id = await enqueueUnknownRecovery({
       text: "unknown final attempt",
-      delivery: { maxRetries: 1 },
+      delivery: {
+        maxRetries: 1,
+        payloads: [{ text: "unknown final attempt", mediaUrl: artifact }],
+      },
       queue: { lastAttemptAt: Date.now() - 10_000_000 },
     });
     await reserveDeliveryAttempt(id, 1, tmpDir());
@@ -1160,334 +1460,33 @@ describe("delivery-queue recovery", () => {
       error: "provider lookup timed out",
       retryable: true,
     });
+    const cleanupStarted = createDeferredCore();
+    const releaseCleanup = createDeferredCore();
     const afterUnknownSendTerminal = vi.fn(async (ctx: { queueId: string }) => {
       expect(ctx.queueId).toBe(id);
-      expect(readOutboundQueueStatus(tmpDir(), id)).toBe("failed");
+      expect(readOutboundQueueStatus(tmpDir(), id)).toBeUndefined();
+      await expect(fs.stat(artifact)).resolves.toBeDefined();
+      cleanupStarted.resolve();
+      await releaseCleanup.promise;
     });
     installUnknownSendAdapter(reconcileUnknownSend, { afterUnknownSendTerminal });
     const deliver = vi.fn().mockResolvedValue([]);
-    const { result } = await runRecovery({ deliver });
+    const recovery = runRecovery({ deliver });
+    await cleanupStarted.promise;
+    await pruneOrphanedDeliveryQueueMedia({ stateDir: tmpDir() });
+    const survivedPausedCleanup = await fs.stat(artifact).then(
+      () => true,
+      () => false,
+    );
+    releaseCleanup.resolve();
+    const { result } = await recovery;
+    expect(survivedPausedCleanup).toBe(true);
     expect(reconcileUnknownSend).toHaveBeenCalledOnce();
     expect(deliver).not.toHaveBeenCalled();
     expect(result).toMatchObject({ failed: 1, skippedMaxRetries: 0 });
     await expectFailedQueue(id);
     expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-  });
-  it("recovers pending delivery independently of stranded owner finalization", async () => {
-    const artifact = await createSpoolArtifact("43");
-    const id = await enqueueRecoveryDelivery({
-      payloads: [{ text: "retained", mediaUrl: artifact }],
-      deliveryCompletion: {
-        kind: "conversation",
-        agentId: "main",
-        operationId: "crash-before-finalization",
-        storePath: path.join(tmpDir(), "agent-sessions.json"),
-      },
-    });
-    await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-    await moveToFailed(id, tmpDir());
-
-    await expect(
-      sweepDeliveryFailureMaintenance({
-        stateDir: tmpDir(),
-        now: Date.now() + 31 * 24 * 60 * 60_000,
-      }),
-    ).resolves.toMatchObject({ compacted: 0, deleted: 0, errors: 0 });
-    await pruneOrphanedDeliveryQueueMedia({ stateDir: tmpDir() });
-    await expect(fs.stat(artifact)).resolves.toBeDefined();
-
-    const pendingId = await enqueueRecoveryDelivery({ payloads: [{ text: "still pending" }] });
-    const { db } = openOpenClawStateDatabase({
-      env: { ...process.env, OPENCLAW_STATE_DIR: tmpDir() },
-    });
-    db.prepare(
-      `INSERT INTO delivery_queue_entries
-        (queue_name,id,status,entry_kind,retry_count,entry_json,enqueued_at,updated_at,failed_at)
-       VALUES (?,?,'failed','outbound',0,'{malformed',1,1,1)`,
-    ).run(OUTBOUND_DELIVERY_QUEUE_NAME, "malformed-owner-finalization");
-
-    const afterUnknownSendTerminal = vi.fn();
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-    const deliver = vi.fn().mockResolvedValue([]);
-    const { result } = await runRecovery({ deliver });
-
-    expect(result).toEqual(RECOVERY_SUMMARY.recovered);
-    expect(mockCallRecord(deliver)).toMatchObject({ deliveryQueueId: pendingId });
-    expect(afterUnknownSendTerminal).not.toHaveBeenCalled();
-    expect(readQueuedEntry(tmpDir(), id).terminalPolicy).toMatchObject({
-      detail: "full",
-      cleanup: "pending",
-      payload: "present",
-    });
-    await expect(fs.stat(artifact)).resolves.toBeDefined();
-
-    await reconcileOutboundFailedDeliveryFinalizations({
-      cfg: baseCfg,
-      log: createRecoveryLog(),
-      stateDir: tmpDir(),
-    });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    const finalized = readQueuedEntry(tmpDir(), id);
-    expect(finalized).toMatchObject({
-      terminalPolicy: {
-        detail: "compacted",
-        replay: "owner-managed",
-        cleanup: "complete",
-        payload: "none",
-      },
-    });
-    expect(finalized).not.toHaveProperty("preparedBatch");
-    expect(finalized).not.toHaveProperty("deliveryCompletion");
-    await expect(fs.stat(artifact)).rejects.toMatchObject({ code: "ENOENT" });
-  });
-  it("keeps failed provider cleanup pending until a later reconciliation succeeds", async () => {
-    const createCrashFailure = async (operationId: string) => {
-      const id = await enqueueRecoveryDelivery({
-        payloads: [{ text: operationId }],
-        deliveryCompletion: {
-          kind: "conversation",
-          agentId: "main",
-          operationId,
-          storePath: path.join(tmpDir(), "agent-sessions.json"),
-        },
-      });
-      await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-      await moveToFailed(id, tmpDir());
-      return id;
-    };
-    const failedCleanupId = await createCrashFailure("cleanup-fails");
-    const laterId = await createCrashFailure("cleanup-continues");
-    const completeId = await createCrashFailure("cleanup-complete");
-    await finalizeOutboundFailedDelivery(completeId, tmpDir());
-    let cleanupUnavailable = true;
-    const afterUnknownSendTerminal = vi.fn(async (ctx: { queueId: string }) => {
-      if (ctx.queueId === failedCleanupId && cleanupUnavailable) {
-        throw new Error("provider cleanup unavailable");
-      }
-    });
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-    const log = createRecoveryLog();
-
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal.mock.calls.map(([ctx]) => ctx.queueId).toSorted()).toEqual(
-      [failedCleanupId, laterId].toSorted(),
-    );
-    expect(readQueuedEntry(tmpDir(), failedCleanupId).terminalPolicy).toMatchObject({
-      detail: "full",
-      cleanup: "pending",
-    });
-    expect(readQueuedEntry(tmpDir(), laterId).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-    });
-    expect(readQueuedEntry(tmpDir(), completeId).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-    });
-    expectMockMessageContaining(log.warn, "provider cleanup unavailable");
-
-    cleanupUnavailable = false;
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal.mock.calls.map(([ctx]) => ctx.queueId)).toEqual([
-      failedCleanupId,
-      laterId,
-      failedCleanupId,
-    ]);
-    expect(readQueuedEntry(tmpDir(), failedCleanupId).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-    });
-  });
-  it("keeps owner cleanup pending until the channel adapter is available", async () => {
-    const id = await enqueueRecoveryDelivery({
-      payloads: [{ text: "adapter unavailable" }],
-      deliveryCompletion: {
-        kind: "conversation",
-        agentId: "main",
-        operationId: "adapter-unavailable-cleanup",
-        storePath: path.join(tmpDir(), "agent-sessions.json"),
-      },
-    });
-    await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-    await moveToFailed(id, tmpDir());
-    const log = createRecoveryLog();
-
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(readQueuedEntry(tmpDir(), id)).toMatchObject({
-      preparedBatch: expect.any(Object),
-      terminalPolicy: {
-        detail: "full",
-        cleanup: "pending",
-        payload: "present",
-      },
-    });
-    expectMockMessageContaining(log.warn, "channel adapter unavailable");
-
-    const afterUnknownSendTerminal = vi.fn();
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-      payload: "none",
-    });
-  });
-  it("retries exact media cleanup without rerunning successful provider cleanup", async () => {
-    const artifact = await createSpoolArtifact("46");
-    const id = await enqueueRecoveryDelivery({
-      payloads: [{ text: "retained", mediaUrl: artifact }],
-      deliveryCompletion: {
-        kind: "conversation",
-        agentId: "main",
-        operationId: "media-cleanup-retry",
-        storePath: path.join(tmpDir(), "agent-sessions.json"),
-      },
-    });
-    await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-    await moveToFailed(id, tmpDir());
-    const afterUnknownSendTerminal = vi.fn();
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-    await fs.unlink(artifact);
-    await fs.mkdir(artifact);
-    await fs.writeFile(path.join(artifact, "busy"), "spool unavailable");
-    const log = createRecoveryLog();
-
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id)).toMatchObject({
-      preparedBatch: expect.any(Object),
-      terminalPolicy: {
-        detail: "full",
-        cleanup: "media_pending",
-        payload: "present",
-      },
-    });
-    await expect(fs.stat(path.join(artifact, "busy"))).resolves.toBeDefined();
-    const retained = loadDeliveryQueueMediaRetentionSnapshot({
-      stateDir: tmpDir(),
-      expireBeforeMs: Date.now() + 2 * 24 * 60 * 60_000,
-    });
-    expect(JSON.stringify(retained.payloads)).toContain(artifact);
-    expectMockMessageContaining(log.warn, "not empty");
-
-    await fs.rm(artifact, { recursive: true });
-    await fs.writeFile(artifact, "audio-bytes");
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-      payload: "none",
-    });
-    await expect(fs.stat(artifact)).rejects.toMatchObject({ code: "ENOENT" });
-  });
-  it("retries compaction idempotently after exact media was already removed", async () => {
-    const artifact = await createSpoolArtifact("47");
-    const id = await enqueueRecoveryDelivery({
-      payloads: [{ text: "retained", mediaUrl: artifact }],
-      deliveryCompletion: {
-        kind: "conversation",
-        agentId: "main",
-        operationId: "post-unlink-crash",
-        storePath: path.join(tmpDir(), "agent-sessions.json"),
-      },
-    });
-    await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-    await moveToFailed(id, tmpDir());
-    const afterUnknownSendTerminal = vi.fn();
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-    const { db } = openOpenClawStateDatabase({
-      env: { ...process.env, OPENCLAW_STATE_DIR: tmpDir() },
-    });
-    db.exec(`CREATE TRIGGER reject_owner_media_compaction
-      BEFORE UPDATE ON delivery_queue_entries
-      WHEN OLD.id = '${id}'
-        AND json_extract(OLD.entry_json, '$.terminalPolicy.cleanup') = 'media_pending'
-      BEGIN SELECT RAISE(ABORT, 'simulated crash before compaction'); END`);
-    const log = createRecoveryLog();
-
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id).terminalPolicy).toMatchObject({
-      detail: "full",
-      cleanup: "media_pending",
-    });
-    await expect(fs.stat(artifact)).rejects.toMatchObject({ code: "ENOENT" });
-    expectMockMessageContaining(log.warn, "simulated crash before compaction");
-
-    db.exec("DROP TRIGGER reject_owner_media_compaction");
-    await reconcileOutboundFailedDeliveryFinalizations({ cfg: baseCfg, log, stateDir: tmpDir() });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id).terminalPolicy).toMatchObject({
-      detail: "compacted",
-      cleanup: "complete",
-    });
-  });
-  it("does not finalize replacement media when a failed-row CAS loses its owner", async () => {
-    const oldArtifact = await createSpoolArtifact("44");
-    const newArtifact = await createSpoolArtifact("45");
-    const id = await enqueueRecoveryDelivery({
-      payloads: [{ mediaUrl: oldArtifact }],
-      deliveryCompletion: {
-        kind: "conversation",
-        agentId: "main",
-        operationId: "old-owner",
-        storePath: path.join(tmpDir(), "agent-sessions.json"),
-      },
-    });
-    await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-    await moveToFailed(id, tmpDir());
-    const afterUnknownSendTerminal = vi.fn(async () => {
-      const { db } = openOpenClawStateDatabase({
-        env: { ...process.env, OPENCLAW_STATE_DIR: tmpDir() },
-      });
-      db.prepare("DELETE FROM delivery_queue_entries WHERE queue_name = ? AND id = ?").run(
-        OUTBOUND_DELIVERY_QUEUE_NAME,
-        id,
-      );
-      await enqueueDeliveryOnce(
-        {
-          channel: "demo-channel-a",
-          to: "+1",
-          payloads: [{ mediaUrl: newArtifact }],
-          deliveryCompletion: {
-            kind: "conversation",
-            agentId: "main",
-            operationId: "replacement-owner",
-            storePath: path.join(tmpDir(), "agent-sessions.json"),
-          },
-        },
-        id,
-        tmpDir(),
-      );
-      await markDeliveryPlatformOutcomeUnknown(id, tmpDir());
-      await moveToFailed(id, tmpDir());
-    });
-    installUnknownSendAdapter(vi.fn(), { afterUnknownSendTerminal });
-
-    await reconcileOutboundFailedDeliveryFinalizations({
-      cfg: baseCfg,
-      log: createRecoveryLog(),
-      stateDir: tmpDir(),
-    });
-
-    expect(afterUnknownSendTerminal).toHaveBeenCalledOnce();
-    expect(readQueuedEntry(tmpDir(), id)).toMatchObject({
-      deliveryCompletion: { operationId: "replacement-owner" },
-      terminalPolicy: { detail: "full", cleanup: "pending" },
-    });
-    await expect(fs.stat(oldArtifact)).resolves.toBeDefined();
-    await expect(fs.stat(newArtifact)).resolves.toBeDefined();
+    await expect(fs.stat(artifact)).rejects.toThrow();
   });
   it.each([
     [
@@ -1523,6 +1522,57 @@ describe("delivery-queue recovery", () => {
     const typedRejection = error instanceof PlatformMessageNotDispatchedError;
     await runIf(typedRejection, () => expect(deliver).toHaveBeenCalledOnce());
     await runIf(!typedRejection, () => expectMockMessageContaining(log.warn, "permanent error"));
+  });
+  it("persists a nested channel rejection as the only terminal across recovery restart", async () => {
+    const operationId = "operation-channel-permanent-rejection";
+    const scope = await createConversationRecoveryFixture(operationId);
+    const rejection = new PlatformMessageNotDispatchedError(
+      "Slack chat.postMessage rejected: messages_tab_disabled",
+      {
+        cause: new Error("messages_tab_disabled"),
+        retryable: false,
+      },
+    );
+    const deliver = vi.fn().mockRejectedValue(
+      new OutboundDeliveryError("Slack delivery failed", {
+        cause: rejection,
+        payloadOutcomes: [
+          {
+            index: 0,
+            status: "failed",
+            error: rejection,
+            sentBeforeError: false,
+            stage: "platform_send",
+          },
+        ],
+        stage: "platform_send",
+      }),
+    );
+
+    try {
+      const first = await runRecovery({ deliver });
+      expect(first.result).toEqual(RECOVERY_SUMMARY.failed);
+      expect(deliver).toHaveBeenCalledOnce();
+      expect(getConversationDeliveryOperation(scope, operationId)).toMatchObject({
+        status: "rejected",
+        rejectionError: "Slack chat.postMessage rejected: messages_tab_disabled",
+      });
+      expect(await loadPendingDeliveries(tmpDir())).toHaveLength(0);
+      expect(readOutboundQueueStatus(tmpDir(), operationId)).toBe("failed");
+
+      closeOpenClawAgentDatabasesForTest();
+      const replay = vi.fn();
+      const second = await runRecovery({ deliver: replay });
+      expect(second.result).toEqual(RECOVERY_SUMMARY.empty);
+      expect(replay).not.toHaveBeenCalled();
+      expect(getConversationDeliveryOperation(scope, operationId)).toMatchObject({
+        status: "rejected",
+        rejectionError: "Slack chat.postMessage rejected: messages_tab_disabled",
+      });
+      expect(readOutboundQueueStatus(tmpDir(), operationId)).toBe("failed");
+    } finally {
+      closeOpenClawAgentDatabasesForTest();
+    }
   });
   it("passes skipQueue: true to prevent re-enqueueing during recovery", async () => {
     await enqueueRecoveryDelivery();
@@ -1568,7 +1618,7 @@ describe("delivery-queue recovery", () => {
   });
   it.each([
     ["marks a recovered send unknown before ack so ack failure cannot make it replayable", "ack"],
-    ["keeps a recovered zero-result delivery retryable when ack fails", "zero-result-ack"],
+    ["recovers an explicit no-send after ack failure and database reopen", "zero-result-ack"],
     ["directly acks a recovered send when its post-send marker fails", "marker"],
     ["retains unknown-after-send when recovered-send marking and ack both fail", "marker-and-ack"],
   ])("%s", async (_, mode) => {
@@ -1576,6 +1626,24 @@ describe("delivery-queue recovery", () => {
     const markerFails = mode === "marker" || mode === "marker-and-ack";
     const ackFails = mode === "ack" || mode === "zero-result-ack" || mode === "marker-and-ack";
     let recoveryStateAtAck: string | undefined;
+    const deliver = vi.fn(async (params: Parameters<DeliverFn>[0]) => {
+      if (mode !== "zero-result-ack") {
+        return [{ channel: "demo-channel-a", messageId: "m1" }];
+      }
+      await markDeliveryPlatformSendAttemptStarted(
+        id,
+        tmpDir(),
+        undefined,
+        params.deliveryProducerClaimId,
+      );
+      await params.onPlatformSendStart?.({});
+      params.onPayloadDeliveryOutcome?.({
+        index: 0,
+        status: "suppressed",
+        reason: "adapter_returned_no_send",
+      });
+      return [];
+    });
     const { summary, log } = await runRecoveryWithStorageOverrides({
       overrides: (actual) => ({
         ...(markerFails
@@ -1588,20 +1656,14 @@ describe("delivery-queue recovery", () => {
         ...(ackFails
           ? {
               ackDelivery: vi.fn(async (entryId: string, stateDir?: string) => {
-                if (mode === "ack") {
-                  recoveryStateAtAck = (await actual.loadPendingDelivery(entryId, stateDir))
-                    ?.recoveryState;
-                }
+                recoveryStateAtAck = (await actual.loadPendingDelivery(entryId, stateDir))
+                  ?.recoveryState;
                 throw new Error("ack state db locked");
               }),
             }
           : {}),
       }),
-      deliver: vi
-        .fn()
-        .mockResolvedValue(
-          mode === "zero-result-ack" ? [] : [{ channel: "demo-channel-a", messageId: "m1" }],
-        ),
+      deliver,
     });
     if (mode === "marker") {
       expect(summary).toEqual(RECOVERY_SUMMARY.recovered);
@@ -1618,7 +1680,7 @@ describe("delivery-queue recovery", () => {
     }
     const pending = await expectPendingEntry({
       id,
-      recoveryState: mode === "zero-result-ack" ? undefined : "unknown_after_send",
+      ...(mode === "zero-result-ack" ? {} : { recoveryState: "unknown_after_send" }),
       ...(mode === "ack" ? {} : { retryCount: 1 }),
     });
     await runIf(markerFails, () =>
@@ -1627,6 +1689,27 @@ describe("delivery-queue recovery", () => {
     expect(pending?.lastError).toContain(
       mode === "marker-and-ack" ? "ack=ack state db locked" : "ack state db locked",
     );
+    if (mode === "zero-result-ack") {
+      expect(recoveryStateAtAck).toBe("send_attempt_started");
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 60_000);
+      closeOpenClawStateDatabaseForTest();
+      const { auditEvents, unsubscribe } = captureAuditEvents();
+      try {
+        const replay = await runRecovery({ deliver });
+        expect(replay.result).toEqual(RECOVERY_SUMMARY.recovered);
+        expect(pending?.recoveryState).toBeUndefined();
+        expect(pending?.platformSendStartedAt).toBeUndefined();
+        expect(pending?.platformSendAttemptId).toBeUndefined();
+        expect(deliver).toHaveBeenCalledTimes(2);
+        expect(await loadPendingDeliveries(tmpDir())).toEqual([]);
+        expectPayloadAudits(auditEvents, id, [
+          { outcome: "suppressed", reasonCode: "no_visible_payload", resultCount: 0 },
+        ]);
+      } finally {
+        unsubscribe();
+        clock.mockRestore();
+      }
+    }
   });
   it("retains later media until an early recovery ack finishes the batch", async () => {
     const spoolDir = path.join(tmpDir(), "delivery-queue-media");
@@ -1724,8 +1807,7 @@ describe("delivery-queue recovery", () => {
   });
   it("replays stored delivery options during recovery", async () => {
     const storedOptions = {
-      replyToId: "root-message",
-      replyToMode: "first",
+      reply: { replyToId: "root-message", source: "implicit", mode: "first" } as const,
       formatting: {
         textLimit: 1234,
         maxLinesPerMessage: 7,

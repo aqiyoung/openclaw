@@ -1,50 +1,86 @@
 import type { EnvironmentSummary, WorkerDesktopAppId } from "@openclaw/gateway-protocol";
-import { html, nothing, svg } from "lit";
+import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../../i18n/index.ts";
+import { registerDesktopEnglish } from "../../i18n/locales/en-desktop.ts";
 import { icons } from "../icons.ts";
+import { renderPanelLoadingSkeleton } from "../panel-loading-skeleton.ts";
 import { desktopAppIcon, desktopAppLabel } from "./desktop-app-presentation.ts";
 import type { DesktopPanelState } from "./desktop-panel-state.ts";
 import { desktopSourceForEnvironment } from "./desktop-source.ts";
 
-const CLOSE_GLYPH = svg`<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>`;
-const DOCK_BOTTOM_GLYPH = svg`<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M2 10h12" /></svg>`;
-const DOCK_RIGHT_GLYPH = svg`<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M10 2.5v11" /></svg>`;
+registerDesktopEnglish();
+
+export function renderDesktopPanelContent(options: {
+  state: DesktopPanelState;
+  notice: TemplateResult | typeof nothing;
+  picker: TemplateResult;
+  credentials: TemplateResult;
+  recovery: TemplateResult;
+  connection: TemplateResult;
+}) {
+  return html`
+    <div class="desktop-content">
+      ${options.notice}
+      ${
+        options.state === "picker"
+          ? options.picker
+          : options.state === "inventory-error" || options.state === "disconnected"
+            ? options.recovery
+            : options.state === "credentials"
+              ? options.credentials
+              : options.connection
+      }
+    </div>
+  `;
+}
 
 export function renderDesktopPanelHeader(options: {
   dock: "bottom" | "right";
+  fullscreenControl: TemplateResult;
   onClose: () => void;
   onDock: (dock: "bottom" | "right") => void;
+  onOpenWindow: () => void;
 }) {
   return html`
-    <header class="bp-header">
-      <div class="bp-title">${t("desktop.title")}</div>
-      <div class="bp-actions">
+    <header class="rail-header bp-header">
+      <div class="rail-header__title bp-title">${t("desktop.title")}</div>
+      <div class="rail-header__actions bp-actions">
         <button
-          class="bp-icon ${options.dock === "bottom" ? "is-active" : ""}"
+          class="rail-header__action bp-icon ${options.dock === "bottom" ? "is-active" : ""}"
           type="button"
           title=${t("desktop.dockBottom")}
           aria-label=${t("desktop.dockBottom")}
           @click=${() => options.onDock("bottom")}
         >
-          ${DOCK_BOTTOM_GLYPH}
+          ${icons.panelBottomOpen}
         </button>
         <button
-          class="bp-icon ${options.dock === "right" ? "is-active" : ""}"
+          class="rail-header__action bp-icon ${options.dock === "right" ? "is-active" : ""}"
           type="button"
           title=${t("desktop.dockRight")}
           aria-label=${t("desktop.dockRight")}
           @click=${() => options.onDock("right")}
         >
-          ${DOCK_RIGHT_GLYPH}
+          ${icons.panelRightOpen}
         </button>
         <button
-          class="bp-icon"
+          class="rail-header__action bp-icon bp-open-window"
+          type="button"
+          title=${t("desktop.openWindow")}
+          aria-label=${t("desktop.openWindow")}
+          @click=${options.onOpenWindow}
+        >
+          ${icons.externalLink}
+        </button>
+        ${options.fullscreenControl}
+        <button
+          class="rail-header__action bp-icon"
           type="button"
           title=${t("desktop.hide")}
           aria-label=${t("desktop.hide")}
           @click=${options.onClose}
         >
-          ${CLOSE_GLYPH}
+          ${icons.x}
         </button>
       </div>
     </header>
@@ -71,13 +107,15 @@ export function renderDesktopPicker(options: {
       </button>
     </div>
     <div class="desktop-picker">
-      ${options.loading && options.environments.length === 0
-        ? html`<div class="desktop-status">${t("desktop.loading")}</div>`
-        : options.environments.length === 0
-          ? html`<div class="desktop-status">${t("desktop.empty")}</div>`
-          : options.environments.map((environment) =>
-              renderDesktopEnvironment(environment, options.onConnect),
-            )}
+      ${
+        options.loading && options.environments.length === 0
+          ? renderPanelLoadingSkeleton("desktop", t("desktop.loading"))
+          : options.environments.length === 0
+            ? html`<div class="desktop-status">${t("desktop.empty")}</div>`
+            : options.environments.map((environment) =>
+                renderDesktopEnvironment(environment, options.onConnect),
+              )
+      }
     </div>
   `;
 }
@@ -97,13 +135,15 @@ function renderDesktopEnvironment(
         <div class="desktop-environment__meta">
           <span>${worker?.state ?? environment.status}</span>
         </div>
-        ${worker && worker.attachedSessionIds.length > 0
-          ? html`<div class="desktop-environment__sessions">
-              ${worker.attachedSessionIds.map(
-                (sessionId) => html`<span class="desktop-session">${sessionId}</span>`,
-              )}
-            </div>`
-          : nothing}
+        ${
+          worker && worker.attachedSessionIds.length > 0
+            ? html`<div class="desktop-environment__sessions">
+                ${worker.attachedSessionIds.map(
+                  (sessionId) => html`<span class="desktop-session">${sessionId}</span>`,
+                )}
+              </div>`
+            : nothing
+        }
       </div>
       <button
         class="desktop-button desktop-button--primary"
@@ -125,19 +165,21 @@ export function renderDesktopCredentials(options: {
     <div class="desktop-status">
       <form class="desktop-credentials" @submit=${options.onSubmit}>
         <div>${t(options.ardAccount ? "desktop.accountPrompt" : "desktop.passwordPrompt")}</div>
-        ${options.ardAccount
-          ? html`<label class="desktop-credentials__label">
-              ${t("desktop.usernameLabel")}
-              <input
-                class="desktop-credentials__input"
-                name="username"
-                type="text"
-                autocomplete="off"
-                .value=${options.username}
-                required
-              />
-            </label>`
-          : nothing}
+        ${
+          options.ardAccount
+            ? html`<label class="desktop-credentials__label">
+                ${t("desktop.usernameLabel")}
+                <input
+                  class="desktop-credentials__input"
+                  name="username"
+                  type="text"
+                  autocomplete="off"
+                  .value=${options.username}
+                  required
+                />
+              </label>`
+            : nothing
+        }
         <label class="desktop-credentials__label">
           ${t(options.ardAccount ? "desktop.accountPasswordLabel" : "desktop.passwordLabel")}
           <input
@@ -169,33 +211,35 @@ export function renderDesktopConnection(options: {
 }) {
   return html`
     <div class="desktop-toolbar desktop-toolbar--connection">
-      ${options.showApps && options.desktopApps.length > 0
-        ? html`<div class="desktop-apps">
-            ${options.desktopApps.map((app) => {
-              const launching = options.launchingApp === app;
-              const label = desktopAppLabel(app);
-              return html`<button
-                class="desktop-app-button"
-                type="button"
-                title=${label}
-                aria-label=${label}
-                aria-busy=${launching ? "true" : "false"}
-                ?disabled=${!options.environmentSelected || launching}
-                @click=${() => options.onLaunch(app)}
-              >
-                <span
-                  class="desktop-app-button__icon ${launching
-                    ? "desktop-app-button__icon--launching"
-                    : ""}"
-                  aria-hidden="true"
+      ${
+        options.showApps && options.desktopApps.length > 0
+          ? html`<div class="desktop-apps">
+              ${options.desktopApps.map((app) => {
+                const launching = options.launchingApp === app;
+                const label = desktopAppLabel(app);
+                return html`<button
+                  class="desktop-app-button"
+                  type="button"
+                  title=${label}
+                  aria-label=${label}
+                  aria-busy=${launching ? "true" : "false"}
+                  ?disabled=${!options.environmentSelected || launching}
+                  @click=${() => options.onLaunch(app)}
                 >
-                  ${desktopAppIcon(app)}
-                </span>
-                <span>${label}</span>
-              </button>`;
-            })}
-          </div>`
-        : nothing}
+                  <span
+                    class="desktop-app-button__icon ${
+                      launching ? "desktop-app-button__icon--launching" : ""
+                    }"
+                    aria-hidden="true"
+                  >
+                    ${desktopAppIcon(app)}
+                  </span>
+                  <span>${label}</span>
+                </button>`;
+              })}
+            </div>`
+          : nothing
+      }
       <span class="desktop-toolbar__spacer"></span>
       <button
         class="desktop-toolbar-action"
@@ -209,33 +253,30 @@ export function renderDesktopConnection(options: {
     </div>
     <div class="desktop-stage">
       <div class="desktop-surface"></div>
-      ${!options.controlling
-        ? html`<button
-            class="desktop-stage__take-control"
-            type="button"
-            title=${t("desktop.takeControl")}
-            aria-label=${t("desktop.takeControl")}
-            @click=${options.onTakeControl}
-          ></button>`
-        : nothing}
-      ${options.state === "connecting"
-        ? html`<div class="desktop-connecting" role="status" aria-live="polite">
-            <span class="desktop-connecting__monitor" aria-hidden="true">${icons.monitor}</span>
-            <span class="desktop-connecting__copy">
-              ${t("desktop.connecting")}
-              <span class="desktop-connecting__dots" aria-hidden="true">
-                <span class="desktop-connecting__dot"></span>
-                <span class="desktop-connecting__dot"></span>
-                <span class="desktop-connecting__dot"></span>
-              </span>
-            </span>
-          </div>`
-        : nothing}
+      ${
+        !options.controlling
+          ? html`<button
+              class="desktop-stage__take-control"
+              type="button"
+              title=${t("desktop.takeControl")}
+              aria-label=${t("desktop.takeControl")}
+              @click=${options.onTakeControl}
+            ></button>`
+          : nothing
+      }
+      ${
+        options.state === "connecting"
+          ? renderPanelLoadingSkeleton("desktop", t("desktop.connecting"), false, true)
+          : nothing
+      }
     </div>
   `;
 }
 
-export function renderDesktopNotice(errorText: string | null, noticeText: string | null) {
+export function renderDesktopNotice(
+  errorText: string | null,
+  noticeText: string | null,
+): TemplateResult | typeof nothing {
   return errorText
     ? html`<div class="desktop-note desktop-note--error" role="alert">${errorText}</div>`
     : noticeText
