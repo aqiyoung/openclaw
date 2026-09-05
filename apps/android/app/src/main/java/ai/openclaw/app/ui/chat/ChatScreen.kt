@@ -3804,6 +3804,7 @@ internal fun userFacingChatError(
 }
 
 internal fun contextMeterWidth(usage: ChatContextUsage): Float? {
+  if (usage.totalTokensFresh == false) return null
   val total = usage.totalTokens?.takeIf { it >= 0L } ?: return null
   val context = usage.contextTokens?.takeIf { it > 0L } ?: return null
   return (total.toDouble() / context.toDouble()).coerceIn(0.0, 1.0).toFloat()
