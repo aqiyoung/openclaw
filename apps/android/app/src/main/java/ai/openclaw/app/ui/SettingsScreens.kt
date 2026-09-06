@@ -2307,17 +2307,16 @@ private fun AboutSettingsScreen(
           updateInfo != null -> nativeString("Up to date")
           else -> nativeString("Check if a new version is available")
         },
-        onClick = if (checkingUpdate) null else {
-          {
-            checkingUpdate = true
-            scope.launch {
-              val info = AppUpdateCheck.checkLatest(BuildConfig.VERSION_NAME)
-              updateInfo = info
-              checkingUpdate = false
-              showUpdateDialog = true
-            }
-          }
-        },
+        onClick = onCheckForUpdateClick(
+          checkingUpdate = checkingUpdate,
+          scope = scope,
+          onStart = { checkingUpdate = true },
+          onResult = { info ->
+            updateInfo = info
+            checkingUpdate = false
+            showUpdateDialog = true
+          },
+        ),
         trailing = {
           if (checkingUpdate) {
             CircularProgressIndicator(
@@ -2372,6 +2371,22 @@ private fun AboutSettingsScreen(
       modifier = Modifier.fillMaxWidth(),
       textAlign = TextAlign.Center,
     )
+  }
+}
+
+private fun onCheckForUpdateClick(
+  checkingUpdate: Boolean,
+  scope: kotlinx.coroutines.CoroutineScope,
+  onStart: () -> Unit,
+  onResult: (AppUpdateInfo) -> Unit,
+): (() -> Unit)? {
+  if (checkingUpdate) return null
+  return {
+    onStart()
+    scope.launch {
+      val info = AppUpdateCheck.checkLatest(BuildConfig.VERSION_NAME)
+      onResult(info)
+    }
   }
 }
 
