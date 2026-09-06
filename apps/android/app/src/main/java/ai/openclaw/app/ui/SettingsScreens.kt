@@ -2396,10 +2396,9 @@ private fun AppUpdateDialog(
     },
     text = {
       if (info.hasUpdate) {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs)) {
           Text(text = "$currentVersion -> ${info.latestVersion}")
           if (!info.releaseNotes.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
             Text(text = info.releaseNotes, style = ClawTheme.type.caption)
           }
         }
