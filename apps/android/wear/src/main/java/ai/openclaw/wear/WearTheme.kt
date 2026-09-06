@@ -151,27 +151,12 @@ internal fun OpenClawWearTheme(
   content: @Composable () -> Unit,
 ) {
   val colors = wearColorsFor(themeMode)
-  // Every one of the 29 Wear M3 roles is pinned. Roles left out of copy() keep
-  // androidx Wear's baseline scheme, whose secondary/tertiary/error pairs are the
-  // stock purple palette — that is what tinted switches, sliders, time pickers and
-  // confirmation screens. Dims are alpha-derived so no extra tokens are invented.
   val colorScheme =
     MaterialTheme.colorScheme.copy(
       primary = colors.primary,
-      primaryDim = colors.primary.copy(alpha = 0.72f),
       primaryContainer = colors.surfaceRaised,
       onPrimary = colors.primaryText,
       onPrimaryContainer = colors.text,
-      secondary = colors.voiceAccent,
-      secondaryDim = colors.voiceAccent.copy(alpha = 0.72f),
-      secondaryContainer = colors.voiceAccentSoft,
-      onSecondary = colors.onVoiceAccent,
-      onSecondaryContainer = colors.text,
-      tertiary = colors.voiceAccent,
-      tertiaryDim = colors.voiceAccent.copy(alpha = 0.72f),
-      tertiaryContainer = colors.voiceAccentSoft,
-      onTertiary = colors.onVoiceAccent,
-      onTertiaryContainer = colors.text,
       surfaceContainerLow = colors.surface,
       surfaceContainer = colors.surface,
       surfaceContainerHigh = colors.surfaceRaised,
@@ -182,10 +167,7 @@ internal fun OpenClawWearTheme(
       background = colors.canvas,
       onBackground = colors.text,
       error = colors.danger,
-      errorDim = colors.danger.copy(alpha = 0.72f),
-      errorContainer = colors.danger.copy(alpha = 0.16f),
       onError = colors.primaryText,
-      onErrorContainer = colors.danger,
     )
 
   MaterialTheme(colorScheme = colorScheme) {

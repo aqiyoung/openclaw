@@ -76,11 +76,6 @@ class OpenClawTileService :
   }
 }
 
-// Every role is pinned explicitly. ProtoLayout Material3 falls back to its own
-// baseline palette (a purple-tinted scheme) for any role left out, which showed
-// up as a purple tonal button and a washed-out grey button label on the tile.
-// onSurfaceVariant is deliberately brighter than the Phone textMuted token: it
-// colours the avatar button secondary label, which was unreadable at #A8A8A8.
 private val openClawTileColorScheme =
   ColorScheme(
     primary = 0xFFFFFFFF.argb,
@@ -88,30 +83,15 @@ private val openClawTileColorScheme =
     primaryContainer = 0xFFFFFFFF.argb,
     onPrimary = 0xFF050505.argb,
     onPrimaryContainer = 0xFF050505.argb,
-    secondary = 0xFF6EA8FF.argb,
-    secondaryDim = 0xFF5B93E8.argb,
-    secondaryContainer = 0xFF1A2A44.argb,
-    onSecondary = 0xFF050505.argb,
-    onSecondaryContainer = 0xFFF8F8F8.argb,
-    tertiary = 0xFF6EA8FF.argb,
-    tertiaryDim = 0xFF5B93E8.argb,
-    tertiaryContainer = 0xFF1A2A44.argb,
-    onTertiary = 0xFF050505.argb,
-    onTertiaryContainer = 0xFFF8F8F8.argb,
     surfaceContainerLow = 0xFF0A0A0A.argb,
     surfaceContainer = 0xFF111111.argb,
     surfaceContainerHigh = 0xFF1A1A1A.argb,
     onSurface = 0xFFF8F8F8.argb,
-    onSurfaceVariant = 0xFFC8C8C8.argb,
+    onSurfaceVariant = 0xFFA8A8A8.argb,
     outline = 0xFF3A3A3A.argb,
     outlineVariant = 0xFF242424.argb,
     background = 0xFF030303.argb,
     onBackground = 0xFFF8F8F8.argb,
-    error = 0xFFFF6B6B.argb,
-    errorDim = 0xFFB82929.argb,
-    errorContainer = 0xFF2C1414.argb,
-    onError = 0xFF050505.argb,
-    onErrorContainer = 0xFFFF6B6B.argb,
   )
 
 internal fun wearLaunchAction(

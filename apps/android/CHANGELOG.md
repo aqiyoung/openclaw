@@ -2,42 +2,15 @@
 
 ## Unreleased
 
-## 2026.9.4.10 - 2026-09-04
+## 2026.8.2 - 2026-08-31
 
-Reverts 2026.9.4.9: composer popups (thinking level, model picker, permission picker, context meter, attachment menu) are back to the bottom-sheet presentation, which is the preferred UX. The `ChatComposerPopover` floating-card container introduced in 2026.9.4.9 is removed.
+View your connected machine's desktop from your phone, and follow live subagent progress in chat.
 
-Bumps to 2026.9.4.10 / versionCode 2026090410.
+Organize conversations with session groups, nested threads, and colors. Switch agents more easily and receive reply notifications.
 
-## 2026.9.4.8 - 2026-09-04
+Keeps queued messages and offline history intact across reconnects, recovers truncated replies, and preserves shared attachments.
 
-Fixes the v4.6 / v4.7 release build, which failed at `compileKotlin` with three errors rooted in the new `ChatEffortSlider` introduced in 2026.9.4.6:
-
-- `size.width.coerceAtLeast(1f)` in the tap/drag handlers passed a `Float` literal to `Int.coerceAtLeast`, which only has `(Int)` and `(Long)` overloads. Switched to `coerceAtLeast(1)`; the surrounding division still promotes to `Float` because `offset.x` is `Float`.
-- `.border(1.dp, ...)` in the slider track was missing the `androidx.compose.foundation.border` import (only `background` was imported). Added the import.
-
-Verified locally with `:app:compileThirdPartyDebugKotlin` (green) before pushing the tag.
-
-## 2026.9.4.7 - 2026-09-04
-
-Polishes the v4.6 thinking control to track the upstream web mobile design more closely:
-
-- Adds a 10dp fast-mode lightning badge in the bottom-right of the collapsed gauge trigger, matching the upstream `.chat-controls__effort-fast-badge`.
-- Switches the bolt icon, the selected effort value, and the fast-mode toggle fill to the theme `accent` color (the same role the upstream uses for `var(--accent)`).
-- Adds a switch role and state description to the fast-mode toggle, with a "Fast responses: ${state}" aria-label template translated to "快速响应：%1$s" / "快速回應：%1$s".
-- Refines the effort slider: the track background uses text at 7% alpha (matching the upstream `--text 7%`), the thumb gets a soft drop shadow like the web's 0 1px 4px rgba(0,0,0,0.35) shadow, and the thumb is centered with 3dp vertical margin in the 26dp track.
-- The toggle thumb is now positioned with 3dp padding and an explicit 14dp translate, matching the upstream `top:3, left:3, transform: translateX(14px)`.
-
-## 2026.9.4.6 - 2026-09-04
-
-Replaces the thinking-level trigger with a half-circle dial gauge that matches the upstream web mobile control. The expanded panel is rewritten to the web effort picker: an "Effort" slider with stop dots, Faster / Smarter scale labels, and a Fast mode toggle row with the lightning icon and helper text.
-
-Localizes the new composer strings (Effort, Fast mode, Faster, Smarter, fast mode help) into Simplified and Traditional Chinese.
-
-## 2026.9.4.5 - 2026-09-04
-
-Fixes the chat composer send button overflowing the right edge of the input pill on narrow screens.
-
-Replaces the inline thinking-level chip in the composer footer with a circular button (matching the web mobile control) that opens a bottom sheet panel with the thinking level selector and faster/smarter orientation labels.
+Improves Talk playback, photo orientation, notification consent, and connections through Gateway proxy paths.
 
 ## 2026.7.4 - 2026-07-30
 
