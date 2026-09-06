@@ -2403,7 +2403,7 @@ private fun AppUpdateDialog(
       Icon(
         imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
         contentDescription = null,
-        tint = if (info.isCritical) ClawTheme.colors.error else ClawTheme.colors.primary,
+        tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
       )
     },
     title = {
