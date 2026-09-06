@@ -271,13 +271,7 @@ androidComponents {
       .forEach { output ->
         val versionName = output.versionName.orNull ?: "0"
         val buildType = variant.buildType
-        val flavorName = variant.flavorName?.takeIf { it.isNotBlank() }
-        val outputFileName =
-          if (flavorName == null) {
-            "openclaw-$versionName-$buildType.apk"
-          } else {
-            "openclaw-$versionName-$flavorName-$buildType.apk"
-          }
+        val outputFileName = "openclaw-$versionName-$buildType.apk"
         output.outputFileName = outputFileName
       }
 
