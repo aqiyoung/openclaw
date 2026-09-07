@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.9.4.24 - 2026-09-07
+
+Ports upstream f9237c68d "fix(android): keep chat input usable in short keyboard viewports". The chat screen now wraps its content in a BoxWithConstraints with imePadding so the whole layout reacts to the keyboard viewport. When the remaining height cannot fit the full composer (compactHeight), the conversation header and auxiliary composer content collapse, screen padding is removed, and the input row is height-clamped so the text field and send button stay reachable. A new "Details" (⋮) affordance in the composer opens a full-height pane exposing the collapsed header and auxiliary content. The avatar-circle upstream change (3ffa84f3f) only touches web CSS and does not apply to the native client.
+
+Bumps to 2026.9.4.24 / versionCode 2026090424.
+
 ## 2026.9.4.23 - 2026-09-07
 
 Localizes the About screen "Check for Updates" entry that was added in 2026.9.4.18. The subtitle, the update dialog title/body/buttons, and the hard-coded "v<version> available" string are now native strings with Simplified and Traditional Chinese translations (检查更新 / 正在检查最新版本… / 有可用更新 / 下载 / 稍后 etc.). The hard-coded interpolation was also converted to the existing "v${it} available" template so it reuses the translated resource.
