@@ -2302,7 +2302,7 @@ private fun AboutSettingsScreen(
         title = nativeString("Check for Updates"),
         subtitle = when {
           checkingUpdate -> nativeString("Checking latest version…")
-          updateInfo?.hasUpdate == true -> "v${updateInfo!!.latestVersion} available"
+          updateInfo?.hasUpdate == true -> nativeString("v\$it available", updateInfo!!.latestVersion)
           updateInfo != null -> nativeString("Up to date")
           else -> nativeString("Check if a new version is available")
         },

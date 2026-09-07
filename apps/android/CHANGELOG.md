@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2026.9.4.23 - 2026-09-07
+
+Localizes the About screen "Check for Updates" entry that was added in 2026.9.4.18. The subtitle, the update dialog title/body/buttons, and the hard-coded "v<version> available" string are now native strings with Simplified and Traditional Chinese translations (检查更新 / 正在检查最新版本… / 有可用更新 / 下载 / 稍后 etc.). The hard-coded interpolation was also converted to the existing "v${it} available" template so it reuses the translated resource.
+
+Bumps to 2026.9.4.23 / versionCode 2026090423.
+
+## Unreleased
+
 ## 2026.9.4.22 - 2026-09-07
 
 Fixes the release build that has been red since 2026.9.4.18: the "Check for Updates" dialog used `androidx.compose.material3.FilledButton`, which does not exist in the Compose BOM used by this project (`Unresolved reference 'FilledButton'` plus cascading `@Composable` context errors). Replaced with the existing `ClawPrimaryButton` design-system component and dropped the dead import.
