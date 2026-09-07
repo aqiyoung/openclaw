@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 2026.9.4.22 - 2026-09-07
+
+Fixes the release build that has been red since 2026.9.4.18: the "Check for Updates" dialog used `androidx.compose.material3.FilledButton`, which does not exist in the Compose BOM used by this project (`Unresolved reference 'FilledButton'` plus cascading `@Composable` context errors). Replaced with the existing `ClawPrimaryButton` design-system component and dropped the dead import.
+
+Verified locally: `:app:compileThirdPartyDebugKotlin` is green with the exact dependencies CI uses (Gradle 9.7.1 / AGP 9.4.0).
+
+Bumps to 2026.9.4.22 / versionCode 2026090422.
+
+## Unreleased
+
 ## 2026.8.2 - 2026-08-31
 
 View your connected machine's desktop from your phone, and follow live subagent progress in chat.

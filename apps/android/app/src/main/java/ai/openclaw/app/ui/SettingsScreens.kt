@@ -143,7 +143,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -2423,14 +2422,14 @@ private fun AppUpdateDialog(
     },
     confirmButton = {
       if (info.hasUpdate) {
-        FilledButton(onClick = {
-          onDismiss()
-          uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
-        }) {
-          Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-          Spacer(modifier = Modifier.size(4.dp))
-          Text(nativeString("Download"))
-        }
+        ClawPrimaryButton(
+          text = nativeString("Download"),
+          onClick = {
+            onDismiss()
+            uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
+          },
+          icon = Icons.AutoMirrored.Filled.OpenInNew,
+        )
       } else {
         TextButton(onClick = onDismiss) {
           Text(nativeString("OK"))
