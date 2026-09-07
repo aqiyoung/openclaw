@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.4.26 - 2026-09-07
+
+Removes the filled background from the overview header status pill ("在线/Online"): the pill is now outline-only, with the colored status dot carrying the state color. Bumps to 2026.9.4.26 / versionCode 2026090426.
+
 ## 2026.9.4.25 - 2026-09-07
 
 Full upstream sync through 2026-09-07 (upstream 096d345e5bd). Brings in the fold/tabletop component files, control-UI locale refresh, and all gateway/infra updates. The fork-specific update-check module (AppUpdateCheck.kt), MobileColors, SessionFilters, the bottom-sheet composer (ChatScreen.kt kept at fork state including the short-keyboard-viewport port), the thirdParty/play source-set layout, and the release CI workflows are preserved. Bumps to 2026.9.4.25 / versionCode 2026090425.

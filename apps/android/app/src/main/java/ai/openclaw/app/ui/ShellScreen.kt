@@ -614,18 +614,19 @@ private fun OverviewStatusPill(
   onClick: () -> Unit,
 ) {
   val colors = ClawTheme.colors
-  val (dotColor, backgroundColor) =
+  // No filled background: the pill is an outline-only affordance, the status dot carries the color.
+  val dotColor =
     when (status.status) {
-      ClawStatus.Success -> colors.success to colors.successSoft
-      ClawStatus.Warning -> colors.warning to colors.warningSoft
-      ClawStatus.Danger -> colors.danger to colors.dangerSoft
-      ClawStatus.Neutral -> colors.textSubtle to colors.surfaceRaised
+      ClawStatus.Success -> colors.success
+      ClawStatus.Warning -> colors.warning
+      ClawStatus.Danger -> colors.danger
+      ClawStatus.Neutral -> colors.textSubtle
     }
   Surface(
     onClick = onClick,
     modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(ClawTheme.radii.control),
-    color = backgroundColor.copy(alpha = 0.82f),
+    color = Color.Transparent,
     border = BorderStroke(1.dp, ClawTheme.colors.border.copy(alpha = 0.32f)),
   ) {
     Row(
