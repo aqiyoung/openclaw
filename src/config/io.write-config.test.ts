@@ -267,6 +267,47 @@ describe("config io write", () => {
       ...options,
     });
 
+  const expectKeyedAgentSiblingWriteRefused = async (params: {
+    home: string;
+    authored: unknown;
+    includeFiles: Record<string, string>;
+    env?: NodeJS.ProcessEnv;
+  }) => {
+    const configPath = configPathForHome(params.home);
+    await fs.mkdir(path.dirname(configPath), { recursive: true });
+    for (const [relativePath, raw] of Object.entries(params.includeFiles)) {
+      const includePath = path.join(params.home, relativePath);
+      await fs.mkdir(path.dirname(includePath), { recursive: true });
+      await fs.writeFile(includePath, raw, "utf-8");
+    }
+    const rootRaw = formatConfig(params.authored);
+    await fs.writeFile(configPath, rootRaw, "utf-8");
+    const io = createFastConfigIO(params.home, {
+      env: { OPENCLAW_TEST_FAST: "1", ...params.env } as NodeJS.ProcessEnv,
+    });
+    const snapshot = await io.readConfigFileSnapshot();
+    expect(snapshot.valid).toBe(true);
+
+    await expect(
+      io.writeConfigFile({
+        ...snapshot.config,
+        agents: {
+          ...snapshot.config.agents,
+          ownership: "explicit",
+          entries: {
+            ...snapshot.config.agents?.entries,
+            worker: { workspace: "/w/worker" },
+          },
+        },
+      }),
+    ).rejects.toThrow("Config write would flatten $include-owned config at agents");
+
+    await expect(fs.readFile(configPath, "utf-8")).resolves.toBe(rootRaw);
+    for (const [relativePath, raw] of Object.entries(params.includeFiles)) {
+      await expect(fs.readFile(path.join(params.home, relativePath), "utf-8")).resolves.toBe(raw);
+    }
+  };
+
   const writeGatewayPortAndReadConfig = async (home: string, configPath: string) => {
     const io = createFastConfigIO(home);
 
@@ -717,7 +758,84 @@ describe("config io write", () => {
     ]);
   });
 
-  itWithHome("warns when prefix recovery cannot tighten config permissions", async (home) => {
+  for (const failure of ["write", "chmod", "rename"] as const) {
+    itWithHome(`prefix recovery preserves the config after a failed ${failure}`, async (home) => {
+      const configPath = configPathForHome(home);
+      const configBasename = path.basename(configPath);
+      const cleanRaw = formatConfig({ gateway: { mode: "local" } });
+      const pollutedRaw = `Found and updated: False\n${cleanRaw}`;
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
+      await fs.writeFile(configPath, pollutedRaw, "utf-8");
+      const originalMode = (await fs.stat(configPath)).mode & 0o777;
+
+      const writeError = Object.assign(new Error(`failed recovery ${failure}`), {
+        code: failure === "write" ? "EIO" : "EPERM",
+      });
+      // Fail publication of the recovered bytes, leaving the original snapshot write intact.
+      const stagedHandles = new WeakSet<object>();
+      const isStagedConfigTemp = (file: fsNode.PathLike) => {
+        const name = path.basename(String(file));
+        return name.startsWith(`${configBasename}.`) && name.endsWith(".tmp");
+      };
+      const crashingFs: typeof fsNode = {
+        ...fsNode,
+        promises: {
+          ...fsNode.promises,
+          open: async (file, ...rest) => {
+            const handle = await fsNode.promises.open(file, ...rest);
+            if (isStagedConfigTemp(file)) {
+              stagedHandles.add(handle);
+              if (failure === "chmod") {
+                handle.chmod = async () => {
+                  throw writeError;
+                };
+              }
+            }
+            return handle;
+          },
+          writeFile: async (target, data, options) => {
+            const isRecovery =
+              typeof target === "string" ? target === configPath : stagedHandles.has(target);
+            if (failure === "write" && isRecovery) {
+              await fsNode.promises.writeFile(target, "", options);
+              throw writeError;
+            }
+            return fsNode.promises.writeFile(target, data, options);
+          },
+          rename: async (source, destination) => {
+            if (failure === "rename" && destination === configPath) {
+              throw writeError;
+            }
+            return fsNode.promises.rename(source, destination);
+          },
+        },
+      };
+      const warn = vi.fn();
+      const io = createHomeConfigIO(home, {
+        fs: crashingFs,
+        env: { VITEST: "true" } as NodeJS.ProcessEnv,
+        logger: { warn, error: vi.fn() },
+      });
+
+      const snapshot = await io.readConfigFileSnapshot();
+      expect(snapshot.valid).toBe(false);
+
+      await expect(io.recoverConfigFromJsonRootSuffix(snapshot)).rejects.toThrow(writeError);
+
+      await expect(fs.readFile(configPath, "utf-8")).resolves.toBe(pollutedRaw);
+      expect((await fs.stat(configPath)).mode & 0o777).toBe(originalMode);
+      expect(warnMessages(warn).join("\n")).not.toContain("Config auto-stripped");
+      const files = await fs.readdir(path.dirname(configPath));
+      const snapshots = files.filter((file) => file.includes(".clobbered."));
+      expect(snapshots).toHaveLength(1);
+      await expect(
+        fs.readFile(path.join(path.dirname(configPath), snapshots[0] ?? ""), "utf-8"),
+      ).resolves.toBe(pollutedRaw);
+      expect(files.filter((file) => file.endsWith(".tmp"))).toEqual([]);
+    });
+  }
+
+  itWithHome("prefix recovery publishes private config without pathname chmod", async (home) => {
     const configPath = configPathForHome(home);
     const cleanConfig = {
       gateway: { mode: "local" },
@@ -726,6 +844,7 @@ describe("config io write", () => {
     const cleanRaw = formatConfig(cleanConfig);
     await fs.mkdir(path.dirname(configPath), { recursive: true });
     await fs.writeFile(configPath, `Found and updated: False\n${cleanRaw}`, "utf-8");
+    await fs.chmod(configPath, 0o644);
     const chmodError = Object.assign(new Error("EPERM: chmod denied"), { code: "EPERM" });
     const warn = vi.fn();
     const chmod = fsNode.promises.chmod.bind(fsNode.promises);
@@ -751,9 +870,10 @@ describe("config io write", () => {
 
     await expect(io.recoverConfigFromJsonRootSuffix(initialSnapshot)).resolves.toBe(true);
     await expect(fs.readFile(configPath, "utf-8")).resolves.toBe(cleanRaw);
-    expect(warnMessages(warn)).toContain(
-      `Config permission hardening failed (prefix recovery): ${configPath}: EPERM: chmod denied`,
-    );
+    if (process.platform !== "win32") {
+      expect((await fs.stat(configPath)).mode & 0o777).toBe(0o600);
+    }
+    expect(warnMessages(warn).join("\n")).not.toContain("permission hardening failed");
     expectWarnContaining(warn, `Config auto-stripped non-JSON prefix: ${configPath}`);
   });
 
@@ -1858,6 +1978,122 @@ describe("config io write", () => {
       await expect(fs.readFile(configPath, "utf-8")).resolves.toBe(`${JSON.stringify(authored)}\n`);
     },
   );
+
+  itWithHome(
+    "adds a root-owned agent beside a keyed include without rewriting the include file",
+    async (home) => {
+      const configPath = configPathForHome(home);
+      const tonyPath = path.join(home, ".openclaw", "tony.json5");
+      const tonyRaw = `{
+  // Keep operator comments and references byte-identical.
+  workspace: "/w/tony",
+  model: { primary: "\${TONY_MODEL}" },
+}\n`;
+      await fs.mkdir(path.dirname(configPath), { recursive: true });
+      await fs.writeFile(tonyPath, tonyRaw, "utf-8");
+      await writeConfigJson(configPath, {
+        agents: {
+          ownership: "explicit",
+          entries: { tony: { $include: "./tony.json5" } },
+        },
+      });
+      const io = createFastConfigIO(home, {
+        env: {
+          OPENCLAW_TEST_FAST: "1",
+          TONY_MODEL: "openai/gpt-5.4",
+        } as NodeJS.ProcessEnv,
+      });
+      const snapshot = await io.readConfigFileSnapshot();
+      expect(snapshot.valid).toBe(true);
+
+      await io.writeConfigFile({
+        ...snapshot.config,
+        agents: {
+          ...snapshot.config.agents,
+          ownership: "explicit",
+          entries: {
+            ...snapshot.config.agents?.entries,
+            worker: { workspace: "/w/worker" },
+          },
+        },
+      });
+
+      const rootAfter = JSON.parse(await fs.readFile(configPath, "utf-8")) as {
+        agents?: {
+          ownership?: string;
+          entries?: Record<string, { $include?: string; workspace?: string }>;
+        };
+      };
+      expect(rootAfter.agents?.ownership).toBe("explicit");
+      expect(rootAfter.agents?.entries).toEqual({
+        tony: { $include: "./tony.json5" },
+        worker: { workspace: "/w/worker" },
+      });
+      await expect(fs.readFile(tonyPath, "utf-8")).resolves.toBe(tonyRaw);
+    },
+  );
+
+  itWithHome("rejects multiple include targets for one keyed agent entry", async (home) => {
+    await expectKeyedAgentSiblingWriteRefused({
+      home,
+      authored: {
+        agents: {
+          ownership: "explicit",
+          entries: { tony: { $include: ["./tony-base.json5", "./tony-extra.json5"] } },
+        },
+      },
+      includeFiles: {
+        ".openclaw/tony-base.json5": `{ workspace: "/w/tony" }\n`,
+        ".openclaw/tony-extra.json5": `{ name: "Tony" }\n`,
+      },
+    });
+  });
+
+  itWithHome("rejects a keyed agent include carrying a root-authored override", async (home) => {
+    await expectKeyedAgentSiblingWriteRefused({
+      home,
+      authored: {
+        agents: {
+          ownership: "explicit",
+          entries: {
+            tony: { $include: "./tony.json5", workspace: "/w/tony" },
+          },
+        },
+      },
+      includeFiles: { ".openclaw/tony.json5": `{ name: "Tony" }\n` },
+    });
+  });
+
+  itWithHome("rejects a delegated keyed agent include", async (home) => {
+    await expectKeyedAgentSiblingWriteRefused({
+      home,
+      authored: {
+        agents: {
+          ownership: "explicit",
+          entries: { tony: { $include: "./tony-delegate.json5" } },
+        },
+      },
+      includeFiles: {
+        ".openclaw/tony-delegate.json5": `{ $include: "./tony.json5" }\n`,
+        ".openclaw/tony.json5": `{ workspace: "/w/tony" }\n`,
+      },
+    });
+  });
+
+  itWithHome("rejects a keyed agent include outside the config directory", async (home) => {
+    const sharedDir = path.join(home, "shared");
+    await expectKeyedAgentSiblingWriteRefused({
+      home,
+      authored: {
+        agents: {
+          ownership: "explicit",
+          entries: { tony: { $include: "../shared/tony.json5" } },
+        },
+      },
+      includeFiles: { "shared/tony.json5": `{ workspace: "/w/tony" }\n` },
+      env: { OPENCLAW_INCLUDE_ROOTS: sharedDir } as NodeJS.ProcessEnv,
+    });
+  });
 
   itWithHome(
     "rejects repairs that would flatten a valid outer include with a broken nested include",
@@ -3176,12 +3412,6 @@ describe("config io write", () => {
         ...fsNode,
         promises: {
           ...fsNode.promises,
-          readFile: async (target, options) => {
-            if (committed && target === configPath) {
-              rollbackReadUsedInjectedFs = true;
-            }
-            return await readFile(target, options);
-          },
           rename: async (from, to) => {
             await rename(from, to);
             if (!committed && to === configPath) {
@@ -3190,7 +3420,13 @@ describe("config io write", () => {
             }
           },
         },
-      } as typeof fsNode;
+      } satisfies typeof fsNode;
+      vi.spyOn(injectedFs.promises, "readFile").mockImplementation(async (target, options) => {
+        if (committed && target === configPath) {
+          rollbackReadUsedInjectedFs = true;
+        }
+        return await readFile(target, options);
+      });
       const io = createConfigIO({ env, fs: injectedFs, homedir: () => home, logger: silentLogger });
       const prepared = await io.readConfigFileSnapshotForWrite();
 

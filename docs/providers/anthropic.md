@@ -116,6 +116,9 @@ OpenClaw release:
         through OpenClaw's direct CLI transport. OpenClaw uses a non-secret route
         marker and never reads, persists, refreshes, selects, or forwards the
         native login tokens. Claude owns the login and token refresh lifecycle.
+        Gateway startup shares the native login availability check across agent
+        workspaces using the same config and environment. Explicit catalog/auth
+        captures recheck availability for their own generation.
         Explicitly selected API-key or token credentials still use protected
         file-descriptor forwarding. Native-tool approvals remain under OpenClaw
         control. Schema-valid native calls pass through OpenClaw's canonical
@@ -450,8 +453,9 @@ publishes its 1,000,000-token context window, 128,000-token output limit, image
 input, and `$5/$25` input/output pricing.
 
 `anthropic/claude-sonnet-5` uses the same adaptive-thinking defaults and request
-restrictions. The catalog uses Anthropic's introductory `$2/$10` input/output
-pricing through August 31, 2026; standard `$3/$15` pricing begins September 1, 2026.
+restrictions. The catalog uses Anthropic's standard `$2/$10` input/output pricing
+per million tokens. Anthropic canceled the previously scheduled September 2026
+increase; see [current model pricing](https://platform.claude.com/docs/en/about-claude/pricing#model-pricing).
 
 `anthropic/claude-fable-5-1` and `anthropic/claude-fable-5` always use adaptive
 thinking and default to `high` effort. Anthropic does not allow thinking to be

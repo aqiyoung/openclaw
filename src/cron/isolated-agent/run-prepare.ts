@@ -54,7 +54,6 @@ import {
   loadCronExternalContentRuntime,
   loadSessionAccessorRuntime,
   resolveCronAgentTurnMessage,
-  assertCronExecutionRootRuntime,
   retireRolledCronSessionMcpRuntime,
   type RunCronAgentTurnParams,
   type WithRunSession,
@@ -440,11 +439,11 @@ export async function prepareCronRunContext(params: {
       sessionKey: agentSessionKey,
       sessionEntry: cronSession.sessionEntry,
     });
-    assertCronExecutionRootRuntime(input.executionRoot, effectiveAgentRuntime);
     let requestedThinkLevel = thinkingSelection.requestedThinkLevel;
     if (!requestedThinkLevel) {
       requestedThinkLevel = resolveThinkingDefault({
         cfg: cfgWithAgentDefaults,
+        agentId: modelOwner.agentId,
         provider,
         model,
         catalog: thinkingSelection.catalog,

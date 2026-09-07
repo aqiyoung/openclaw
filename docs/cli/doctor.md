@@ -3,7 +3,7 @@ summary: "CLI reference for `openclaw doctor` (health checks + guided repairs)"
 read_when:
   - You have connectivity/auth issues and want guided fixes
   - You updated and want a sanity check
-title: "Doctor"
+title: "Doctor CLI"
 ---
 
 # `openclaw doctor`
@@ -15,12 +15,6 @@ When run for a managed Gateway, Doctor compares active official plugins with the
 When Gateway status reports degraded SecretRef owners, doctor prints a **Secret runtime degradation** warning with every cold or stale owner, affected config path, redacted reason, and the `openclaw secrets reload` retry command.
 
 When channel ingress events are dead-lettered, doctor names each affected channel account and points to [`openclaw channels dead-letters list`](/cli/channels#inbound-dead-letters) for inspection and recovery.
-
-When outbound or session failures are retained, doctor reports queue counts,
-payload-bearing and legacy-unknown rows, owner cleanup still pending in either
-the provider or exact-media phase, and retention-maintenance failures.
-Inspect them with [`openclaw delivery failures list`](/cli/delivery); subagent
-completion recovery remains under `openclaw tasks retry` and `tasks dismiss`.
 
 When the Gateway has exporter health facts, doctor reports the latest trusted
 per-signal state and transport under **Telemetry exporters**. The summary is
@@ -63,6 +57,13 @@ not activate a service confirmed offline before maintenance. A loaded, enabled
 macOS job between respawns is not offline: Doctor stops it before repair and
 resumes it afterward. Run repair from a shell outside the Gateway process tree. For externally supervised or unmatched installations, stop
 and start the Gateway through its owning supervisor.
+
+During [automatic triage](/cli/triage#automatic-failure-handoff), repair can run
+against an offline target when schema and maintenance locks permit it. If repair
+needs to stop the managed Gateway, Doctor refuses inside its automatic fixing
+subtree because that stop would cancel recovery. Use read-only diagnosis or safe
+offline artifact repair followed by an atomic `openclaw gateway restart`, or ask
+an independent operator to run Doctor from a shell outside triage.
 
 This maintenance window also applies when repair ultimately finds no changes.
 Runs without `--fix`, `--repair`, or `--yes` do not enter maintenance.
@@ -332,7 +333,8 @@ the container normally.
 
 `openclaw doctor --fix` is the only owner for persistent file-to-SQLite migrations. It validates and claims each recognized source, writes and verifies canonical rows, records a migration receipt, then removes the retired source. Runtime code does not perform lazy imports or fallback reads.
 
-For legacy workspace setup files, an existing canonical SQLite setup record wins,
+Doctor imports recognized legacy workspace setup files during preflight, before
+Workshop migration accesses workspace state. An existing canonical SQLite setup record wins,
 including milestones that are absent in SQLite. Doctor does not replay stale
 milestones over it. Before removing a validated setup file or interrupted claim,
 Doctor preserves its exact bytes beside the original as
@@ -419,10 +421,6 @@ JSON output reports the database and WAL sizes, freelist pages, page size, and
 `quick_check` and `integrity_check` results. `foreign_key_check` is enforced
 fail-closed and has no separate success field. SQLite reports `auto_vacuum` as
 `0` for none, `1` for full, and `2` for incremental.
-
-Delivery failure cleanup first removes sensitive logical content while keeping
-any required ownership tombstone. This command performs the separate physical
-SQLite reclamation step; it does not resubmit deliveries or break fences.
 
 Compaction fails without mutation when the schema is old, newer than the
 running OpenClaw build, or belongs to an agent database. Run
@@ -602,8 +600,10 @@ restore fail closed so restore cannot silently replace or hide recoverable data.
 After verifying the migration and current history, use
 `openclaw update cleanup --dry-run` to inspect retained recovery data without
 stopping the Gateway. Apply with `openclaw update cleanup` or
-`openclaw update cleanup --yes --json` only after stopping the Gateway and other
-SQLite maintenance for the same profile/state directory. This permanently
+`openclaw update cleanup --yes --json` only after stopping the Gateway, other
+SQLite maintenance, and database readers for the same profile/state directory.
+Keep session-listing watchers stopped until cleanup exits: even read-only
+connections can change WAL/SHM sidecars and invalidate verification. This permanently
 retires eligible rollback originals; it does not remove current SQLite history
 or operator backups. Manifests remain while retained or pending artifacts need
 them, so interrupted cleanup can be resumed. Restore distinguishes intentional
@@ -654,7 +654,7 @@ compare restored legacy artifacts with the SQLite rows before importing.
 - Doctor reports cron jobs still marked in-flight (`state.runningAtMs`), which can make `openclaw cron list` show them as `running`. This check is read-only: if no Gateway is currently executing a marked job, the next cron service startup records the interrupted run and clears the marker.
 - Doctor reports legacy image-inspection policy entries named `image`. `openclaw doctor --fix` rewrites supported config allow/deny surfaces and persisted automation `toolsAllow` entries to `view_image`; old-only wildcard patterns such as `image*` are preserved and gain an explicit `view_image`, while patterns that already cover both names remain unchanged. Runtime exposes only the canonical name.
 - On Linux, doctor warns when the user's crontab still runs the unmaintained legacy `~/.openclaw/bin/ensure-whatsapp.sh`, which can misreport `Gateway inactive` when cron lacks the systemd user-bus environment.
-- When WhatsApp is enabled, doctor checks for a degraded Gateway event loop with local `openclaw-tui` clients still running. `doctor --fix` stops only verified local TUI clients so WhatsApp replies are not queued behind stale TUI refresh loops.
+- When WhatsApp is enabled, doctor can report Gateway pressure and detected local TUI clients. These observations do not identify the cause or connect a client to that Gateway. Inspect [Gateway diagnostics](/gateway/diagnostics) before deciding whether to close clients; Doctor does not stop them.
 - When HTTP(S) proxy environment variables are present but `tools.web.fetch.useTrustedEnvProxy` is disabled, doctor explains that `web_fetch` still uses direct routing, runs a short direct TLS connectivity probe, and names the explicit opt-in. It never enables proxy trust automatically.
 - Doctor rewrites legacy `codex/*` and `openai-codex/*` model refs to canonical `openai/*` refs across primary models, fallbacks, model allowlists, image/video generation models, heartbeat/subagent/compaction overrides, hooks, channel model overrides, cron payloads, and stale session/transcript route pins. `--fix` also merges legacy `models.providers.codex` and `models.providers.openai-codex` config when safe, migrates legacy `openai-codex:*` auth profiles and `auth.order.openai-codex` entries to `openai:*`, moves Codex intent onto provider/model-scoped `agentRuntime.id: "codex"` entries, removes stale whole-agent/session runtime pins, and keeps repaired OpenAI agent refs on Codex auth routing instead of direct OpenAI API-key auth.
 - Doctor reports nonempty `auth.order.<provider>` lists whose referenced profiles are all gone while compatible stored credentials exist. `doctor --fix` deletes only those stale overrides, restoring automatic per-agent credential selection; explicit empty orders, partially live lists, and orders without a compatible stored credential stay unchanged. If an active SQLite auth store is unreadable or malformed, doctor explains why it skipped this repair. Restart a running Gateway before rechecking auth status if its config reload mode does not apply the write automatically.
@@ -675,9 +675,18 @@ compare restored legacy artifacts with the SQLite rows before importing.
 - After state-directory migrations, doctor warns when enabled default Telegram or Discord accounts depend on env fallback and `TELEGRAM_BOT_TOKEN` or `DISCORD_BOT_TOKEN` is unavailable to the doctor process.
 - Telegram `allowFrom` username auto-resolution (`doctor --fix`) requires a resolvable Telegram token in the current command path. If token inspection is unavailable, doctor reports a warning and skips auto-resolution for that pass.
 
+## Invalid Gateway tokens
+
+Doctor flags active Gateway tokens that are blank or contain the literal string
+`undefined` or `null`. The Gateway rejects these values at startup. To replace an
+inline token, run `openclaw doctor --fix --generate-gateway-token`, then restart
+the Gateway. For a SecretRef, rotate the external secret source instead; doctor
+preserves its reference and leaves password, `none`, and trusted-proxy auth modes
+unchanged. An absent token still uses the normal startup token generation flow.
+
 ## macOS: `launchctl` env overrides
 
-If you previously ran `launchctl setenv OPENCLAW_GATEWAY_TOKEN ...` (or `...PASSWORD`), that value overrides your config file and can cause persistent "unauthorized" errors.
+If you previously ran `launchctl setenv OPENCLAW_GATEWAY_TOKEN ...` (or `...PASSWORD`), that value supplies fallback credentials when local configuration does not supply one. A configured inline credential or active SecretRef takes precedence over its matching environment fallback. A stale fallback can cause persistent "unauthorized" errors when it is selected.
 
 ```bash
 launchctl getenv OPENCLAW_GATEWAY_TOKEN

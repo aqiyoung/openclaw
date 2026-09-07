@@ -17,9 +17,6 @@ export type CliPluginRegistryScope =
   | "memory"
   | "sandbox-backends"
   | "sandbox-management";
-export type CliPluginRegistryPolicy = {
-  scope: CliPluginRegistryScope;
-};
 export type CliNetworkProxyPolicy = "default" | "bypass";
 type CliNetworkProxyPolicyResolver =
   | CliNetworkProxyPolicy
@@ -45,7 +42,9 @@ export type CliCommandPathPolicy = {
   configGuard: CliConfigGuardPolicy;
   stateStoreGuard: "run" | "skip";
   loadPlugins: CliCommandPluginLoadPolicy;
-  pluginRegistry: CliPluginRegistryPolicy;
+  pluginRegistry: {
+    scope: CliPluginRegistryScope;
+  };
   ownsProtocolStdout: boolean;
   hideBanner: boolean;
   ensureCliPath: boolean;
@@ -58,7 +57,6 @@ export type CliCommandCatalogEntry = {
   policy?: Partial<CliCommandPathPolicy>;
   route?: {
     id: CliRoutedCommandId;
-    preloadPlugins?: boolean;
   };
 };
 
@@ -98,15 +96,6 @@ export const cliCommandCatalog: readonly CliCommandCatalogEntry[] = [
     commandPath: ["database"],
     // Release-local database inspection must not observe default state or load runtime policy.
     policy: { ...PASSIVE_STARTUP_POLICY, hideBanner: true },
-  },
-  {
-    commandPath: ["delivery"],
-    policy: {
-      configGuard: "skip",
-      loadPlugins: "never",
-      ensureCliPath: false,
-      networkProxy: "bypass",
-    },
   },
   {
     commandPath: ["crestodian"], // hidden alias

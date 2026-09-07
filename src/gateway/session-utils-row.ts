@@ -24,9 +24,11 @@ import {
   MAX_SESSION_PARTICIPANTS,
   sessionCreatorProfileId,
 } from "../config/sessions/session-entry-provenance.js";
+import { isPinnableSessionEntry } from "../config/sessions/session-pin-policy.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { projectPluginSessionExtensionsSync } from "../plugins/host-hook-state.js";
 import { resolveActiveSessionAgentStatus } from "../sessions/session-agent-status.js";
+import { getSessionRepositoryWorkspaceStore } from "../state/session-repository-workspaces.js";
 import { resolveActiveFallbackState } from "../status/fallback-notice-state.js";
 import { projectSessionDeliveryFields } from "../utils/delivery-context.shared.js";
 import { INTERNAL_MESSAGE_CHANNEL } from "../utils/message-channel-constants.js";
@@ -41,6 +43,7 @@ import {
 } from "./session-identity-projection.js";
 import { isSessionPermissionChangePending } from "./session-permission-change.js";
 import { resolveStoredSessionKeyForAgentStore } from "./session-store-key.js";
+import { buildSessionSwarmSummary } from "./session-swarm-summary.js";
 import { readSessionTitleFieldsFromTranscript as readScopedSessionTitleFieldsFromTranscript } from "./session-transcript-title-reader.js";
 import type { SessionListRowContext } from "./session-utils-contracts.js";
 import {
@@ -95,6 +98,7 @@ export function buildGatewaySessionRow(params: {
   agentId: string;
   skipTranscriptUsageFallback?: boolean;
   lightweightListRow?: boolean;
+  includeSwarmChildren?: boolean;
 }): GatewaySessionRow {
   const { cfg, storePath, store, key, entry } = params;
   const lightweight = params.lightweightListRow === true;
@@ -188,6 +192,7 @@ export function buildGatewaySessionRow(params: {
         params.storeChildSessionsByKey.get(key),
       )
     : resolveChildSessionKeys(key, store, now, rowContext?.subagentRuns);
+  const pinnedAt = isPinnableSessionEntry(key, entry) ? entry?.pinnedAt : undefined;
   const compactionCheckpoints = resolveProjectableCompactionCheckpoints(entry);
   const compactionCheckpointCount = Array.isArray(entry?.compactionCheckpoints)
     ? compactionCheckpoints.length
@@ -195,22 +200,18 @@ export function buildGatewaySessionRow(params: {
   const latestCompactionCheckpoint = buildCompactionCheckpointPreview(
     resolveLatestCompactionCheckpoint(compactionCheckpoints),
   );
-  const selectedModelProvider = selectedModel.provider;
-  const selectedModelId = selectedModel.model;
-  const rowModelIdentity = lightweight
-    ? { provider: selectedModelProvider, model: selectedModelId }
-    : resolveSessionDisplayModelIdentityRefCached({
-        cfg,
-        agentId: sessionAgentId,
-        provider: selectedModelProvider,
-        model: selectedModelId,
-        rowContext: params.rowContext,
-      });
-  const rowModelProvider = rowModelIdentity.provider;
-  const rowModel = rowModelIdentity.model;
+  const rowModelProvider = selectedModel.provider;
+  const rowModel = selectedModel.model;
+  const rowModelIdentity = resolveSessionDisplayModelIdentityRefCached({
+    cfg,
+    provider: rowModelProvider,
+    model: rowModel,
+    rowContext: params.rowContext,
+  });
+  // Display aliases do not change the selected route's catalog or runtime policy.
   const runtimeModels = resolveSelectedAndActiveModel({
-    selectedProvider: selectedModelProvider,
-    selectedModel: selectedModelId,
+    selectedProvider: rowModelProvider,
+    selectedModel: rowModel,
     sessionEntry: entry,
   });
   const activeFallback = resolveActiveFallbackState({
@@ -318,8 +319,8 @@ export function buildGatewaySessionRow(params: {
   });
   const fastModeState = resolveFastModeState({
     cfg,
-    provider: selectedModelProvider,
-    model: selectedModelId,
+    provider: rowModelProvider,
+    model: rowModel,
     agentId: sessionAgentId,
     sessionEntry:
       entry?.fastMode !== undefined
@@ -330,9 +331,28 @@ export function buildGatewaySessionRow(params: {
   });
   const pluginExtensions =
     !lightweight && entry ? projectPluginSessionExtensionsSync({ sessionKey: key, entry }) : [];
+  const repositoryWorkspace = entry?.repositoryWorkspaceId
+    ? getSessionRepositoryWorkspaceStore().get(entry.repositoryWorkspaceId)
+    : undefined;
+  const repository =
+    repositoryWorkspace?.agentId === sessionAgentId && repositoryWorkspace.sessionKey === key
+      ? {
+          url: repositoryWorkspace.url,
+          ...(repositoryWorkspace.requestedRef ? { ref: repositoryWorkspace.requestedRef } : {}),
+          branch: repositoryWorkspace.branch,
+        }
+      : undefined;
 
+  const swarm = buildSessionSwarmSummary(
+    rowContext?.subagentRuns.swarmRunsByRequesterSessionKey.get(key) ?? [],
+    key,
+    sessionAgentId,
+    { includeChildren: params.includeSwarmChildren },
+  );
   return {
     key,
+    // Presence records a completed registry projection; event merges may clear only that fact.
+    ...(rowContext ? { swarm } : {}),
     visibility: entry ? (entry.visibility ?? "shared") : undefined,
     incognito: entry?.incognito,
     spawnedBy: subagentOwner || entry?.spawnedBy,
@@ -347,6 +367,8 @@ export function buildGatewaySessionRow(params: {
       ? { sessionRoot: entry.sessionRoot }
       : {}),
     worktree: entry?.worktree,
+    repositoryWorkspaceId: entry?.repositoryWorkspaceId,
+    ...(repository ? { repository } : {}),
     execNode: entry?.execNode,
     execCwd: entry?.execCwd,
     forkedFromParent: sessionEntryForkedFromParent(entry) ? true : undefined,
@@ -394,8 +416,8 @@ export function buildGatewaySessionRow(params: {
     archivedAt: entry?.archivedAt,
     archivedBy: projectSessionActor(entry?.archivedBy, rowContext?.userProfileIdentityById, cfg),
     archiveReason: entry?.archiveReason,
-    pinned: entry?.pinnedAt !== undefined,
-    pinnedAt: entry?.pinnedAt,
+    pinned: pinnedAt !== undefined,
+    pinnedAt,
     unread: deriveSessionUnread(entry),
     lastReadAt: entry?.lastReadAt,
     markedUnreadAt: entry?.markedUnreadAt,
@@ -461,8 +483,8 @@ export function buildGatewaySessionRow(params: {
       channel: INTERNAL_MESSAGE_CHANNEL,
       sessionEntry: entry,
     }).mode,
-    modelProvider: rowModelProvider,
-    model: rowModel,
+    modelProvider: rowModelIdentity.provider,
+    model: rowModelIdentity.model,
     activeModelProvider: activeFallback.active ? runtimeModels.active.provider : undefined,
     activeModel: activeFallback.active ? runtimeModels.active.model : undefined,
     modelOverrideSource: resolveSessionModelOverrideSource(entry),

@@ -2504,7 +2504,9 @@ private fun ChatComposer(
   val sendEnabled =
     chatComposerSendEnabled(
       voiceNoteState = voiceNoteState,
-      pendingRunCount = pendingRunCount,
+      // Fork keeps the v4.24 gate: sending stays blocked while a run is active;
+      // upstream's talkActive gate is honored on top of it.
+      talkActive = talkActive || pendingRunCount > 0,
       hasContent = hasContent,
       shareStaging = shareStaging,
       sendInFlight = sendInFlight,

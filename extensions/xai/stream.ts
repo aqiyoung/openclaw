@@ -10,7 +10,8 @@ import {
 } from "openclaw/plugin-sdk/provider-stream-shared";
 import { asOptionalRecord, filterStringEntries } from "openclaw/plugin-sdk/string-coerce-runtime";
 import { XAI_BASE_URL } from "./model-definitions.js";
-import { XAI_GROK_OAUTH_BASE_URL } from "./provider-catalog.js";
+import { resolveXaiOAuthAutoModelId } from "./model-id.js";
+import { isXaiGrokProxyBaseUrl } from "./provider-catalog.js";
 import { isXaiProviderId } from "./provider-id.js";
 
 const XAI_FAST_MODEL_IDS = new Map<string, string>([
@@ -32,16 +33,22 @@ function createXaiGrokOAuthHeadersWrapper(
   const underlying = baseStreamFn ?? streamSimple;
   const normalizedClientVersion = clientVersion?.trim();
   return (model, context, options) => {
-    if (!normalizedClientVersion || !isXaiEndpoint(model, XAI_GROK_OAUTH_BASE_URL)) {
+    if (
+      !normalizedClientVersion ||
+      !isXaiProviderId(model.provider) ||
+      !isXaiGrokProxyBaseUrl(model.baseUrl)
+    ) {
       return underlying(model, context, options);
     }
+    // Keep the selected alias stable through auth materialization; resolve only on the wire.
+    const modelId = resolveXaiOAuthAutoModelId(model.id, model.params);
     const headers = new Headers(options?.headers);
     // The Grok OAuth proxy requires its CLI identity and a concrete catalog model.
     // Keep these proxy-only so ordinary xAI API-key traffic retains its public contract.
     headers.set("X-XAI-Token-Auth", "xai-grok-cli");
     headers.set("x-grok-client-version", normalizedClientVersion);
-    headers.set("x-grok-model-override", model.id);
-    return underlying(model, context, {
+    headers.set("x-grok-model-override", modelId);
+    return underlying({ ...model, id: modelId }, context, {
       ...options,
       headers: Object.fromEntries(headers.entries()),
     });
@@ -85,16 +92,7 @@ function ensureXaiResponsesEncryptedReasoningInclude(
   payloadObj.include = include;
 }
 
-type ReplayableInputImagePart =
-  | {
-      type: "input_image";
-      source: { type: "url"; url: string } | { type: "base64"; media_type: string; data: string };
-    }
-  | { type: "input_image"; image_url: string; detail?: string };
-
-function isReplayableInputImagePart(
-  part: Record<string, unknown>,
-): part is ReplayableInputImagePart {
+function isReplayableInputImagePart(part: Record<string, unknown>): boolean {
   if (part.type !== "input_image") {
     return false;
   }
@@ -189,19 +187,22 @@ function normalizeXaiResponsesToolResultPayload(
     }
 
     const outputParts = itemObj.output as Array<Record<string, unknown>>;
-    const textOutput = outputParts
-      .filter(
-        (part): part is { type: "input_text"; text: string } =>
-          part.type === "input_text" && typeof part.text === "string",
-      )
-      .map((part) => part.text)
-      .join("");
-    const images = includeImages ? outputParts.filter(isReplayableInputImagePart) : [];
-    if (images.length > 0) {
-      imageContentParts.push(
-        { type: "input_text", text: `Image(s) from tool result #${toolResultIndex}:` },
-        ...images,
-      );
+    let textOutput = "";
+    const imageStart = imageContentParts.length;
+    for (const part of outputParts) {
+      if (part.type === "input_text" && typeof part.text === "string") {
+        textOutput += part.text;
+      }
+      if (includeImages && isReplayableInputImagePart(part)) {
+        // Emit one ownership label before this result's first replayable image.
+        if (imageContentParts.length === imageStart) {
+          imageContentParts.push({
+            type: "input_text",
+            text: `Image(s) from tool result #${toolResultIndex}:`,
+          });
+        }
+        imageContentParts.push(part);
+      }
     }
     return {
       ...itemObj,
