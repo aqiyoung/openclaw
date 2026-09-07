@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.4.27 - 2026-09-07
+
+Also drops the outline border from the overview header status pill: the pill is now fully transparent, leaving only the colored status dot, label, and chevron. Bumps to 2026.9.4.27 / versionCode 2026090427.
+
 ## 2026.9.4.26 - 2026-09-07
 
 Removes the filled background from the overview header status pill ("在线/Online"): the pill is now outline-only, with the colored status dot carrying the state color. Bumps to 2026.9.4.26 / versionCode 2026090426.

@@ -614,7 +614,7 @@ private fun OverviewStatusPill(
   onClick: () -> Unit,
 ) {
   val colors = ClawTheme.colors
-  // No filled background: the pill is an outline-only affordance, the status dot carries the color.
+  // Fully transparent pill: no fill, no border — the status dot carries the color.
   val dotColor =
     when (status.status) {
       ClawStatus.Success -> colors.success
@@ -627,7 +627,6 @@ private fun OverviewStatusPill(
     modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(ClawTheme.radii.control),
     color = Color.Transparent,
-    border = BorderStroke(1.dp, ClawTheme.colors.border.copy(alpha = 0.32f)),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
