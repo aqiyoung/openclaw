@@ -44,6 +44,8 @@ import ai.openclaw.app.chat.questionsForSession
 import ai.openclaw.app.chat.resolveChatComposerOwner
 import ai.openclaw.app.chat.resolveGatewayDefaultAgentId
 import ai.openclaw.app.currentAppLanguage
+import ai.openclaw.app.GatewayExecApprovalSummary
+import ai.openclaw.app.gatewayExecApprovalTextForDisplay
 import ai.openclaw.app.gateway.GatewayLoadedImage
 import ai.openclaw.app.gateway.GatewayLoadedMedia
 import ai.openclaw.app.gateway.GatewayMediaKind
@@ -56,6 +58,7 @@ import ai.openclaw.app.i18n.verbatimText
 import ai.openclaw.app.operatorScopesAllowAdmin
 import ai.openclaw.app.operatorScopesAllowWrite
 import ai.openclaw.app.resolveAgentIdFromMainSessionKey
+import ai.openclaw.app.ui.ExecApprovalCard
 import ai.openclaw.app.ui.FoldAwareDropdownMenu
 import ai.openclaw.app.ui.FoldAwareMenuItem
 import ai.openclaw.app.ui.TabletopPaneBounds
@@ -487,6 +490,14 @@ internal fun ChatScreen(
   var detailsExpanded by rememberSaveable { mutableStateOf(false) }
   var sendMessageTooLong by rememberSaveable(composerOwner) { mutableStateOf(false) }
   var sendCheckpointFull by rememberSaveable(composerOwner) { mutableStateOf(false) }
+  val execApprovals by viewModel.execApprovalInbox.collectAsState()
+  val pendingExecApprovals = execApprovals.approvals.filter { it.resolvingDecision == null && it.errorText == null }
+  var showApprovalDialog by rememberSaveable { mutableStateOf(false) }
+  LaunchedEffect(pendingExecApprovals) {
+    if (pendingExecApprovals.isNotEmpty() && !showApprovalDialog) {
+      showApprovalDialog = true
+    }
+  }
 
   LaunchedEffect(composerOwner, mainSessionKey, chatShareDraft?.id) {
     viewModel.resolveChatComposerOwnerAliases(to = composerOwner, mainSessionKey = mainSessionKey)
@@ -1170,6 +1181,39 @@ internal fun ChatScreen(
       agentId = sessionAgentId,
       onDismiss = { showBackgroundTasks = false },
     )
+  }
+  if (showApprovalDialog && pendingExecApprovals.isNotEmpty()) {
+    ModalBottomSheet(
+      onDismissRequest = { showApprovalDialog = false },
+      sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+      containerColor = ClawTheme.colors.surface,
+      contentColor = ClawTheme.colors.text,
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 20.dp)
+          .padding(bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
+      ) {
+        Text(
+          text = nativeString("Command approval"),
+          style = ClawTheme.type.title,
+          color = ClawTheme.colors.text,
+        )
+        pendingExecApprovals.forEach { approval ->
+          ExecApprovalCard(
+            approval = approval,
+            onResolve = { id, decision ->
+              viewModel.resolveExecApproval(id, decision)
+              if (pendingExecApprovals.size == 1) {
+                showApprovalDialog = false
+              }
+            },
+          )
+        }
+      }
+    }
   }
 }
 
