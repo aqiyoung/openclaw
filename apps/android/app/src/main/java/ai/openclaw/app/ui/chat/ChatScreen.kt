@@ -1183,6 +1183,7 @@ internal fun ChatScreen(
     )
   }
   if (showApprovalDialog && pendingExecApprovals.isNotEmpty()) {
+    @OptIn(ExperimentalMaterial3Api::class)
     ModalBottomSheet(
       onDismissRequest = { showApprovalDialog = false },
       sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),

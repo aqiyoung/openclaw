@@ -2616,7 +2616,6 @@ private fun ExecApprovalsPanel(
 }
 
 @Composable
-@Composable
 internal fun ExecApprovalCard(
   approval: GatewayExecApprovalSummary,
   onResolve: (String, String) -> Unit,
