@@ -1,13 +1,15 @@
 {
-  "tag": "v2026.9.4.29",
-  "versionName": "2026.9.4.29",
-  "versionCode": 2026090429,
-  "releaseName": "v2026.9.4.29",
+  "tag": "v2026.9.4.30",
+  "versionName": "2026.9.4.30",
+  "versionCode": 2026090430,
+  "releaseName": "v2026.9.4.30",
   "apk": {
-    "universal": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.4.29/openclaw-2026.9.4.29-release.apk"
+    "arm64-v8a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.4.30/openclaw-2026.9.4.30-thirdParty-release-arm64-v8a.apk",
+    "armeabi-v7a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.4.30/openclaw-2026.9.4.30-thirdParty-release-armeabi-v7a.apk",
+    "x86_64": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.4.30/openclaw-2026.9.4.30-thirdParty-release-x86_64.apk"
   },
-  "releaseUrl": "https://github.com/aqiyoung/openclaw/releases/tag/v2026.9.4.29",
+  "releaseUrl": "https://github.com/aqiyoung/openclaw/releases/tag/v2026.9.4.30",
   "critical": false,
-  "notes": "OpenClaw v2026.9.4.29 已发布: 去掉头像后的绿色底板, 详情见 GitHub Releases",
+  "notes": "OpenClaw v2026.9.4.30 已发布, 详情见 GitHub Releases",
   "updatedAt": "2026-09-08"
 }
