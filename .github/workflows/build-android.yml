@@ -103,9 +103,9 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          APK: ${{ steps.apk.outputs.path }}
         run: |
-          TAG="${{ github.ref_name }}"
-          APK="${{ steps.apk.outputs.path }}"
           gh release create "$TAG" --title "$(basename $APK)" --notes "Android APK build" || true
           sleep 2
           gh release upload "$TAG" "$APK" --clobber
@@ -118,9 +118,9 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -e
-          TAG="${{ github.ref_name }}"
           VNO_V="${TAG#v}"
           VERSION_NAME="${VNO_V}"
           # versionCode 从 Version.properties 读取, 与 gradle 编译 APK 用的值完全一致
