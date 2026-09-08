@@ -1849,20 +1849,21 @@ internal fun ChatBubble(
     modifier = Modifier.fillMaxWidth(),
     horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
   ) {
-    ChatMessageActionHost(
-      text = messageText,
-      onReply = onReplyMessage,
-      showSessionActions = isUser && entryId != null && sessionActionsEnabled,
-      onRewind = entryId?.let { value -> { onRewindMessage(value) } },
-      onFork = entryId?.let { value -> { onForkMessage(value) } },
-      enabled = !live,
-      listenActive = messageSpeech?.isActive == true,
-      onToggleListen = toggleListen,
-      modifier =
-        Modifier
-          .fillMaxWidth(chatBubbleWidthFraction(isUser))
-          .semantics(mergeDescendants = true) { contentDescription = speaker },
-    ) {
+    Column(modifier = Modifier.fillMaxWidth(chatBubbleWidthFraction(isUser))) {
+      ChatMessageActionHost(
+        text = messageText,
+        onReply = onReplyMessage,
+        showSessionActions = isUser && entryId != null && sessionActionsEnabled,
+        onRewind = entryId?.let { value -> { onRewindMessage(value) } },
+        onFork = entryId?.let { value -> { onForkMessage(value) } },
+        enabled = !live,
+        listenActive = messageSpeech?.isActive == true,
+        onToggleListen = toggleListen,
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) { contentDescription = speaker },
+      ) {
       Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(if (isUser) CHAT_BUBBLE_CORNER_RADIUS_DP.dp else 0.dp),
@@ -1967,15 +1968,20 @@ internal fun ChatBubble(
               onToggle = { onToggleListen(checkNotNull(messageId), messageText) },
             )
           }
-          timestampMs?.let {
-            Text(
-              text = formatChatTimestamp(it),
-              style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
-              color = ClawTheme.colors.textSubtle,
-              modifier = Modifier.align(if (isUser) Alignment.End else Alignment.Start),
-            )
-          }
         }
+      }
+      }
+      // Group-footer style: timestamp sits below the bubble, outside it (web parity).
+      timestampMs?.let {
+        Text(
+          text = formatChatTimestamp(it),
+          style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
+          color = ClawTheme.colors.textSubtle,
+          modifier =
+            Modifier
+              .padding(top = 2.dp)
+              .align(if (isUser) Alignment.End else Alignment.Start),
+        )
       }
     }
   }

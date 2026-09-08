@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## Unreleased
+
+## 2026.9.4.30 - 2026-09-08
+
+Moves the chat message timestamp out of the bubble to a group-footer below it (web parity): the time now sits under the bubble, outside the capsule, aligned to the sender side, instead of being squeezed inside the user message bubble. Also fixes the user message text not being vertically centered inside the bubble. Bumps to 2026.9.4.30 / versionCode 2026090430.
+
 ## 2026.9.4.29 - 2026-09-08
 
 Removes the tinted plate behind the overview agent avatar: the badge Surface is now fully transparent (no successSoft fill, no tonal/shadow elevation), so no green polygon or elevation ring shows around the agent avatar. Bumps to 2026.9.4.29 / versionCode 2026090429.
