@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.4.29 - 2026-09-08
+
+Removes the tinted plate behind the overview agent avatar: the badge Surface is now fully transparent (no successSoft fill, no tonal/shadow elevation), so no green polygon or elevation ring shows around the agent avatar. Bumps to 2026.9.4.29 / versionCode 2026090429.
+
 ## 2026.9.4.28 - 2026-09-08
 
 Full upstream sync through 2026-09-08 (upstream 59f57f3cc5f). Preserves all fork features: the update-check module (AppUpdateCheck.kt), MobileColors, SessionFilters, the bottom-sheet composer (ChatScreen.kt kept at fork state), the thirdParty/play source-set layout, Chinese localization, and the release CI workflows. Upstream's new fold-aware model picker (ChatModelPickerSessionOwner + foldAwareSheet) is not wired up, matching the v4.25 decision to keep the bottom-sheet composer. Bumps to 2026.9.4.28 / versionCode 2026090428.
