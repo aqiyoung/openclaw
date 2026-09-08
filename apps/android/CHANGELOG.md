@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.8.2 - 2026-09-08
+
+Full upstream sync through 2026-09-08 (upstream 8e47d6998ab). Advances the sync anchor from v4.28 (59f57f3cc5f) by 153 commits, preserving all fork features: the update-check module, MobileColors, SessionFilters, the bottom-sheet composer, the thirdParty/play source-set layout, Chinese localization, and the release CI workflows. Resolves one ChatScreen conflict by keeping the fork UI and adapting its reader-scroll navigation to upstream's ChatReaderNavigation API (onManualNavigation -> readerScroll.navigation). Bumps to 2026.9.8.2 / versionCode 2026090802.
+
 ## Unreleased
 
 ## 2026.9.8.1 - 2026-09-08

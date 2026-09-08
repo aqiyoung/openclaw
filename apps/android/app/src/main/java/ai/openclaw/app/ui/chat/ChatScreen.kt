@@ -1446,7 +1446,7 @@ private fun ChatMessageList(
   // The header stays outside the weighted transcript so composer panels cannot collapse it.
   val onJumpToLatest = readerScroll.jumpToLatest.takeIf { readerScroll.showJumpToLatest }
   header(onJumpToLatest)
-  CompositionLocalProvider(LocalChatReaderNavigation provides readerScroll.onManualNavigation) {
+  CompositionLocalProvider(LocalChatReaderNavigation provides readerScroll.navigation) {
     ChatMessageDisclosure(
       messages = messages,
       owner = fullMessageOwner,
