@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2026.9.4.28 - 2026-09-08
+
+Full upstream sync through 2026-09-08 (upstream 59f57f3cc5f). Preserves all fork features: the update-check module (AppUpdateCheck.kt), MobileColors, SessionFilters, the bottom-sheet composer (ChatScreen.kt kept at fork state), the thirdParty/play source-set layout, Chinese localization, and the release CI workflows. Upstream's new fold-aware model picker (ChatModelPickerSessionOwner + foldAwareSheet) is not wired up, matching the v4.25 decision to keep the bottom-sheet composer. Bumps to 2026.9.4.28 / versionCode 2026090428.
+
 ## 2026.9.4.27 - 2026-09-07
 
 Also drops the outline border from the overview header status pill: the pill is now fully transparent, leaving only the colored status dot, label, and chevron. Bumps to 2026.9.4.27 / versionCode 2026090427.
