@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## 2026.9.8.1 - 2026-09-08
+
+Date-corrected re-cut of v4.30 (2026.9.4.30): moves the chat message timestamp out of the bubble to a group-footer below it (web parity), with the user message text now vertically centered inside the bubble. Switches to the date-based iteration version scheme (YYYY.M.D.N, N per-day). Bumps to 2026.9.8.1 / versionCode 2026090801.
+
+## Unreleased
+
 ## 2026.9.4.30 - 2026-09-08
 
 Moves the chat message timestamp out of the bubble to a group-footer below it (web parity): the time now sits under the bubble, outside the capsule, aligned to the sender side, instead of being squeezed inside the user message bubble. Also fixes the user message text not being vertically centered inside the bubble. Bumps to 2026.9.4.30 / versionCode 2026090430.
