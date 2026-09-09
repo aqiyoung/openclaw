@@ -1319,7 +1319,7 @@ private fun ChatHeader(
         Modifier
           .align(Alignment.CenterStart)
           .fillMaxWidth()
-          .padding(start = 52.dp, end = if (onJumpToLatest != null) 100.dp else 52.dp)
+          .padding(start = 52.dp, end = if (onJumpToLatest != null) 148.dp else 100.dp)
           .clearAndSetSemantics {
             contentDescription = listOfNotNull(projectLabel, sessionTitle, statusLabel).joinToString(", ")
           },
@@ -1401,6 +1401,11 @@ private fun ChatHeader(
           onClick = onJumpToLatest,
         )
       }
+      HeaderIcon(
+        icon = Icons.Default.Difference,
+        contentDescription = nativeString("Review changes"),
+        onClick = onOpenSessionDiff,
+      )
       Box {
         HeaderIcon(
           icon = Icons.Default.MoreVert,
