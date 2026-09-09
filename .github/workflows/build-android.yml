@@ -74,10 +74,10 @@ jobs:
             node scripts/run-android-gradle.mts \
               -PopenclawBuildCommit="$OPENCLAW_BUILD_COMMIT" \
               -PopenclawBuildTimestamp="$OPENCLAW_BUILD_TIMESTAMP" \
-              :app:assembleRelease --no-daemon --stacktrace
+              :app:assembleThirdPartyRelease --no-daemon --stacktrace
           else
             node scripts/run-android-gradle.mts \
-              :app:assembleDebug --no-daemon --stacktrace
+              :app:assembleThirdPartyDebug --no-daemon --stacktrace
           fi
       - name: Locate and verify APK
         id: apk

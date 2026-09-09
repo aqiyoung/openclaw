@@ -149,8 +149,6 @@ android {
     versionName = openClawAndroidVersionName
     buildConfigField("String", "GIT_COMMIT", "\"$openClawBuildCommit\"")
     buildConfigField("String", "BUILD_TIMESTAMP", "\"$openClawBuildTimestamp\"")
-    // Third-party / direct-install build: foreground service may use location (non-Play).
-    manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone|location"
     ndk {
       // Support all major ABIs — native libs are tiny (~47 KB per ABI)
       abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
@@ -174,6 +172,20 @@ android {
       versionNameSuffix = "-debug"
       resValue("string", "application_id", "$openClawAndroidApplicationId.debug")
       isMinifyEnabled = false
+    }
+  }
+
+  flavorDimensions += "store"
+  productFlavors {
+    create("play") {
+      dimension = "store"
+      // Play build: no location foreground service (Play policy).
+      manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone"
+    }
+    create("thirdParty") {
+      dimension = "store"
+      // Direct-install build: foreground service may use location (non-Play).
+      manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone|location"
     }
   }
 
