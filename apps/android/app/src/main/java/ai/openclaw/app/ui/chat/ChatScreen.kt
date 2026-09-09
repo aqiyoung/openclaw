@@ -143,6 +143,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Difference
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -486,6 +487,7 @@ internal fun ChatScreen(
   SideEffect { modelPicker.refreshTarget() }
   DisposableEffect(modelPicker) { onDispose { modelPicker.dispose() } }
   var showBackgroundTasks by rememberSaveable { mutableStateOf(false) }
+  var showSessionDiff by rememberSaveable { mutableStateOf(false) }
   var showBranchSwitcher by rememberSaveable { mutableStateOf(false) }
   var detailsExpanded by rememberSaveable { mutableStateOf(false) }
   var sendMessageTooLong by rememberSaveable(composerOwner) { mutableStateOf(false) }
@@ -804,6 +806,10 @@ internal fun ChatScreen(
       onOpenBackgroundTasks = {
         dismissDetails()
         showBackgroundTasks = true
+      },
+      onOpenSessionDiff = {
+        dismissDetails()
+        showSessionDiff = true
       },
       onOpenBranchSwitcher = {
         dismissDetails()
@@ -1182,6 +1188,14 @@ internal fun ChatScreen(
       onDismiss = { showBackgroundTasks = false },
     )
   }
+  if (showSessionDiff) {
+    SessionDiffSheet(
+      viewModel = viewModel,
+      sessionKey = sessionKey,
+      agentId = sessionAgentId,
+      onDismiss = { showSessionDiff = false },
+    )
+  }
   if (showApprovalDialog && pendingExecApprovals.isNotEmpty()) {
     @OptIn(ExperimentalMaterial3Api::class)
     ModalBottomSheet(
@@ -1262,6 +1276,7 @@ private fun ChatHeader(
   onRefresh: () -> Unit,
   onOpenDashboard: () -> Unit,
   onOpenBackgroundTasks: () -> Unit,
+  onOpenSessionDiff: () -> Unit,
   onOpenBranchSwitcher: () -> Unit,
 ) {
   var actionsMenuExpanded by remember { mutableStateOf(false) }
@@ -1405,6 +1420,7 @@ private fun ChatHeader(
               }
               add(FoldAwareMenuItem("dashboard", nativeString("Dashboard"), onOpenDashboard, Icons.Default.Dashboard))
               add(FoldAwareMenuItem("background", nativeString("Background tasks"), onOpenBackgroundTasks, Icons.Default.HourglassEmpty))
+              add(FoldAwareMenuItem("diff", nativeString("Review changes"), onOpenSessionDiff, Icons.Default.Difference))
               if (workspaceGit) {
                 add(FoldAwareMenuItem("worktree", newChatInWorktreeLabel, onNewChatInWorktree, enabled = newChatEnabled))
               }

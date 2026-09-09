@@ -2,6 +2,7 @@ package ai.openclaw.app
 
 import ai.openclaw.app.chat.AndroidClientDatabases
 import ai.openclaw.app.chat.BackgroundTask
+import ai.openclaw.app.chat.SessionsDiffResult
 import ai.openclaw.app.chat.ChatActiveRunPresentation
 import ai.openclaw.app.chat.ChatAgentSessionSelectionOwner
 import ai.openclaw.app.chat.ChatCacheScope
@@ -3084,6 +3085,12 @@ class NodeRuntime private constructor(
   val chatOutboxPresentationRestored: StateFlow<Boolean> = chat.outboxPresentationRestored
 
   suspend fun listBackgroundTasks(agentId: String): List<BackgroundTask> = chat.listBackgroundTasks(agentId)
+
+  suspend fun loadSessionDiff(
+    sessionKey: String,
+    agentId: String? = null,
+    scope: String? = null,
+  ): SessionsDiffResult? = chat.loadSessionDiff(sessionKey, agentId, scope)
 
   suspend fun getBackgroundTask(taskId: String): BackgroundTask = chat.getBackgroundTask(taskId)
 

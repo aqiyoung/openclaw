@@ -1,6 +1,7 @@
 package ai.openclaw.app
 
 import ai.openclaw.app.chat.BackgroundTask
+import ai.openclaw.app.chat.SessionsDiffResult
 import ai.openclaw.app.chat.ChatActiveRunPresentation
 import ai.openclaw.app.chat.ChatCommandEntry
 import ai.openclaw.app.chat.ChatComposerOwner
@@ -1902,6 +1903,12 @@ class MainViewModel private constructor(
   }
 
   suspend fun listBackgroundTasks(agentId: String): List<BackgroundTask> = ensureRuntime().listBackgroundTasks(agentId)
+
+  suspend fun loadSessionDiff(
+    sessionKey: String,
+    agentId: String? = null,
+    scope: String? = null,
+  ): SessionsDiffResult? = ensureRuntime().loadSessionDiff(sessionKey, agentId, scope)
 
   suspend fun getBackgroundTask(taskId: String): BackgroundTask = ensureRuntime().getBackgroundTask(taskId)
 
