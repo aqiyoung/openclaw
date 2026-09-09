@@ -74,10 +74,10 @@ jobs:
             node scripts/run-android-gradle.mts \
               -PopenclawBuildCommit="$OPENCLAW_BUILD_COMMIT" \
               -PopenclawBuildTimestamp="$OPENCLAW_BUILD_TIMESTAMP" \
-              :app:assembleThirdPartyRelease --no-daemon --stacktrace
+              :app:assembleRelease --no-daemon --stacktrace
           else
             node scripts/run-android-gradle.mts \
-              :app:assembleThirdPartyDebug --no-daemon --stacktrace
+              :app:assembleDebug --no-daemon --stacktrace
           fi
       - name: Locate and verify APK
         id: apk
@@ -127,7 +127,7 @@ jobs:
           # (避免自行拼接格式不一致导致 INSTALL_FAILED_VERSION_DOWNGRADE)
           VERSION_CODE=$(grep 'OPENCLAW_ANDROID_VERSION_CODE' apps/android/Config/Version.properties | cut -d'=' -f2 | tr -d '[:space:]')
           RELEASE_URL="https://github.com/aqiyoung/openclaw/releases/tag/${TAG}"
-          DL_BASE="https://github.com/aqiyoung/openclaw/releases/download/${TAG}/openclaw-${VERSION_NAME}-thirdParty-release"
+          DL_BASE="https://github.com/aqiyoung/openclaw/releases/download/${TAG}/openclaw-${VERSION_NAME}"
           export TAG VERSION_NAME VERSION_CODE RELEASE_URL DL_BASE
           WORK=/tmp/meta-publish
           rm -rf "$WORK"
@@ -148,9 +148,9 @@ jobs:
               "versionCode": code,
               "releaseName": tag,
               "apk": {
-                  "arm64-v8a": f"{proxy}{dl_base}-arm64-v8a.apk",
-                  "armeabi-v7a": f"{proxy}{dl_base}-armeabi-v7a.apk",
-                  "x86_64": f"{proxy}{dl_base}-x86_64.apk",
+                  "arm64-v8a": f"{proxy}{dl_base}.apk",
+                  "armeabi-v7a": f"{proxy}{dl_base}.apk",
+                  "x86_64": f"{proxy}{dl_base}.apk",
               },
               "releaseUrl": release_url,
               "critical": False,

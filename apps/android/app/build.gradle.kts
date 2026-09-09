@@ -149,22 +149,11 @@ android {
     versionName = openClawAndroidVersionName
     buildConfigField("String", "GIT_COMMIT", "\"$openClawBuildCommit\"")
     buildConfigField("String", "BUILD_TIMESTAMP", "\"$openClawBuildTimestamp\"")
+    // Third-party / direct-install build: foreground service may use location (non-Play).
+    manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone|location"
     ndk {
       // Support all major ABIs — native libs are tiny (~47 KB per ABI)
       abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-    }
-  }
-
-  flavorDimensions += "store"
-
-  productFlavors {
-    create("play") {
-      dimension = "store"
-      manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone"
-    }
-    create("thirdParty") {
-      dimension = "store"
-      manifestPlaceholders["nodeForegroundServiceType"] = "connectedDevice|microphone|location"
     }
   }
 
@@ -270,15 +259,7 @@ androidComponents {
       .filterIsInstance<VariantOutputImpl>()
       .forEach { output ->
         val versionName = output.versionName.orNull ?: "0"
-        val buildType = variant.buildType
-        val flavorName = variant.flavorName?.takeIf { it.isNotBlank() }
-        val outputFileName =
-          if (flavorName == null) {
-            "openclaw-$versionName-$buildType.apk"
-          } else {
-            "openclaw-$versionName-$flavorName-$buildType.apk"
-          }
-        output.outputFileName = outputFileName
+        output.outputFileName = "openclaw-$versionName.apk"
       }
 
     if (variant.buildType == "debug") {
