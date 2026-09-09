@@ -640,19 +640,19 @@ private fun OverviewStatusPill(
   onClick: () -> Unit,
 ) {
   val colors = ClawTheme.colors
-  val (dotColor, backgroundColor) =
+  // Fully transparent pill: no fill, no border — the status dot carries the color.
+  val dotColor =
     when (status.status) {
-      ClawStatus.Success -> colors.success to colors.successSoft
-      ClawStatus.Warning -> colors.warning to colors.warningSoft
-      ClawStatus.Danger -> colors.danger to colors.dangerSoft
-      ClawStatus.Neutral -> colors.textSubtle to colors.surfaceRaised
+      ClawStatus.Success -> colors.success
+      ClawStatus.Warning -> colors.warning
+      ClawStatus.Danger -> colors.danger
+      ClawStatus.Neutral -> colors.textSubtle
     }
   Surface(
     onClick = onClick,
     modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(ClawTheme.radii.control),
-    color = backgroundColor.copy(alpha = 0.82f),
-    border = BorderStroke(1.dp, ClawTheme.colors.border.copy(alpha = 0.32f)),
+    color = Color.Transparent,
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
@@ -779,10 +779,12 @@ private fun OverviewAgentBadge(
   Surface(
     modifier = Modifier.size(42.dp),
     shape = CircleShape,
-    color = if (active) ClawTheme.colors.successSoft else ClawTheme.colors.surfacePressed,
+    // No plate behind the avatar: the badge is fully transparent so no tinted
+    // polygon (or its elevation shadow) shows around the agent avatar.
+    color = Color.Transparent,
     contentColor = if (active) ClawTheme.colors.success else ClawTheme.colors.textMuted,
-    tonalElevation = if (active) 3.dp else 1.dp,
-    shadowElevation = if (active) 5.dp else 1.dp,
+    tonalElevation = 0.dp,
+    shadowElevation = 0.dp,
   ) {
     ClawAgentAvatar(source = avatarSource, size = 42.dp) {
       Box(contentAlignment = Alignment.Center) {
