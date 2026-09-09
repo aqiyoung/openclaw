@@ -2008,6 +2008,7 @@ internal fun ChatBubble(
           .fillMaxWidth(chatBubbleWidthFraction(isUser))
           .semantics(mergeDescendants = true) { contentDescription = speaker },
     ) {
+      Column(modifier = Modifier.fillMaxWidth()) {
       Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(if (isUser) CHAT_BUBBLE_CORNER_RADIUS_DP.dp else 0.dp),
@@ -2112,12 +2113,25 @@ internal fun ChatBubble(
               onToggle = { onToggleListen(checkNotNull(messageId), messageText) },
             )
           }
+          if (!isUser) {
+            timestampMs?.let {
+              Text(
+                text = formatChatTimestamp(it),
+                style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
+                color = ClawTheme.colors.textSubtle,
+                modifier = Modifier.align(Alignment.Start),
+              )
+            }
+          }
+        }
+      }
+        if (isUser) {
           timestampMs?.let {
             Text(
               text = formatChatTimestamp(it),
               style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
               color = ClawTheme.colors.textSubtle,
-              modifier = Modifier.align(if (isUser) Alignment.End else Alignment.Start),
+              modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
             )
           }
         }
