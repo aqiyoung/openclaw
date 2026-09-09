@@ -1687,4 +1687,11 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw 将此手机变为简洁的移动控制界面，用于管理对话、语音、提供商和 Gateway。"</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"最新优先"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"下一个周期"</string>
+    <string name="native_9ed79ee9b2129b5d">检查更新</string>
+    <string name="native_e6f688f80ad2cae7">正在检查最新版本…</string>
+    <string name="native_9933d6810c139ba8">检查是否有新版本可用</string>
+    <string name="native_5ae200f91c64da48">发现新版本</string>
+    <string name="native_7578719fb37f8a89">您已是最新版本。</string>
+    <string name="native_d6eafe8235910042">下载</string>
+    <string name="native_73b6e48a1b552d11">稍后</string>
 </resources>

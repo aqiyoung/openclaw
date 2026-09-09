@@ -1687,4 +1687,11 @@
     <string name="native_ffaed354e7fe5514" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"OpenClaw turns this phone into a clean mobile command surface for threads, voice, providers, and Gateway."</string>
     <string name="native_ffb6f5764bddb68c" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Newest first"</string>
     <string name="native_ffcf16006c652ee3" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Next Cycle"</string>
+    <string name="native_9ed79ee9b2129b5d">Check for Updates</string>
+    <string name="native_e6f688f80ad2cae7">Checking latest version…</string>
+    <string name="native_9933d6810c139ba8">Check if a new version is available</string>
+    <string name="native_5ae200f91c64da48">Update Available</string>
+    <string name="native_7578719fb37f8a89">You\'re running the latest version.</string>
+    <string name="native_d6eafe8235910042">Download</string>
+    <string name="native_73b6e48a1b552d11">Later</string>
 </resources>

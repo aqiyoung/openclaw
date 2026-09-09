@@ -1674,4 +1674,11 @@ internal val nativeStringResourceIds: Map<String, Int> =
     "−\${diff.removed}" to R.string.native_216bcd2049f2251a,
     "✦" to R.string.native_3191b52693ec28b4,
     "📎 \${attachment.fileName}" to R.string.native_d62dcf758efe63e0,
+    "Check for Updates" to R.string.native_9ed79ee9b2129b5d,
+    "Checking latest version…" to R.string.native_e6f688f80ad2cae7,
+    "Check if a new version is available" to R.string.native_9933d6810c139ba8,
+    "Update Available" to R.string.native_5ae200f91c64da48,
+    "You're running the latest version." to R.string.native_7578719fb37f8a89,
+    "Download" to R.string.native_d6eafe8235910042,
+    "Later" to R.string.native_73b6e48a1b552d11,
   )
