@@ -37,6 +37,11 @@ import ai.openclaw.app.chat.ChatWidgetResource
 import ai.openclaw.app.chat.MessageSpeechPhase
 import ai.openclaw.app.chat.MessageSpeechState
 import ai.openclaw.app.chat.SessionBranch
+import ai.openclaw.app.chat.ToolDiffLine
+import ai.openclaw.app.chat.ToolDiffLineKind
+import ai.openclaw.app.chat.ToolDiffPreview
+import ai.openclaw.app.chat.resolveToolCallDiff
+import ai.openclaw.app.chat.resolveToolCallPath
 import ai.openclaw.app.chat.VoiceNoteRecorderState
 import ai.openclaw.app.chat.chatOutboxQueueFailureText
 import ai.openclaw.app.chat.isTranscriptOnlyOpenClawAssistant
@@ -222,6 +227,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -2244,20 +2250,112 @@ private fun ChatText(
 
 @Composable
 private fun ToolBubble(toolCalls: List<ChatPendingToolCall>) {
+  var expandedToolCallId by remember { mutableStateOf<String?>(null) }
   ClawPanel {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       ClawStatusPill(text = nativeString("Tools running"), status = ClawStatus.Warning)
       toolCalls.take(4).forEach { tool ->
-        ClawListItem(
-          title = tool.name,
-          subtitle = nativeString("OpenClaw is working"),
-          trailing = { tool.liveDiff?.let { DiffStatChips(it) } },
-        )
+        val preview = remember(tool.toolCallId, tool.name, tool.args) { resolveToolCallDiff(tool.name, tool.args) }
+        val targetPath = remember(tool.args) { resolveToolCallPath(tool.args) }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+          ClawListItem(
+            title = targetPath?.substringAfterLast('/')?.takeIf { it.isNotBlank() } ?: tool.name,
+            subtitle =
+              targetPath?.substringBeforeLast('/')?.takeIf { it.isNotBlank() }
+                ?: nativeString("OpenClaw is working"),
+            trailing = {
+              val stat =
+                tool.liveDiff ?: preview?.let { ChatDiffStat(added = it.added, removed = it.removed) }
+              stat?.let { DiffStatChips(it) }
+            },
+            onClick =
+              preview?.takeIf { it.lines.isNotEmpty() }?.let {
+                {
+                  expandedToolCallId =
+                    if (expandedToolCallId == tool.toolCallId) null else tool.toolCallId
+                }
+              },
+          )
+          if (preview != null && preview.lines.isNotEmpty()) {
+            ToolCallDiffPreview(
+              preview = preview,
+              expanded = expandedToolCallId == tool.toolCallId,
+            )
+          }
+        }
       }
       if (toolCalls.size > 4) {
         Text(text = nativeString("+\${toolCalls.size - 4} more", toolCalls.size - 4), style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
       }
     }
+  }
+}
+
+@Composable
+private fun ToolCallDiffPreview(
+  preview: ToolDiffPreview,
+  expanded: Boolean,
+) {
+  val collapsedLines = 12
+  val expandedLines = 160
+  val visible = preview.lines.take(if (expanded) expandedLines else collapsedLines)
+  val hidden = preview.lines.size - visible.size
+  Column(modifier = Modifier.fillMaxWidth().background(ClawTheme.colors.codeBg)) {
+    visible.forEach { line -> ToolCallDiffRow(line = line) }
+    if (hidden > 0) {
+      Text(
+        text = nativeString("+\${hidden} more", hidden),
+        style = ClawTheme.type.caption,
+        fontFamily = FontFamily.Monospace,
+        color = ClawTheme.colors.textSubtle,
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+      )
+    }
+  }
+}
+
+@Composable
+private fun ToolCallDiffRow(line: ToolDiffLine) {
+  val colors = ClawTheme.colors
+  val background =
+    when (line.kind) {
+      ToolDiffLineKind.Add -> colors.successSoft
+      ToolDiffLineKind.Delete -> colors.dangerSoft
+      ToolDiffLineKind.Skip -> colors.surfaceRaised
+      ToolDiffLineKind.Context -> Color.Transparent
+    }
+  val prefix =
+    when (line.kind) {
+      ToolDiffLineKind.Add -> "+"
+      ToolDiffLineKind.Delete -> "-"
+      else -> " "
+    }
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .background(background)
+        .padding(horizontal = 10.dp, vertical = 1.dp),
+  ) {
+    Text(
+      text = prefix,
+      style = ClawTheme.type.caption,
+      fontFamily = FontFamily.Monospace,
+      color =
+        when (line.kind) {
+          ToolDiffLineKind.Add -> colors.success
+          ToolDiffLineKind.Delete -> colors.danger
+          else -> colors.textSubtle
+        },
+    )
+    Text(
+      text = line.text.ifEmpty { " " },
+      style = ClawTheme.type.caption,
+      fontFamily = FontFamily.Monospace,
+      color = if (line.kind == ToolDiffLineKind.Skip) colors.textSubtle else colors.codeText,
+      softWrap = false,
+      modifier = Modifier.padding(start = 6.dp),
+    )
   }
 }
 
