@@ -1694,4 +1694,15 @@
     <string name="native_7578719fb37f8a89">您已是最新版本。</string>
     <string name="native_d6eafe8235910042">下载</string>
     <string name="native_73b6e48a1b552d11">稍后</string>
+    <string name="native_6a47708f4e14c122">审阅更改</string>
+    <string name="native_5d4041aa7af3b4ad">已更改的文件</string>
+    <string name="native_df07c692905658bd">暂无代码更改</string>
+    <string name="native_2c7ccf98f8b3278c">二进制文件</string>
+    <string name="native_59548ff8a2081100">无法加载更改</string>
+    <string name="native_d23fc4acc3d6f95d">聊天未就绪</string>
+    <string name="native_6df0479c79c9c4e1">OpenClaw 节点</string>
+    <string name="native_c3ac9576d94db14f">请使用「刷新聊天」检查网关状态。</string>
+    <string name="native_19766ed6ccb2f4a3">取消</string>
+    <string name="native_b764cdc0eab71374">未知</string>
+    <string name="native_01774804b142dc76">还有 %1$s 个</string>
 </resources>

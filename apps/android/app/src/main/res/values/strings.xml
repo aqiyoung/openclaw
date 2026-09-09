@@ -1694,4 +1694,15 @@
     <string name="native_7578719fb37f8a89">You\'re running the latest version.</string>
     <string name="native_d6eafe8235910042">Download</string>
     <string name="native_73b6e48a1b552d11">Later</string>
+    <string name="native_6a47708f4e14c122">Review changes</string>
+    <string name="native_5d4041aa7af3b4ad">Changed files</string>
+    <string name="native_df07c692905658bd">No code changes yet</string>
+    <string name="native_2c7ccf98f8b3278c">Binary file</string>
+    <string name="native_59548ff8a2081100">Couldn’t load changes</string>
+    <string name="native_d23fc4acc3d6f95d">Chat not ready</string>
+    <string name="native_6df0479c79c9c4e1">OpenClaw Node</string>
+    <string name="native_c3ac9576d94db14f">Use Refresh chat to check Gateway health.</string>
+    <string name="native_19766ed6ccb2f4a3">Cancel</string>
+    <string name="native_b764cdc0eab71374">Unknown</string>
+    <string name="native_01774804b142dc76">+%1$s more</string>
 </resources>
