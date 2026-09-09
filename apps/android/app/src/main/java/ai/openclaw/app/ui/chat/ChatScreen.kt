@@ -148,7 +148,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Difference
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -1319,7 +1318,7 @@ private fun ChatHeader(
         Modifier
           .align(Alignment.CenterStart)
           .fillMaxWidth()
-          .padding(start = 52.dp, end = if (onJumpToLatest != null) 148.dp else 100.dp)
+          .padding(start = 52.dp, end = if (onJumpToLatest != null) 100.dp else 52.dp)
           .clearAndSetSemantics {
             contentDescription = listOfNotNull(projectLabel, sessionTitle, statusLabel).joinToString(", ")
           },
@@ -1401,11 +1400,6 @@ private fun ChatHeader(
           onClick = onJumpToLatest,
         )
       }
-      HeaderIcon(
-        icon = Icons.Default.Difference,
-        contentDescription = nativeString("Review changes"),
-        onClick = onOpenSessionDiff,
-      )
       Box {
         HeaderIcon(
           icon = Icons.Default.MoreVert,
@@ -1431,7 +1425,6 @@ private fun ChatHeader(
               }
               add(FoldAwareMenuItem("dashboard", nativeString("Dashboard"), onOpenDashboard, Icons.Default.Dashboard))
               add(FoldAwareMenuItem("background", nativeString("Background tasks"), onOpenBackgroundTasks, Icons.Default.HourglassEmpty))
-              add(FoldAwareMenuItem("diff", nativeString("Review changes"), onOpenSessionDiff, Icons.Default.Difference))
               if (workspaceGit) {
                 add(FoldAwareMenuItem("worktree", newChatInWorktreeLabel, onNewChatInWorktree, enabled = newChatEnabled))
               }
