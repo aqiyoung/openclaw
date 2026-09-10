@@ -30,6 +30,7 @@ import ai.openclaw.app.gateway.GatewayMediaKind
 import ai.openclaw.app.gateway.GatewayRegistryEntry
 import ai.openclaw.app.gateway.GatewayRegistryEntryKind
 import ai.openclaw.app.gateway.GatewayUpdateAvailableSummary
+import ai.openclaw.app.i18n.nativeString
 import ai.openclaw.app.systemagent.SystemAgentChatState
 import ai.openclaw.app.ui.GatewayConnectPlan
 import ai.openclaw.app.ui.GatewaySavedAuthAction
@@ -48,6 +49,7 @@ import android.Manifest
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.SavedStateHandle
@@ -1017,10 +1019,24 @@ class MainViewModel private constructor(
   }
 
   internal fun openConversationNotification(target: ConversationNotificationTarget) {
+    // Like the picker, an explicit open supersedes older queued UI navigation.
+    // Runtime selection separately protects already accepted connections.
     launchGatewayConnectionOperation { runtime, isCurrent ->
-      if (runtime.openConversationNotificationTarget(target, isCurrent) && isCurrent()) {
-        runtime.finishGatewayConnectionOperation(isCurrent, unlessHandedOff = true)
-        _requestedHomeDestination.value = HomeDestination.Chat
+      when (val selection = runtime.openConversationNotificationTarget(target, isCurrent)) {
+        is GatewayTargetSelection.Selected -> {
+          if (isCurrent() && selection.isCurrent()) {
+            runtime.finishGatewayConnectionOperation(isCurrent, unlessHandedOff = true)
+            _requestedHomeDestination.value = HomeDestination.Chat
+          }
+        }
+
+        GatewayTargetSelection.Unavailable -> {
+          showUnavailableGateway(isCurrent)
+        }
+
+        GatewayTargetSelection.Retired -> {
+          return@launchGatewayConnectionOperation
+        }
       }
     }
   }
@@ -1292,8 +1308,20 @@ class MainViewModel private constructor(
   }
 
   fun switchToGateway(stableId: String) {
-    launchGatewayConnectionOperation { runtime, isCurrent -> runtime.switchToGateway(stableId, isCurrent) }
+    launchGatewayConnectionOperation { runtime, isCurrent ->
+      if (runtime.switchToGateway(stableId, isCurrent) == GatewayTargetSelection.Unavailable) {
+        showUnavailableGateway(isCurrent)
+      }
+    }
   }
+
+  private suspend fun showUnavailableGateway(isCurrent: () -> Boolean) =
+    withContext(Dispatchers.Main) {
+      if (!isCurrent()) return@withContext
+      Toast.makeText(nodeApp, nativeString("Gateway unavailable"), Toast.LENGTH_LONG).show()
+      requestedSettingsRouteState.value = SettingsRoute.Gateway
+      _requestedHomeDestination.value = HomeDestination.Settings
+    }
 
   fun setGatewayConnectionEnabled(
     stableId: String,
@@ -1342,16 +1370,19 @@ class MainViewModel private constructor(
     }
   }
 
-  fun acceptGatewayTrustPrompt(manualFingerprint: String? = null) {
-    runtimeRef.value?.acceptGatewayTrustPrompt(manualFingerprint)
+  fun acceptGatewayTrustPrompt(
+    prompt: NodeRuntime.GatewayTrustPrompt,
+    manualFingerprint: String? = null,
+  ) {
+    runtimeRef.value?.acceptGatewayTrustPrompt(prompt, manualFingerprint)
   }
 
-  fun useSystemGatewayTrustPrompt() {
-    runtimeRef.value?.useSystemGatewayTrustPrompt()
+  fun useSystemGatewayTrustPrompt(prompt: NodeRuntime.GatewayTrustPrompt) {
+    runtimeRef.value?.useSystemGatewayTrustPrompt(prompt)
   }
 
-  fun declineGatewayTrustPrompt() {
-    runtimeRef.value?.declineGatewayTrustPrompt()
+  fun declineGatewayTrustPrompt(prompt: NodeRuntime.GatewayTrustPrompt) {
+    runtimeRef.value?.declineGatewayTrustPrompt(prompt)
   }
 
   internal suspend fun resolveInlineWidgetResource(
