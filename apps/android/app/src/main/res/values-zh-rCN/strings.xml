@@ -1706,4 +1706,31 @@
     <string name="native_19766ed6ccb2f4a3">取消</string>
     <string name="native_b764cdc0eab71374">未知</string>
     <string name="native_01774804b142dc76">还有 %1$s 个</string>
+    <string name="native_546c72e6e6cf30bd" tools:ignore="Typos,TypographyDashes,TypographyEllipsis"> ×%1$s</string>
+    <string name="native_09fc96082d34c2df" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">$</string>
+    <string name="native_5bb88b338f9e14ff" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">无输出 — 工具失败。</string>
+    <string name="native_143069443a7dd1a3" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">进度已清除</string>
+    <string name="native_f1bc78797e5e728f" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">进度备注已更新</string>
+    <string name="native_d39c56411d38b869" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">进度更新失败</string>
+    <string name="native_e794667eb54f0f2a" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">进度已更新 — %1$s/%2$s · %3$s</string>
+    <string name="native_8db93dd0a548a02c" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">执行了 %1$s 次工具调用</string>
+    <string name="native_91cbe066c9c0e8a8" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">显示全部 %1$s 个工具</string>
+    <string name="native_2e53bdcd0740867b" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">工具</string>
+    <string name="native_a6c64c286a879503" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">工具错误</string>
+    <string name="native_e7f93aad5026eeaf" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">已完成</string>
+    <string name="native_275bd067078dbe60" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">耗时 %1$s</string>
+    <string name="native_95df7d3970f3ceb1" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">创建了 %1$s 个文件</string>
+    <string name="native_0b99307e8bce97ba" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">创建了文件</string>
+    <string name="native_846b345b42cfe527" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">编辑了 %1$s 个文件</string>
+    <string name="native_6156b5182e742003" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">编辑了文件</string>
+    <string name="native_03c567a7b9d8e205" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">抓取了 %1$s 个页面</string>
+    <string name="native_5dcb41cd61120822" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">抓取了页面</string>
+    <string name="native_52179f3fca8a17ab" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">运行了 %1$s 条命令</string>
+    <string name="native_6f5312c644035cff" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">执行了 %1$s 次搜索</string>
+    <string name="native_1324e5a32dfd0a1e" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">运行了命令</string>
+    <string name="native_17f8c8b594a381e0" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">执行了搜索</string>
+    <string name="native_8ca4dfcb313bbf70" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">读取了 %1$s 个文件</string>
+    <string name="native_983f92956ac1a23e" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">读取了文件</string>
+    <string name="native_4a14eb419ba7f3e0" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">使用了 %1$s 个工具</string>
+    <string name="native_ead79d5de1e67915" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">使用了 %1$s%2$s</string>
 </resources>

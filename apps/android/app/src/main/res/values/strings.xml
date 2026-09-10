@@ -1706,4 +1706,31 @@
     <string name="native_19766ed6ccb2f4a3">Cancel</string>
     <string name="native_b764cdc0eab71374">Unknown</string>
     <string name="native_01774804b142dc76">+%1$s more</string>
+    <string name="native_546c72e6e6cf30bd" tools:ignore="Typos,TypographyDashes,TypographyEllipsis"> ×%1$s</string>
+    <string name="native_09fc96082d34c2df" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">$</string>
+    <string name="native_5bb88b338f9e14ff" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">No output — tool failed.</string>
+    <string name="native_143069443a7dd1a3" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Progress cleared</string>
+    <string name="native_f1bc78797e5e728f" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Progress note updated</string>
+    <string name="native_d39c56411d38b869" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Progress update failed</string>
+    <string name="native_e794667eb54f0f2a" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Progress updated — %1$s/%2$s · %3$s</string>
+    <string name="native_8db93dd0a548a02c" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Ran %1$s tool calls</string>
+    <string name="native_91cbe066c9c0e8a8" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Show all %1$s tools</string>
+    <string name="native_2e53bdcd0740867b" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Tool</string>
+    <string name="native_a6c64c286a879503" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Tool error</string>
+    <string name="native_e7f93aad5026eeaf" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Worked</string>
+    <string name="native_275bd067078dbe60" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">Worked for %1$s</string>
+    <string name="native_95df7d3970f3ceb1" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">created %1$s files</string>
+    <string name="native_0b99307e8bce97ba" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">created a file</string>
+    <string name="native_846b345b42cfe527" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">edited %1$s files</string>
+    <string name="native_6156b5182e742003" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">edited a file</string>
+    <string name="native_03c567a7b9d8e205" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">fetched %1$s pages</string>
+    <string name="native_5dcb41cd61120822" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">fetched a page</string>
+    <string name="native_52179f3fca8a17ab" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">ran %1$s commands</string>
+    <string name="native_6f5312c644035cff" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">ran %1$s searches</string>
+    <string name="native_1324e5a32dfd0a1e" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">ran a command</string>
+    <string name="native_17f8c8b594a381e0" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">ran a search</string>
+    <string name="native_8ca4dfcb313bbf70" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">read %1$s files</string>
+    <string name="native_983f92956ac1a23e" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">read a file</string>
+    <string name="native_4a14eb419ba7f3e0" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">used %1$s tools</string>
+    <string name="native_ead79d5de1e67915" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">used %1$s%2$s</string>
 </resources>

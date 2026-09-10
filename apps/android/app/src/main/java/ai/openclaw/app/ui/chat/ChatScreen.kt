@@ -164,6 +164,13 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -1541,7 +1548,11 @@ private fun ChatMessageList(
           completedNewestItemId = transcriptAnchor?.completedNewestItemId,
         ),
     )
-  val timeline = remember(baseTimeline, turnRecap) { baseTimeline.withTurnRecap(turnRecap) }
+  var expandedWorkKeys by remember(sessionKey) { mutableStateOf(emptySet<String>()) }
+  val timeline =
+    remember(baseTimeline, turnRecap, expandedWorkKeys, activeRunCount, sessionKey) {
+      baseTimeline.withCompletedWorkGroups(messages, activeRunCount > 0, expandedWorkKeys, sessionKey).withTurnRecap(turnRecap)
+    }
   val readerScroll =
     rememberChatReaderScrollController(
       sessionKey = sessionKey,
@@ -1651,6 +1662,10 @@ private fun ChatMessageList(
                       ToolBubble(toolCalls = item.toolCalls)
                     }
 
+                    is ChatTimelineItem.CompletedTools -> {
+                      CompletedToolActivity(tools = item.tools, stableKey = item.key)
+                    }
+
                     is ChatTimelineItem.SubagentActivity -> {
                       SubagentActivityRows(
                         activities = item.activities,
@@ -1660,6 +1675,12 @@ private fun ChatMessageList(
 
                     is ChatTimelineItem.QuestionPrompt -> {
                       ChatQuestionCard(prompt = item.prompt, onDraftChanged = onQuestionDraftChanged, onSubmit = onResolveQuestion, onSkip = onSkipQuestion)
+                    }
+
+                    is ChatTimelineItem.WorkedSummary -> {
+                      ChatWorkedSummary(item) {
+                        expandedWorkKeys = if (item.expanded) expandedWorkKeys - item.key else expandedWorkKeys + item.key
+                      }
                     }
 
                     is ChatTimelineItem.TurnRecapSummary -> {
@@ -2373,6 +2394,355 @@ private fun ToolCallDiffRow(line: ToolDiffLine) {
 }
 
 @Composable
+@Composable
+private fun CompletedToolActivity(
+  tools: List<ChatToolActivity>,
+  stableKey: String,
+) {
+  if (tools.isEmpty()) return
+  if (tools.size == 1) {
+    val tool = tools.single()
+    CompletedToolActivityItem(
+      tool = tool,
+      saveableKey = tool.toolCallId ?: "${tool.name}:${tool.detail.orEmpty().hashCode()}",
+      parentStableKey = stableKey,
+    )
+    return
+  }
+  if (tools.all { completedToolKind(it.name) == CompletedToolKind.Progress }) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      tools.forEach { ProgressToolReceipt(it) }
+    }
+    return
+  }
+  var expanded by rememberSaveable(stableKey) { mutableStateOf(false) }
+  var showAll by rememberSaveable(stableKey) { mutableStateOf(false) }
+  val summary = completedToolGroupSummary(tools)
+  val state = if (expanded) nativeString("Expanded") else nativeString("Collapsed")
+  // Remeasure disclosures immediately: nested size springs leave blank space
+  // while the reverse-layout transcript readjusts its bottom anchor.
+  Column(
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Surface(
+      onClick = {
+        expanded = !expanded
+        if (!expanded) showAll = false
+      },
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .semantics(mergeDescendants = true) {
+            role = Role.Button
+            stateDescription = state
+          },
+      shape = RoundedCornerShape(4.dp),
+      color = Color.Transparent,
+      contentColor = ClawTheme.colors.textMuted,
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.List,
+          contentDescription = null,
+          modifier = Modifier.size(16.dp),
+          tint = ClawTheme.colors.textMuted,
+        )
+        Text(
+          text = summary,
+          modifier = Modifier.weight(1f, fill = false),
+          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Normal),
+          color = ClawTheme.colors.textMuted,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Icon(
+          imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+          contentDescription = null,
+          modifier = Modifier.size(16.dp),
+          tint = ClawTheme.colors.textMuted,
+        )
+      }
+    }
+    if (expanded) {
+      val guideColor = ClawTheme.colors.border
+      Column(
+        modifier =
+          Modifier
+            .padding(start = 7.dp)
+            .drawBehind {
+              drawLine(
+                color = guideColor,
+                start = Offset(0f, 0f),
+                end = Offset(0f, size.height),
+                strokeWidth = 1.dp.toPx(),
+              )
+            }.padding(start = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        (if (showAll) tools else tools.take(COMPLETED_TOOL_DETAIL_LIMIT)).forEachIndexed { index, tool ->
+          CompletedToolActivityItem(
+            tool = tool,
+            saveableKey = tool.toolCallId ?: "$index:${tool.name}:${tool.detail.orEmpty().hashCode()}",
+            parentStableKey = stableKey,
+          )
+        }
+        if (!showAll && tools.size > COMPLETED_TOOL_DETAIL_LIMIT) {
+          Surface(
+            onClick = { showAll = true },
+            modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+            shape = RoundedCornerShape(4.dp),
+            color = Color.Transparent,
+            contentColor = ClawTheme.colors.textMuted,
+          ) {
+            Row(
+              modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget).padding(vertical = 12.dp),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                text = nativeString("Show all \${count} tools", tools.size),
+                modifier = Modifier.weight(1f, fill = false),
+                style = ClawTheme.type.caption,
+              )
+              Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CompletedToolActivityItem(
+  tool: ChatToolActivity,
+  saveableKey: String,
+  parentStableKey: String,
+) {
+  if (completedToolKind(tool.name) == CompletedToolKind.Progress) {
+    ProgressToolReceipt(tool)
+    return
+  }
+  var expanded by rememberSaveable(parentStableKey, saveableKey) { mutableStateOf(false) }
+  val kind = completedToolKind(tool.name)
+  val resultPresentation = completedToolResultPresentation(tool)
+  val preview =
+    tool.detail
+      ?.lineSequence()
+      ?.firstOrNull { it.isNotBlank() }
+      ?.trim()
+  val summary =
+    if (kind == CompletedToolKind.Command) {
+      completedCommandText(tool).orEmpty()
+    } else {
+      val name = completedToolDisplayName(tool.name)
+      preview?.substringAfter(": ", preview)?.let { "$name · $it" } ?: name
+    }
+  val expandable = resultPresentation.expandable
+  val state = if (expanded) nativeString("Expanded") else nativeString("Collapsed")
+  Column(
+    verticalArrangement = Arrangement.spacedBy(3.dp),
+  ) {
+    Surface(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .then(if (expandable) Modifier.clickable { expanded = !expanded } else Modifier)
+          .semantics(mergeDescendants = true) {
+            if (expandable) {
+              role = Role.Button
+              stateDescription = state
+            }
+          },
+      color = Color.Transparent,
+      contentColor = ClawTheme.colors.textMuted,
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Icon(
+          imageVector =
+            when (kind) {
+              CompletedToolKind.Command -> Icons.Default.Terminal
+              CompletedToolKind.Read -> Icons.Default.Description
+              CompletedToolKind.Edit, CompletedToolKind.Write -> Icons.Default.Edit
+              CompletedToolKind.Search, CompletedToolKind.Fetch -> Icons.Default.Search
+              else -> Icons.AutoMirrored.Filled.List
+            },
+          contentDescription = null,
+          modifier = Modifier.size(16.dp),
+          tint = ClawTheme.colors.textMuted,
+        )
+        Row(
+          modifier = Modifier.weight(1f),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          if (kind == CompletedToolKind.Command) {
+            Text(
+              text = nativeString("\$"),
+              modifier = Modifier.alignByBaseline().padding(end = 2.dp),
+              style = ClawTheme.type.caption.copy(fontFamily = FontFamily.Monospace),
+              color = ClawTheme.colors.textMuted,
+            )
+          }
+          Text(
+            text = summary,
+            modifier = Modifier.weight(1f).alignByBaseline(),
+            style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Normal),
+            color = ClawTheme.colors.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+        if (expandable) {
+          Icon(
+            imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(15.dp),
+            tint = ClawTheme.colors.textSubtle,
+          )
+        }
+      }
+    }
+    if (expanded && kind == CompletedToolKind.Command) {
+      CompletedCommandOutput(tool)
+    } else if (expanded) {
+      tool.detail?.let { detail ->
+        Text(
+          text = detail,
+          modifier = Modifier.padding(start = 2.dp, end = 8.dp),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+          maxLines = 4,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      resultPresentation.output?.let { result ->
+        resultPresentation.outputLabel?.let { label ->
+          Text(
+            text = label,
+            modifier = Modifier.padding(start = 2.dp, end = 8.dp),
+            style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold),
+            color = ClawTheme.colors.textMuted,
+          )
+        }
+        Text(
+          text = result,
+          modifier = Modifier.padding(start = 2.dp, end = 8.dp, bottom = 5.dp),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textSubtle,
+          maxLines = 12,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      resultPresentation.outcome?.let { outcome ->
+        Text(
+          text = outcome,
+          modifier = Modifier.padding(start = 2.dp, end = 8.dp, bottom = 5.dp),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun CompletedCommandOutput(tool: ChatToolActivity) {
+  val resultPresentation = completedToolResultPresentation(tool)
+  val shellShape = RoundedCornerShape(14.dp)
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(top = 5.dp, bottom = 8.dp)
+        .border(1.dp, ClawTheme.colors.border, shellShape)
+        .clip(shellShape)
+        .heightIn(max = 360.dp)
+        .verticalScroll(rememberScrollState())
+        .padding(horizontal = 14.dp, vertical = 12.dp),
+  ) {
+    SelectionContainer {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text(
+            text = nativeString("\$"),
+            style = ClawTheme.type.caption.copy(fontFamily = FontFamily.Monospace),
+            color = ClawTheme.colors.textMuted,
+          )
+          Text(
+            text = completedCommandText(tool, singleLine = false).orEmpty(),
+            modifier = Modifier.weight(1f),
+            style = ClawTheme.type.caption.copy(fontFamily = FontFamily.Monospace),
+            color = ClawTheme.colors.text,
+          )
+        }
+        resultPresentation.output?.let { result ->
+          Text(
+            text = result,
+            style = ClawTheme.type.caption.copy(fontFamily = FontFamily.Monospace),
+            color = ClawTheme.colors.text,
+          )
+        }
+        resultPresentation.outcome?.let { outcome ->
+          Text(
+            text = outcome,
+            style = ClawTheme.type.caption,
+            color = ClawTheme.colors.textMuted,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun ProgressToolReceipt(tool: ChatToolActivity) {
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(
+      imageVector = Icons.Default.Checklist,
+      contentDescription = null,
+      modifier = Modifier.size(16.dp),
+      tint = ClawTheme.colors.textMuted,
+    )
+    Text(
+      text = progressReceiptLabel(tool),
+      modifier = Modifier.weight(1f),
+      style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Normal),
+      color = ClawTheme.colors.textMuted,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
+  }
+}
+
+private const val COMPLETED_TOOL_DETAIL_LIMIT = 20
+
+internal fun readableToolName(name: String): String =
+  name
+    .trim()
+    .replace('_', ' ')
+    .replace('.', ' ')
+    .split(Regex("\\s+"))
+    .filter(String::isNotEmpty)
+    .joinToString(" ") { word -> word.replaceFirstChar { it.titlecase(Locale.US) } }
+    .ifEmpty { nativeString("Tool") }
+
+
 private fun SubagentActivityRows(
   activities: List<ChatSubagentActivity>,
   moreWorkingCount: Int,
