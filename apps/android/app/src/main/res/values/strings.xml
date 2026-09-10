@@ -627,6 +627,7 @@
     <string name="native_5c1acea9c9b0e704" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Web Fetch"</string>
     <string name="native_5c39123805ffb4e2" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Prompt"</string>
     <string name="native_5c944156b5353428" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Approve device?"</string>
+    <string name="native_5cc60967e044ee0b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Dismiss attachment warning"</string>
     <string name="native_5d366a1eee742cee" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Connect to your gateway to open this session dashboard."</string>
     <string name="native_5d410adb9576e266" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Remove %1$s and its saved credentials from this phone?"</string>
     <string name="native_5d65f77059cf2f36" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Copy diagram source"</string>

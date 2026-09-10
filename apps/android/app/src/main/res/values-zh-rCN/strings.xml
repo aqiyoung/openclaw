@@ -627,6 +627,7 @@
     <string name="native_5c1acea9c9b0e704" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"Web Fetch"</string>
     <string name="native_5c39123805ffb4e2" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"提示词"</string>
     <string name="native_5c944156b5353428" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"批准设备？"</string>
+    <string name="native_5cc60967e044ee0b" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"关闭附件警告"</string>
     <string name="native_5d366a1eee742cee" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"连接到你的 Gateway 以打开此会话仪表板。"</string>
     <string name="native_5d410adb9576e266" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"从此手机中移除 %1$s 及其保存的凭据？"</string>
     <string name="native_5d65f77059cf2f36" formatted="false" tools:ignore="Typos,TypographyDashes,TypographyEllipsis">"复制图表源代码"</string>

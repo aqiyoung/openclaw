@@ -510,6 +510,7 @@ internal val nativeStringResourceIds: Map<String, Int> =
     "Dismiss" to R.string.native_48845bff334a50a5,
     "Dismiss Task" to R.string.native_f85ae4b0b7ed13c8,
     "Dismiss approval notice" to R.string.native_a135dd52de0ce45a,
+    "Dismiss attachment warning" to R.string.native_5cc60967e044ee0b,
     "Dismiss shared-image warning" to R.string.native_7765ad1890a192a8,
     "Display" to R.string.native_34e108c0896d0158,
     "Docs" to R.string.native_7af023c43013b9a5,
