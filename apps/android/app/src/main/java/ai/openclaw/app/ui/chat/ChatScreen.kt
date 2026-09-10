@@ -2398,7 +2398,6 @@ private fun ToolCallDiffRow(line: ToolDiffLine) {
 }
 
 @Composable
-@Composable
 private fun CompletedToolActivity(
   tools: List<ChatToolActivity>,
   stableKey: String,
@@ -2747,6 +2746,7 @@ internal fun readableToolName(name: String): String =
     .ifEmpty { nativeString("Tool") }
 
 
+@Composable
 private fun SubagentActivityRows(
   activities: List<ChatSubagentActivity>,
   moreWorkingCount: Int,
