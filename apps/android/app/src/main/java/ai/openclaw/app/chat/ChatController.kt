@@ -763,21 +763,6 @@ class ChatController internal constructor(
     return tasks
   }
 
-  suspend fun loadSessionDiff(
-    sessionKey: String,
-    agentId: String? = null,
-    scope: String? = null,
-  ): SessionsDiffResult? {
-    val params =
-      buildJsonObject {
-        put("sessionKey", JsonPrimitive(sessionKey))
-        agentId?.trim()?.takeIf(String::isNotEmpty)?.let { put("agentId", JsonPrimitive(it)) }
-        scope?.trim()?.takeIf(String::isNotEmpty)?.let { put("scope", JsonPrimitive(it)) }
-      }
-    val raw = runCatching { requestGateway("sessions.diff", params.toString()) }.getOrNull() ?: return null
-    val element = runCatching { json.parseToJsonElement(raw) }.getOrNull()
-    return parseSessionsDiff(element)
-  }
 
   suspend fun getBackgroundTask(taskId: String): BackgroundTask {
     val lease = captureRequestLease(cacheScope()) ?: throw GatewayRequestNotEnqueued("not connected")

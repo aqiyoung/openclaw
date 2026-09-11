@@ -1,7 +1,7 @@
 package ai.openclaw.app
 
 import ai.openclaw.app.chat.BackgroundTask
-import ai.openclaw.app.chat.SessionsDiffResult
+import ai.openclaw.app.chat.SessionDiffSnapshot
 import ai.openclaw.app.chat.ChatActiveRunPresentation
 import ai.openclaw.app.chat.ChatCommandEntry
 import ai.openclaw.app.chat.ChatComposerOwner
@@ -533,6 +533,8 @@ class MainViewModel private constructor(
   val sidebarVisiblePages: StateFlow<List<String>> = prefs.sidebarVisiblePages
   val sessionCatalogAvailable: StateFlow<Boolean> =
     runtimeState(initial = false) { it.sessionCatalogAvailable }
+  internal val sessionDiffAvailable: StateFlow<Boolean> =
+    runtimeState(initial = false) { it.sessionDiffAvailable }
   val sessionCatalogState: StateFlow<SessionCatalogState> =
     runtimeState(initial = SessionCatalogState()) { it.sessionCatalogState }
   val talkSetupReadiness: StateFlow<GatewayTalkSetupReadiness> =
@@ -1965,9 +1967,9 @@ class MainViewModel private constructor(
 
   suspend fun loadSessionDiff(
     sessionKey: String,
-    agentId: String? = null,
-    scope: String? = null,
-  ): SessionsDiffResult? = ensureRuntime().loadSessionDiff(sessionKey, agentId, scope)
+    agentId: String?,
+    expectedGatewayStableId: String,
+  ): SessionDiffSnapshot = ensureRuntime().loadSessionDiff(sessionKey, agentId, expectedGatewayStableId)
 
   suspend fun getBackgroundTask(taskId: String): BackgroundTask = ensureRuntime().getBackgroundTask(taskId)
 

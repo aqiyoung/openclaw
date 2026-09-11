@@ -133,10 +133,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Difference
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -366,6 +368,7 @@ internal fun ChatScreen(
   val sessionKey by viewModel.chatSessionKey.collectAsState()
   val selectionGeneration by viewModel.chatSelectionGeneration.collectAsState()
   val gatewayCatalogRevision by viewModel.gatewayCatalogRevision.collectAsState()
+  val sessionDiffAvailable by viewModel.sessionDiffAvailable.collectAsState()
   val sessionOwnerAgentId by viewModel.chatSessionOwnerAgentId.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
   val gatewayDefaultAgentId by viewModel.gatewayDefaultAgentId.collectAsState()
@@ -555,6 +558,12 @@ internal fun ChatScreen(
         viewModel.isCurrentChatComposerOwner(expected)
       }
     }
+  val reviewDiff =
+    remember(viewModel, pickerActivity, pickerView, lifecycleOwner) {
+      ChatModelPickerSessionOwner(pickerActivity, pickerView, lifecycleOwner.lifecycle) { expected ->
+        viewModel.isCurrentChatComposerOwner(expected)
+      }
+    }
   val branchPicker =
     remember(viewModel, pickerActivity, pickerView, lifecycleOwner) {
       ChatModelPickerSessionOwner(pickerActivity, pickerView, lifecycleOwner.lifecycle) { expected ->
@@ -576,24 +585,26 @@ internal fun ChatScreen(
     modelPicker.publishFeatures(publication)
     effortPicker.publishFeatures(publication)
     backgroundTasks.publishFeatures(publication)
+    reviewDiff.publishFeatures(publication)
     branchPicker.publishFeatures(publication)
   }
   SideEffect {
     modelPicker.refreshTarget()
     effortPicker.refreshTarget()
     backgroundTasks.refreshTarget()
+    reviewDiff.refreshTarget()
     branchPicker.refreshTarget()
     branchOpening?.let { isCurrentBranchOpening(it) }
   }
-  DisposableEffect(modelPicker, effortPicker, backgroundTasks, branchPicker) {
+  DisposableEffect(modelPicker, effortPicker, backgroundTasks, reviewDiff, branchPicker) {
     onDispose {
       modelPicker.dispose()
       effortPicker.dispose()
       backgroundTasks.dispose()
+      reviewDiff.dispose()
       branchPicker.dispose()
     }
   }
-  var showSessionDiff by rememberSaveable { mutableStateOf(false) }
   var detailsExpanded by rememberSaveable { mutableStateOf(false) }
   var sendMessageTooLong by rememberSaveable(composerOwner) { mutableStateOf(false) }
   var sendCheckpointFull by rememberSaveable(composerOwner) { mutableStateOf(false) }
@@ -910,9 +921,10 @@ internal fun ChatScreen(
         dismissDetails()
         backgroundTasks.open(composerOwner, sessionKey)
       },
-      onOpenSessionDiff = {
+      sessionDiffAvailable = sessionDiffAvailable,
+      onOpenReviewDiff = {
         dismissDetails()
-        showSessionDiff = true
+        reviewDiff.open(composerOwner, sessionKey)
       },
       onOpenBranchSwitcher = {
         dismissDetails()
@@ -1335,13 +1347,24 @@ internal fun ChatScreen(
       )
     }
   }
-  if (showSessionDiff) {
-    SessionDiffSheet(
-      viewModel = viewModel,
-      sessionKey = sessionKey,
-      agentId = sessionAgentId,
-      onDismiss = { showSessionDiff = false },
-    )
+  reviewDiff.visible?.let { opening ->
+    key(opening) {
+      SessionDiffSheet(
+        viewModel = viewModel,
+        opening = opening,
+        admit = { reviewDiff.admit(opening) },
+        onDismiss = { if (reviewDiff.admit(opening)) reviewDiff.retire(opening) },
+        onReference = { reference ->
+          if (reviewDiff.admit(opening) && viewModel.isCurrentChatComposerOwner(opening.composerOwner)) {
+            val owner = opening.composerOwner
+            val draft = inputDrafts[owner]
+            inputDrafts[owner] = draft + (if (draft.isEmpty() || draft.endsWith("\n")) "" else "\n") + reference
+            reviewDiff.retire(opening)
+            Toast.makeText(context, nativeString("Reference added to chat"), Toast.LENGTH_SHORT).show()
+          }
+        },
+      )
+    }
   }
   if (showApprovalDialog && pendingExecApprovals.isNotEmpty()) {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -1422,7 +1445,8 @@ private fun ChatHeader(
   onRefresh: () -> Unit,
   onOpenDashboard: () -> Unit,
   onOpenBackgroundTasks: () -> Unit,
-  onOpenSessionDiff: () -> Unit,
+  sessionDiffAvailable: Boolean,
+  onOpenReviewDiff: () -> Unit,
   onOpenBranchSwitcher: () -> Unit,
 ) {
   var actionsMenuExpanded by remember { mutableStateOf(false) }
@@ -1563,6 +1587,9 @@ private fun ChatHeader(
                     enabled = branchSwitchEnabled,
                   ),
                 )
+              }
+              if (sessionDiffAvailable) {
+                add(FoldAwareMenuItem("review-diff", nativeString("Review changes"), onOpenReviewDiff, Icons.Default.Difference))
               }
               add(FoldAwareMenuItem("dashboard", nativeString("Dashboard"), onOpenDashboard, Icons.Default.Dashboard))
               add(FoldAwareMenuItem("background", nativeString("Background tasks"), onOpenBackgroundTasks, Icons.Default.HourglassEmpty))
