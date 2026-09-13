@@ -5078,8 +5078,11 @@ class ChatController internal constructor(
   private fun currentChatMetadataScope(): ChatMetadataScope? {
     val sessionKey = _sessionKey.value
     val agentId = resolveAgentIdForSessionKey(sessionKey) ?: return null
-    // Stable v2026.7.1-2 accepts only agentId. Retire this negotiation only when the
-    // minimum supported Gateway contract guarantees session-scoped chat.metadata.
+    // Fork: always include sessionKey. Upstream gateways shipped the scoped
+    // chat.metadata handler before advertising session-scoped-chat-metadata, so
+    // trusting hello alone parks every pre-capability gateway on an empty catalog
+    // plus a permanent "Could not refresh models" error. The gateway can ignore
+    // sessionKey if it doesn't support scoping.
     return ChatMetadataScope(agentId, sessionKey)
   }
 
