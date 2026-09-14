@@ -137,8 +137,11 @@ object AppUpdateCheck {
     }
 
     // 全部失败: 把每层失败原因带出来, 便于真机诊断 (对齐 sanyelive failures 列表).
-    // 用户可读的提示文案由 AppUpdateFailedDialog 里的 nativeString 负责,
+    // 用户可读的提示文案由 AppUpdateDialog 的失败分支负责 (标题/正文走 nativeString),
     // 这里只携带诊断细节, 避免与弹窗文案重复.
+    //
+    // ⚠️ 调用方判"失败"必须用 error != null, 不要用 hasUpdate == false ——
+    //    hasUpdate == false 同时也代表"已是最新", 两者混用会让检查失败谎报成最新版本.
     val detail = if (failures.isNotEmpty()) "\n" + failures.joinToString("\n") else ""
     AppUpdateInfo(
       latestVersion = currentVersion, hasUpdate = false,
