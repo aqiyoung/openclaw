@@ -3595,7 +3595,10 @@ private fun ChatThinkingLevelPicker(
   val languageTag = currentAppLanguage().languageTag
   val position = resolveChatEffortPosition(selectedId, options)
   val description = nativeString("Thinking")
-  val dialColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle
+  // Web paints the gauge dial with --muted at --chat-mobile-row-muted-opacity (0.55),
+  // so the dial reads light gray rather than a solid dark arc; the needle stays strong.
+  val dialColor =
+    ClawTheme.colors.textMuted.copy(alpha = if (enabled) 0.55f else 0.30f)
   val needleColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle
   Surface(
     onClick = onOpen,
@@ -3689,8 +3692,6 @@ internal fun ChatEffortSliderControl(
         options.getOrNull(selectedPosition.optionIndex) ?: ChatThinkingLevelOption(selectedId, selectedId),
         languageTag,
       )
-  val isOverride =
-    selectedId.trim().isNotEmpty() && !selectedId.trim().equals("off", ignoreCase = true)
 
   Column {
     Row(
@@ -3718,7 +3719,7 @@ internal fun ChatEffortSliderControl(
               .size(width = 28.dp, height = 20.dp)
               .shadow(2.dp, RoundedCornerShape(10.dp))
               .background(
-                color = if (enabled && isOverride) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+                color = ClawTheme.colors.text.copy(alpha = if (enabled) 0.24f else 0.12f),
                 shape = RoundedCornerShape(10.dp),
               ),
           )
