@@ -115,6 +115,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
@@ -127,6 +128,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
@@ -172,6 +174,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -2406,25 +2409,76 @@ private fun AppUpdateDialog(
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = {
-      Icon(
-        imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
-        contentDescription = null,
-        tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
-      )
+      // The head used to be a bare 24dp glyph with nothing to anchor it; the soft disc mirrors
+      // how the rest of the app frames status marks, and it holds the only colour up here.
+      Box(
+        modifier =
+          Modifier
+            .size(48.dp)
+            .background(
+              color = if (info.isCritical) ClawTheme.colors.dangerSoft else ClawTheme.colors.accentSoft,
+              shape = CircleShape,
+            ),
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(
+          imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
+          contentDescription = null,
+          modifier = Modifier.size(24.dp),
+          tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
+        )
+      }
     },
     title = {
-      Text(text = if (info.hasUpdate) nativeString("Update Available") else nativeString("Up to date"))
+      Text(
+        text = if (info.hasUpdate) nativeString("Update Available") else nativeString("Up to date"),
+        style = ClawTheme.type.display,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+      )
     },
     text = {
       if (info.hasUpdate) {
-        Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs)) {
-          Text(text = nativeString("$currentVersion -> ${info.latestVersion}"))
-          if (!info.releaseNotes.isNullOrBlank()) {
-            Text(text = info.releaseNotes, style = ClawTheme.type.caption)
+        Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xs)) {
+          // "old → new" only reads as a transition once the incoming build carries the accent;
+          // the previous "$current -> $latest" line was a wall of digits in body type.
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs, Alignment.CenterHorizontally),
+          ) {
+            UpdateVersionChip(text = currentVersion, highlighted = false)
+            Icon(
+              imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+              contentDescription = null,
+              modifier = Modifier.size(14.dp),
+              tint = ClawTheme.colors.textSubtle,
+            )
+            UpdateVersionChip(text = info.latestVersion, highlighted = true)
+          }
+          info.releaseNotes?.takeIf { it.isNotBlank() }?.let { notes ->
+            Text(
+              text = notes,
+              style = ClawTheme.type.caption,
+              color = ClawTheme.colors.textMuted,
+              maxLines = 4,
+              overflow = TextOverflow.Ellipsis,
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(ClawTheme.radii.control))
+                  .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
+            )
           }
         }
       } else {
-        Text(text = nativeString("You're running the latest version."))
+        Text(
+          text = nativeString("You're running the latest version."),
+          style = ClawTheme.type.body,
+          color = ClawTheme.colors.textMuted,
+          textAlign = TextAlign.Center,
+          modifier = Modifier.fillMaxWidth(),
+        )
       }
     },
     confirmButton = {
@@ -2435,7 +2489,8 @@ private fun AppUpdateDialog(
             onDismiss()
             uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
           },
-          icon = Icons.AutoMirrored.Filled.OpenInNew,
+          // The action says Download, so the "open in new" glyph was the wrong promise.
+          icon = Icons.Default.Download,
         )
       } else {
         TextButton(onClick = onDismiss) {
@@ -2451,6 +2506,26 @@ private fun AppUpdateDialog(
       }
     } else null,
   )
+}
+
+/** One half of the update transition; only the incoming build carries the accent. */
+@Composable
+private fun UpdateVersionChip(
+  text: String,
+  highlighted: Boolean,
+) {
+  Surface(
+    shape = RoundedCornerShape(ClawTheme.radii.control),
+    color = if (highlighted) ClawTheme.colors.accentSoft else ClawTheme.colors.surfacePressed,
+    contentColor = if (highlighted) ClawTheme.colors.accent else ClawTheme.colors.textMuted,
+  ) {
+    Text(
+      text = text,
+      style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+      modifier = Modifier.padding(horizontal = ClawTheme.spacing.xxs, vertical = 3.dp),
+      maxLines = 1,
+    )
+  }
 }
 
 @Composable
