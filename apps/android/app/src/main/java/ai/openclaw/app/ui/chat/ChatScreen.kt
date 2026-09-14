@@ -223,6 +223,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -3591,50 +3593,58 @@ private fun ChatThinkingLevelPicker(
 ) {
   val enabled = (thinkingSupported && thinkingLevelEnabled) || fastModeEnabled
   val languageTag = currentAppLanguage().languageTag
+  val position = resolveChatEffortPosition(selectedId, options)
   val description = nativeString("Thinking")
-  val selectedOption =
-    options.firstOrNull { it.id.trim().equals(selectedId.trim(), ignoreCase = true) }
-      ?: ChatThinkingLevelOption(selectedId, selectedId)
-  val label =
-    if (thinkingSupported && options.isNotEmpty()) {
-      chatThinkingOptionLabel(selectedOption, languageTag)
-    } else {
-      nativeString("Fast mode")
-    }
-  val fastActive = fastMode
+  val dialColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle
+  val needleColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle
   Surface(
     onClick = onOpen,
     enabled = enabled,
     modifier =
-      Modifier
-        .height(ClawTheme.spacing.touchTarget)
-        .semantics {
-          contentDescription = description
-          stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
-        },
-    shape = RoundedCornerShape(10.dp),
-    color = if (fastActive) ClawTheme.colors.primary.copy(alpha = 0.12f) else Color.Transparent,
-    border =
-      BorderStroke(
-        1.dp,
-        if (fastActive) ClawTheme.colors.primary.copy(alpha = 0.45f) else ClawTheme.colors.border,
-      ),
-    contentColor = if (fastActive) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+      Modifier.size(ClawTheme.spacing.touchTarget).semantics {
+        contentDescription = description
+        stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
+      },
+    shape = CircleShape,
+    color = Color.Transparent,
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 10.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-      if (fastActive) {
-        Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(14.dp), tint = ClawTheme.colors.primary)
+    Box(contentAlignment = Alignment.Center) {
+      Box(modifier = Modifier.size(20.dp).testTag("chat-thinking-gauge")) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+          val dialStrokeWidth = 1.5.dp.toPx()
+          val needleStrokeWidth = 2.dp.toPx()
+          // The dial omits its bottom arc; center the visible ink with the other controls.
+          translate(top = size.height / 8f) {
+            drawArc(color = dialColor, startAngle = 150f, sweepAngle = 240f, useCenter = false, style = Stroke(width = dialStrokeWidth, cap = StrokeCap.Round))
+            // An unadvertised effective level is not the minimum/Off position.
+            chatEffortNeedleAngle(position)?.let { angle ->
+              rotate(angle) {
+                drawLine(
+                  color = needleColor,
+                  start = center,
+                  end = Offset(size.width * 0.82f, center.y),
+                  strokeWidth = needleStrokeWidth,
+                  cap = StrokeCap.Round,
+                )
+              }
+              drawCircle(color = needleColor, radius = 1.25.dp.toPx(), center = center)
+            }
+          }
+        }
+        if (fastMode) {
+          Box(
+            modifier =
+              Modifier
+                .align(Alignment.BottomEnd)
+                .size(8.dp)
+                .background(ClawTheme.colors.surface, CircleShape)
+                .testTag("chat-fast-mode-badge"),
+            contentAlignment = Alignment.Center,
+          ) {
+            Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(7.dp), tint = ClawTheme.colors.primary)
+          }
+        }
       }
-      Text(
-        label,
-        style = ClawTheme.type.label.copy(fontWeight = FontWeight.Medium),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
     }
   }
 }
@@ -3679,6 +3689,8 @@ internal fun ChatEffortSliderControl(
         options.getOrNull(selectedPosition.optionIndex) ?: ChatThinkingLevelOption(selectedId, selectedId),
         languageTag,
       )
+  val isOverride =
+    selectedId.trim().isNotEmpty() && !selectedId.trim().equals("off", ignoreCase = true)
 
   Column {
     Row(
@@ -3689,9 +3701,8 @@ internal fun ChatEffortSliderControl(
       Text(nativeString("Effort"), style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold))
       Text(selectedLabel, style = ClawTheme.type.label, color = ClawTheme.colors.primary)
     }
-    // Web mobile always renders the discrete slider (Faster/Smarter scale), even
-    // for binary profiles, so show it whenever there is more than one stop and the
-    // current selection maps to a discrete option.
+    // Web shows the discrete slider for any profile with more than one stop
+    // (including binary Faster/Smarter), so mirror sliderStops.length > 1.
     if (options.size > 1 && selectedPosition.anchored) {
       Slider(
         state = sliderState,
@@ -3704,11 +3715,11 @@ internal fun ChatEffortSliderControl(
         thumb = {
           Box(
             Modifier
-              .size(14.dp)
-              .shadow(2.dp, CircleShape)
+              .size(width = 28.dp, height = 20.dp)
+              .shadow(2.dp, RoundedCornerShape(10.dp))
               .background(
-                color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
-                shape = CircleShape,
+                color = if (enabled && isOverride) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
+                shape = RoundedCornerShape(10.dp),
               ),
           )
         },
@@ -3757,29 +3768,27 @@ private fun ChatEffortSliderTrack(
     } else {
       0f
     }
-  val inactiveColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.14f else 0.08f)
-  val activeColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.45f else 0.18f)
+  val inactiveColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.07f else 0.04f)
+  val activeColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.18f else 0.08f)
   val dotColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.28f else 0.12f)
-  Canvas(modifier = Modifier.fillMaxWidth().height(22.dp)) {
-    val trackHeight = 3.dp.toPx()
-    val trackTop = (size.height - trackHeight) / 2f
-    val cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-    drawRoundRect(
-      color = inactiveColor,
-      topLeft = Offset(0f, trackTop),
-      size = Size(size.width, trackHeight),
-      cornerRadius = cornerRadius,
-    )
+  Canvas(modifier = Modifier.fillMaxWidth().height(26.dp)) {
+    val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+    drawRoundRect(color = inactiveColor, cornerRadius = cornerRadius)
     if (activeFraction > 0f) {
       val activeWidth = size.width * activeFraction
       drawRoundRect(
         color = activeColor,
-        topLeft = Offset(x = if (layoutDirection == LayoutDirection.Rtl) size.width - activeWidth else 0f, y = trackTop),
-        size = Size(width = activeWidth, height = trackHeight),
+        topLeft = Offset(x = if (layoutDirection == LayoutDirection.Rtl) size.width - activeWidth else 0f, y = 0f),
+        size = Size(width = activeWidth, height = size.height),
         cornerRadius = cornerRadius,
       )
     }
-    val dotRadius = 2.dp.toPx()
+    drawRoundRect(
+      color = ClawTheme.colors.border.copy(alpha = 0.7f),
+      style = Stroke(width = 1.dp.toPx()),
+      cornerRadius = cornerRadius,
+    )
+    val dotRadius = 4.dp.toPx()
     chatEffortStopFractions(optionCount).forEach { fraction ->
       val visualFraction = chatEffortVisualFraction(fraction, layoutDirection)
       drawCircle(color = dotColor, radius = dotRadius, center = Offset(size.width * visualFraction, size.height / 2f))
@@ -3802,16 +3811,6 @@ private fun ChatEffortSheet(
   onDismiss: () -> Unit,
 ) {
   val thinkingOptions = if (thinkingSupported) options else emptyList()
-  val languageTag = currentAppLanguage().languageTag
-  val selectedOption =
-    thinkingOptions.firstOrNull { it.id.trim().equals(selectedId.trim(), ignoreCase = true) }
-      ?: ChatThinkingLevelOption(selectedId, selectedId)
-  val selectedLabel = chatThinkingOptionLabel(selectedOption, languageTag)
-  val isOverride =
-    thinkingOptions.isNotEmpty() &&
-      selectedId.trim().isNotEmpty() &&
-      !selectedId.trim().equals("off", ignoreCase = true)
-  val defaultId = thinkingOptions.firstOrNull()?.id ?: "off"
   ModalBottomSheet(
     modifier = Modifier.foldAwareSheet(opening.geometry),
     onDismissRequest = onDismiss,
@@ -3828,43 +3827,11 @@ private fun ChatEffortSheet(
           .padding(bottom = 24.dp),
     ) {
       if (thinkingOptions.isNotEmpty()) {
-        Column(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 12.dp, vertical = 8.dp)
-              .background(ClawTheme.colors.surfaceRaised, RoundedCornerShape(12.dp))
-              .padding(horizontal = 8.dp, vertical = 6.dp),
+        Surface(
+          color = ClawTheme.colors.surfaceRaised,
+          shape = RoundedCornerShape(12.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         ) {
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-          ) {
-            Text(nativeString("Effort"), style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              Text(
-                selectedLabel,
-                style = ClawTheme.type.label,
-                color = if (isOverride) ClawTheme.colors.text else ClawTheme.colors.textMuted,
-              )
-              if (isOverride) {
-                Surface(
-                  onClick = { onSelect(defaultId) },
-                  enabled = thinkingLevelEnabled,
-                  color = Color.Transparent,
-                  contentColor = ClawTheme.colors.textMuted,
-                  shape = RoundedCornerShape(6.dp),
-                ) {
-                  Text(
-                    nativeString("Default"),
-                    style = ClawTheme.type.caption,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                  )
-                }
-              }
-            }
-          }
           ChatEffortSliderControl(
             options = thinkingOptions,
             selectedId = selectedId,
@@ -3874,14 +3841,14 @@ private fun ChatEffortSheet(
         }
       }
       if (thinkingOptions.isNotEmpty()) {
-        HorizontalDivider(color = ClawTheme.colors.border, modifier = Modifier.padding(top = 8.dp))
+        HorizontalDivider(color = ClawTheme.colors.border, modifier = Modifier.padding(top = 14.dp))
       }
       Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        Icon(Icons.Default.Bolt, contentDescription = null, tint = ClawTheme.colors.primary, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Bolt, contentDescription = null, tint = ClawTheme.colors.primary, modifier = Modifier.size(20.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text(nativeString("Fast mode"), style = ClawTheme.type.body.copy(fontWeight = FontWeight.Medium))
           Text(
