@@ -124,7 +124,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -3613,65 +3612,56 @@ private fun ChatThinkingLevelPicker(
     color = Color.Transparent,
   ) {
     Box(contentAlignment = Alignment.Center) {
-      // Web mobile effort trigger = a 44px light-gray disc (--text @7%) holding the gauge plus
-      // a 14px chevron-up at 0.55 opacity; the Surface still carries the 48dp touch target.
-      Box(
-        modifier =
-          Modifier
-            .requiredSize(44.dp)
-            .background(
-              color = ClawTheme.colors.text.copy(alpha = if (enabled) 0.07f else 0.04f),
-              shape = CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
+      // Web mobile effort trigger is transparent while collapsed (its light-gray disc only shows
+      // via ::before when [open]/hover). Visible ink = 20px gauge + 14px chevron.
+      // chevron colour is var(--muted) @ 0.55 and the icon is rotate(180deg) when collapsed,
+      // i.e. it points down until the picker opens.
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
       ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-          Box(modifier = Modifier.size(20.dp).testTag("chat-thinking-gauge")) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-              val dialStrokeWidth = 1.5.dp.toPx()
-              val needleStrokeWidth = 2.dp.toPx()
-              // The dial omits its bottom arc; center the visible ink with the other controls.
-              translate(top = size.height / 8f) {
-                drawArc(color = dialColor, startAngle = 150f, sweepAngle = 240f, useCenter = false, style = Stroke(width = dialStrokeWidth, cap = StrokeCap.Round))
-                // An unadvertised effective level is not the minimum/Off position.
-                chatEffortNeedleAngle(position)?.let { angle ->
-                  rotate(angle) {
-                    drawLine(
-                      color = needleColor,
-                      start = center,
-                      end = Offset(size.width * 0.82f, center.y),
-                      strokeWidth = needleStrokeWidth,
-                      cap = StrokeCap.Round,
-                    )
-                  }
-                  drawCircle(color = needleColor, radius = 1.25.dp.toPx(), center = center)
+        Box(modifier = Modifier.size(20.dp).testTag("chat-thinking-gauge")) {
+          Canvas(modifier = Modifier.matchParentSize()) {
+            val dialStrokeWidth = 1.5.dp.toPx()
+            val needleStrokeWidth = 2.dp.toPx()
+            // The dial omits its bottom arc; center the visible ink with the other controls.
+            translate(top = size.height / 8f) {
+              drawArc(color = dialColor, startAngle = 150f, sweepAngle = 240f, useCenter = false, style = Stroke(width = dialStrokeWidth, cap = StrokeCap.Round))
+              // An unadvertised effective level is not the minimum/Off position.
+              chatEffortNeedleAngle(position)?.let { angle ->
+                rotate(angle) {
+                  drawLine(
+                    color = needleColor,
+                    start = center,
+                    end = Offset(size.width * 0.82f, center.y),
+                    strokeWidth = needleStrokeWidth,
+                    cap = StrokeCap.Round,
+                  )
                 }
-              }
-            }
-            if (fastMode) {
-              Box(
-                modifier =
-                  Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(8.dp)
-                    .background(ClawTheme.colors.surface, CircleShape)
-                    .testTag("chat-fast-mode-badge"),
-                contentAlignment = Alignment.Center,
-              ) {
-                Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(7.dp), tint = ClawTheme.colors.primary)
+                drawCircle(color = needleColor, radius = 1.25.dp.toPx(), center = center)
               }
             }
           }
-          Icon(
-            imageVector = Icons.Default.KeyboardArrowUp,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = ClawTheme.colors.text.copy(alpha = if (enabled) 0.55f else 0.30f),
-          )
+          if (fastMode) {
+            Box(
+              modifier =
+                Modifier
+                  .align(Alignment.BottomEnd)
+                  .size(8.dp)
+                  .background(ClawTheme.colors.surface, CircleShape)
+                  .testTag("chat-fast-mode-badge"),
+              contentAlignment = Alignment.Center,
+            ) {
+              Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(7.dp), tint = ClawTheme.colors.primary)
+            }
+          }
         }
+        Icon(
+          imageVector = Icons.Default.KeyboardArrowDown,
+          contentDescription = null,
+          modifier = Modifier.size(14.dp),
+          tint = ClawTheme.colors.textSubtle.copy(alpha = if (enabled) 0.55f else 0.30f),
+        )
       }
     }
   }
