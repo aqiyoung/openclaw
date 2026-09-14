@@ -2482,7 +2482,10 @@ private fun AppUpdateDialog(
           )
           // The checker carries one line per reachable path; keeping the raw diagnostic on
           // screen is what turns a silently failed check into something reportable.
-          info.error?.trim()?.takeIf { it.isNotBlank() }?.let { detail ->
+          // No safe call on `error`: `checkFailed` is a stable val, so K2 already smart-casts
+          // it to non-null here and flags the `?.` as unnecessary (a warning, and
+          // `allWarningsAsErrors` promotes that to a hard error).
+          info.error.trim().takeIf { it.isNotBlank() }?.let { detail ->
             Text(
               text = detail,
               style = ClawTheme.type.captionSmall,

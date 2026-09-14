@@ -559,17 +559,6 @@ internal fun ChatScreen(
       settingsMutationPending = viewModel.chatSessionKey.value in viewModel.chatPendingSessionSettingsKeys.value,
     )
 
-  // The composer's permission trigger opens the same sheet as the model picker, just on its
-  // Permissions page, so the two entry points share one set of guards and one owner.
-  val composerPermissionPickerEnabled =
-    permissionSettingsAvailable &&
-      !activeSession?.sessionId.isNullOrBlank() &&
-      gatewayConnectionDisplay.isConnected &&
-      canWriteSessionSettings &&
-      !permissionModePending &&
-      !sessionSettingsPending
-  var openPickerOnPermissions by rememberSaveable { mutableStateOf(false) }
-
   val modelPicker =
     remember(viewModel, pickerActivity, pickerView, lifecycleOwner) {
       ChatModelPickerSessionOwner(pickerActivity, pickerView, lifecycleOwner.lifecycle) { expected ->
@@ -1105,9 +1094,6 @@ internal fun ChatScreen(
       contextUsage = contextUsage,
       selectedModelLabel = selectedModelLabel,
       modelPickerEnabled = gatewayConnectionDisplay.isConnected && canWriteSessionSettings,
-      permissionMode = activeSession?.permissionMode,
-      permissionModePending = permissionModePending,
-      permissionPickerEnabled = composerPermissionPickerEnabled,
       healthOk = healthOk,
       gatewayOffline = gatewayOffline,
       offlineStatus = offlineStatus,
@@ -1123,14 +1109,7 @@ internal fun ChatScreen(
       },
       commands = chatCommands,
       onOpenEffortPicker = { effortPicker.open(composerOwner, sessionKey) },
-      onOpenModelPicker = {
-        openPickerOnPermissions = false
-        modelPicker.open(composerOwner, sessionKey)
-      },
-      onOpenPermissionPicker = {
-        openPickerOnPermissions = true
-        modelPicker.open(composerOwner, sessionKey)
-      },
+      onOpenModelPicker = { modelPicker.open(composerOwner, sessionKey) },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
         val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return@ChatComposer
@@ -1302,7 +1281,13 @@ internal fun ChatScreen(
         messages = messages,
         permissionMode = activeSession?.permissionMode,
         permissionModePending = permissionModePending,
-        permissionPickerEnabled = composerPermissionPickerEnabled,
+        permissionPickerEnabled =
+          permissionSettingsAvailable &&
+            !activeSession?.sessionId.isNullOrBlank() &&
+            gatewayConnectionDisplay.isConnected &&
+            canWriteSessionSettings &&
+            !permissionModePending &&
+            !sessionSettingsPending,
         permissionUnavailableReason =
           when {
             !permissionSettingsAvailable -> nativeString("Update the Gateway to change session permissions.")
@@ -1318,12 +1303,7 @@ internal fun ChatScreen(
             false
           }
         },
-        onDismiss = {
-          if (modelPicker.admit(opening)) {
-            openPickerOnPermissions = false
-            modelPicker.retire(opening)
-          }
-        },
+        onDismiss = { if (modelPicker.admit(opening)) modelPicker.retire(opening) },
         onSelect = { modelRef ->
           val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == modelRef }
           if (modelPicker.admit(opening) && currentSession()?.modelSelectionLocked != true &&
@@ -1359,7 +1339,6 @@ internal fun ChatScreen(
             viewModel.toggleModelFavorite(ref)
           }
         },
-        startOnPermissions = openPickerOnPermissions,
       )
     }
   }
@@ -3340,9 +3319,6 @@ private fun ChatComposer(
   contextUsage: ChatContextUsage,
   selectedModelLabel: String,
   modelPickerEnabled: Boolean,
-  permissionMode: ChatPermissionMode?,
-  permissionModePending: Boolean,
-  permissionPickerEnabled: Boolean,
   healthOk: Boolean,
   gatewayOffline: Boolean,
   offlineStatus: String,
@@ -3355,7 +3331,6 @@ private fun ChatComposer(
   commands: List<ChatCommandEntry>,
   onOpenEffortPicker: () -> Unit,
   onOpenModelPicker: () -> Unit,
-  onOpenPermissionPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
   onPickVideo: () -> Unit,
@@ -3523,10 +3498,6 @@ private fun ChatComposer(
             selectedModelLabel = selectedModelLabel,
             modelPickerEnabled = modelPickerEnabled,
             onOpenModelPicker = onOpenModelPicker,
-            permissionMode = permissionMode,
-            permissionModePending = permissionModePending,
-            permissionPickerEnabled = permissionPickerEnabled,
-            onOpenPermissionPicker = onOpenPermissionPicker,
             thinkingLevel = thinkingLevel,
             thinkingOptions = thinkingOptions,
             thinkingSupported = thinkingSupported,
@@ -4019,11 +3990,8 @@ private fun ChatModelPickerSheet(
   onOpenProviders: (String) -> Unit,
   onSignIn: (() -> Unit)?,
   onToggleFavorite: (String) -> Unit,
-  startOnPermissions: Boolean = false,
 ) {
-  // The composer's permission trigger lands straight on the Permissions page; the keyed sheet
-  // re-seeds per opening so a later model-picker open still starts on the model list.
-  var showPermissionPicker by rememberSaveable(startOnPermissions) { mutableStateOf(startOnPermissions) }
+  var showPermissionPicker by rememberSaveable { mutableStateOf(false) }
   var showUsageDetails by rememberSaveable { mutableStateOf(false) }
   LaunchedEffect(permissionPickerEnabled) {
     if (showPermissionPicker && !permissionPickerEnabled && admit()) showPermissionPicker = false
@@ -4460,10 +4428,6 @@ private fun ChatInputPill(
   selectedModelLabel: String,
   modelPickerEnabled: Boolean,
   onOpenModelPicker: () -> Unit,
-  permissionMode: ChatPermissionMode?,
-  permissionModePending: Boolean,
-  permissionPickerEnabled: Boolean,
-  onOpenPermissionPicker: () -> Unit,
   thinkingLevel: String,
   thinkingOptions: List<ChatThinkingLevelOption>,
   thinkingSupported: Boolean,
@@ -4554,37 +4518,6 @@ private fun ChatInputPill(
                 FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
               ),
           )
-        }
-        // Web mobile keeps the permission trigger in the composer lead, right after "+";
-        // the label is hidden there, so only the shield icon shows.
-        if (permissionMode != null || permissionPickerEnabled) {
-          val permissionDescription = nativeString("Permissions")
-          val permissionLabel =
-            if (permissionModePending) nativeString("Applying permissions…") else chatPermissionModeLabel(permissionMode)
-          Surface(
-            onClick = onOpenPermissionPicker,
-            enabled = permissionPickerEnabled,
-            modifier =
-              Modifier.size(ClawTheme.spacing.touchTarget).semantics {
-                contentDescription = permissionDescription
-                stateDescription = permissionLabel
-                role = Role.Button
-              },
-            shape = CircleShape,
-            color = Color.Transparent,
-            // Web: the shield is var(--muted) at --chat-mobile-row-muted-opacity (0.55),
-            // switching to the accent once full access is selected.
-            contentColor =
-              when {
-                permissionMode == ChatPermissionMode.Full -> ClawTheme.colors.accent.copy(alpha = 0.55f)
-                permissionPickerEnabled -> ClawTheme.colors.textMuted.copy(alpha = 0.55f)
-                else -> ClawTheme.colors.textMuted.copy(alpha = 0.30f)
-              },
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              ChatPermissionIcon(mode = permissionMode, contentDescription = null, modifier = Modifier.size(18.dp))
-            }
-          }
         }
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
           ChatComposerModelPicker(
