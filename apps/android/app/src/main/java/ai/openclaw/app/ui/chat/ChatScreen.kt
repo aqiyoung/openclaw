@@ -3771,6 +3771,7 @@ private fun ChatEffortSliderTrack(
   val inactiveColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.07f else 0.04f)
   val activeColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.18f else 0.08f)
   val dotColor = ClawTheme.colors.text.copy(alpha = if (enabled) 0.28f else 0.12f)
+  val borderColor = ClawTheme.colors.border.copy(alpha = 0.7f)
   Canvas(modifier = Modifier.fillMaxWidth().height(26.dp)) {
     val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
     drawRoundRect(color = inactiveColor, cornerRadius = cornerRadius)
@@ -3784,7 +3785,7 @@ private fun ChatEffortSliderTrack(
       )
     }
     drawRoundRect(
-      color = ClawTheme.colors.border.copy(alpha = 0.7f),
+      color = borderColor,
       style = Stroke(width = 1.dp.toPx()),
       cornerRadius = cornerRadius,
     )
