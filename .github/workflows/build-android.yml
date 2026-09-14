@@ -118,7 +118,10 @@ jobs:
           fi
           NOTES=release-notes.md
           if [[ -n "$PREV" ]]; then
-            git log --no-merges --pretty=tformat:'- %s' "$PREV..$TAG" | cut -c1-140 | head -40 > "$NOTES"
+            # 只取 commit 标题里 " - " 之前那句摘要: 本仓的标题常常很长 (摘要 - 细节...),
+            # 截断到固定宽度会在词中间断掉, 而细节本来就由下面的 Full diff 链接覆盖.
+            git log --no-merges --pretty=tformat:'- %s' "$PREV..$TAG" \
+              | sed -E 's/ - .*$//' | cut -c1-120 | head -40 > "$NOTES"
             printf '\n\nFull diff: %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$PREV" "$TAG" >> "$NOTES"
           else
             printf 'Android build %s\n' "$TAG" > "$NOTES"
