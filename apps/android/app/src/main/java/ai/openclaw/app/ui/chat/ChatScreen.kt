@@ -3609,7 +3609,9 @@ private fun ChatThinkingLevelPicker(
         stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
       },
     shape = CircleShape,
-    color = Color.Transparent,
+    // Web mobile effort trigger carries a light-gray disc (--text @7%) behind the gauge
+    // while the picker is open; keep it so the gauge reads as a button, not a floating arc.
+    color = ClawTheme.colors.text.copy(alpha = 0.07f),
   ) {
     Box(contentAlignment = Alignment.Center) {
       Box(modifier = Modifier.size(20.dp).testTag("chat-thinking-gauge")) {
@@ -3719,7 +3721,8 @@ internal fun ChatEffortSliderControl(
               .size(width = 28.dp, height = 20.dp)
               .shadow(2.dp, RoundedCornerShape(10.dp))
               .background(
-                color = ClawTheme.colors.text.copy(alpha = if (enabled) 0.24f else 0.12f),
+                // Web thumb = var(--text-strong): near-black, not a light gray.
+                color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
                 shape = RoundedCornerShape(10.dp),
               ),
           )
@@ -3790,7 +3793,8 @@ private fun ChatEffortSliderTrack(
       style = Stroke(width = 1.dp.toPx()),
       cornerRadius = cornerRadius,
     )
-    val dotRadius = 4.dp.toPx()
+    // Web dot is 4px *diameter* (.chat-controls__reasoning-dot width/height:4px) -> radius 2dp.
+    val dotRadius = 2.dp.toPx()
     chatEffortStopFractions(optionCount).forEach { fraction ->
       val visualFraction = chatEffortVisualFraction(fraction, layoutDirection)
       drawCircle(color = dotColor, radius = dotRadius, center = Offset(size.width * visualFraction, size.height / 2f))
