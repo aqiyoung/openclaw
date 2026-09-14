@@ -126,6 +126,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -2313,6 +2314,9 @@ private fun AboutSettingsScreen(
         subtitle = when {
           checkingUpdate -> nativeString("Checking latest version…")
           updateInfo?.hasUpdate == true -> nativeString("v\$it available", updateInfo!!.latestVersion)
+          // A dead transport is not "up to date": the checker reports it as `error` with
+          // hasUpdate = false, and this row used to fall through and quietly claim otherwise.
+          updateInfo?.error != null -> nativeString("Could not test connection")
           updateInfo != null -> nativeString("Up to date")
           else -> nativeString("Check if a new version is available")
         },
@@ -2406,39 +2410,94 @@ private fun AppUpdateDialog(
   onDismiss: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
+  // `error` is set only when every reachable path failed, and such a result always carries
+  // hasUpdate = false. Folding it into the "nothing to update" branch is what let a dead
+  // transport reassure the user that they were already on the latest build.
+  val checkFailed = info.error != null
   AlertDialog(
     onDismissRequest = onDismiss,
     icon = {
       // The head used to be a bare 24dp glyph with nothing to anchor it; the soft disc mirrors
       // how the rest of the app frames status marks, and it holds the only colour up here.
+      // A failed check borrows the warning ink the onboarding screens already use for the same
+      // "could not test connection" condition, so the two read as one product.
       Box(
         modifier =
           Modifier
             .size(48.dp)
             .background(
-              color = if (info.isCritical) ClawTheme.colors.dangerSoft else ClawTheme.colors.accentSoft,
+              color =
+                when {
+                  checkFailed -> ClawTheme.colors.warningSoft
+                  info.isCritical -> ClawTheme.colors.dangerSoft
+                  else -> ClawTheme.colors.accentSoft
+                },
               shape = CircleShape,
             ),
         contentAlignment = Alignment.Center,
       ) {
         Icon(
-          imageVector = if (info.isCritical) Icons.Default.Bolt else Icons.Default.Cloud,
+          imageVector =
+            when {
+              checkFailed -> Icons.Default.CloudOff
+              info.isCritical -> Icons.Default.Bolt
+              else -> Icons.Default.Cloud
+            },
           contentDescription = null,
           modifier = Modifier.size(24.dp),
-          tint = if (info.isCritical) ClawTheme.colors.danger else ClawTheme.colors.primary,
+          tint =
+            when {
+              checkFailed -> ClawTheme.colors.warning
+              info.isCritical -> ClawTheme.colors.danger
+              else -> ClawTheme.colors.primary
+            },
         )
       }
     },
     title = {
       Text(
-        text = if (info.hasUpdate) nativeString("Update Available") else nativeString("Up to date"),
+        text =
+          when {
+            checkFailed -> nativeString("Could not test connection")
+            info.hasUpdate -> nativeString("Update Available")
+            else -> nativeString("Up to date")
+          },
         style = ClawTheme.type.display,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
       )
     },
     text = {
-      if (info.hasUpdate) {
+      if (checkFailed) {
+        Column(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
+        ) {
+          Text(
+            text = nativeString("Network error"),
+            style = ClawTheme.type.body,
+            color = ClawTheme.colors.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+          )
+          // The checker carries one line per reachable path; keeping the raw diagnostic on
+          // screen is what turns a silently failed check into something reportable.
+          info.error?.trim()?.takeIf { it.isNotBlank() }?.let { detail ->
+            Text(
+              text = detail,
+              style = ClawTheme.type.captionSmall,
+              color = ClawTheme.colors.textSubtle,
+              maxLines = 5,
+              overflow = TextOverflow.Ellipsis,
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(ClawTheme.radii.control))
+                  .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
+            )
+          }
+        }
+      } else if (info.hasUpdate) {
         Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xs)) {
           // "old → new" only reads as a transition once the incoming build carries the accent;
           // the previous "$current -> $latest" line was a wall of digits in body type.
