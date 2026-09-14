@@ -109,7 +109,13 @@ jobs:
           # Release body = the commits added since the previous *released* version.
           # 应用内"检查更新"弹窗直接渲染这段文字, 之前是写死的 "Android APK build",
           # 于是每个版本的更新说明都是同一句占位串.
-          PREV=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=5" -q '.[].tag_name' 2>/dev/null | grep -vx "$TAG" | head -1)
+          # ⚠️ 选"上一个版本"必须用 git tag 的版本序: GH 的 /releases 默认顺序**不是**
+          #    created_at 倒序 (实测第一页是 8 月的老 release), 直接 head -1 会选到几个月前的版本.
+          PREV=$(git tag --list 'v2026.*' --sort=-v:refname | grep -vx "$TAG" | head -1)
+          if [[ -n "$PREV" ]] && ! git merge-base --is-ancestor "$PREV" "$TAG" 2>/dev/null; then
+            echo "::warning::previous tag $PREV is not an ancestor of $TAG; skipping the commit range"
+            PREV=""
+          fi
           NOTES=release-notes.md
           if [[ -n "$PREV" ]]; then
             git log --no-merges --pretty=tformat:'- %s' "$PREV..$TAG" | cut -c1-140 | head -40 > "$NOTES"
