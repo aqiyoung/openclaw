@@ -70,7 +70,6 @@ import java.util.concurrent.atomic.AtomicLong
 internal const val SESSION_LIST_FETCH_LIMIT = 200
 internal const val SESSION_UNREAD_ACK_CAPABILITY = "session-unread-ack-contract"
 private const val SESSION_SCOPED_CHAT_METADATA_CAPABILITY = "session-scoped-chat-metadata"
-private const val SESSION_SCOPED_MODEL_CATALOG_CAPABILITY = "session-scoped-model-catalog"
 private val QUESTION_REFRESH_RETRY_DELAYS_MS = longArrayOf(1_000L, 2_000L, 4_000L)
 private val SWARM_REFRESH_RETRY_DELAYS_MS = longArrayOf(1_000L, 2_000L, 4_000L)
 private const val WEAR_AGENT_PULSE_SWARM_MAX_ROWS = 1_000
@@ -5130,16 +5129,17 @@ class ChatController internal constructor(
           put("view", JsonPrimitive("configured"))
           put("includeDetails", JsonPrimitive(true))
         }
-      val catalogSupported = gatewayAdvertisesCapability(SESSION_SCOPED_MODEL_CATALOG_CAPABILITY) == true
+      // Fork: always request the session-scoped model catalog. Upstream gates the
+      // request on the session-scoped-model-catalog hello capability, but the scoped
+      // handler predates the advertisement, so trusting hello alone parks
+      // pre-capability gateways on an empty model list plus a permanent
+      // "Update your Gateway to use session model choices" prompt. The gateway can
+      // ignore sessionKey if it doesn't scope.
       val catalogResult =
-        if (catalogSupported) {
-          json
-            .parseToJsonElement(
-              requestGatewayBound(requestCacheScope?.gatewayId, GatewayMethod.ModelsList.rawValue, catalogParams.toString()),
-            ).jsonObject
-        } else {
-          null
-        }
+        json
+          .parseToJsonElement(
+            requestGatewayBound(requestCacheScope?.gatewayId, GatewayMethod.ModelsList.rawValue, catalogParams.toString()),
+          ).jsonObject
       synchronized(gatewayScopeApplyLock) {
         if (
           requestSequence == chatMetadataRequestSequence.get() &&
@@ -5152,9 +5152,7 @@ class ChatController internal constructor(
           chatMetadataLoadState = ChatMetadataLoadState.Loaded
           _sessions.value.firstOrNull { it.key == _sessionKey.value }?.let(::publishSelectedSessionSettings)
           if (requestSelection != null && isCurrentSessionAction(requestSelection)) {
-            if (!catalogSupported && _errorText.value == null) {
-              updateLocalizedErrorText(nativeText("Update your Gateway to use session model choices."))
-            } else if (refreshFailed && (_errorText.value == null || _errorText.value == chatMetadataRefreshError)) {
+            if (refreshFailed && (_errorText.value == null || _errorText.value == chatMetadataRefreshError)) {
               updateLocalizedErrorText(chatMetadataRefreshError)
             } else if (!refreshFailed && _errorText.value == chatMetadataRefreshError) {
               updateErrorText(null)
