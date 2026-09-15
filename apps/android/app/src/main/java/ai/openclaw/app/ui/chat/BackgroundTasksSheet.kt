@@ -143,7 +143,7 @@ internal fun BackgroundTasksSheet(
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
+    containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
     if (selectedTask != null) {

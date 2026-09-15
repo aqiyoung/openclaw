@@ -1405,7 +1405,7 @@ internal fun ChatScreen(
       onDismissRequest = { showApprovalDialog = false },
       sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
       shape = RoundedCornerShape(ClawTheme.radii.sheet),
-      containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
+      containerColor = ClawTheme.colors.surface,
       contentColor = ClawTheme.colors.text,
     ) {
       Column(
@@ -3839,7 +3839,7 @@ private fun ChatEffortSheet(
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
+    containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
     Column(
@@ -3906,7 +3906,7 @@ private fun BranchSwitcherSheet(
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
+    containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
     LazyColumn(
@@ -4008,7 +4008,7 @@ private fun ChatModelPickerSheet(
     // IME dismissal can remove a partial-height anchor while the selector opens.
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     shape = RoundedCornerShape(ClawTheme.radii.sheet),
-    containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
+    containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     properties =
       ModalBottomSheetProperties(
