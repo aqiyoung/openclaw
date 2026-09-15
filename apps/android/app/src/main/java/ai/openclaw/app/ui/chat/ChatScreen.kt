@@ -2222,8 +2222,8 @@ internal fun ChatBubble(
       Column(modifier = Modifier.fillMaxWidth()) {
       Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(if (isUser) CHAT_BUBBLE_CORNER_RADIUS_DP.dp else 0.dp),
-        color = if (isUser) ClawTheme.colors.userMessageSurface else Color.Transparent,
+        shape = RoundedCornerShape(if (isUser) CHAT_BUBBLE_CORNER_RADIUS_DP.dp else ClawTheme.radii.bubble),
+        color = if (isUser) ClawTheme.colors.userMessageSurface else ClawTheme.colors.surfaceRaised,
         contentColor = ClawTheme.colors.text,
         border = null,
         tonalElevation = 0.dp,
@@ -2234,7 +2234,7 @@ internal fun ChatBubble(
             if (isUser) {
               Modifier.padding(horizontal = 11.dp, vertical = 8.dp)
             } else {
-              Modifier.padding(vertical = 4.dp)
+              Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             },
           verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
