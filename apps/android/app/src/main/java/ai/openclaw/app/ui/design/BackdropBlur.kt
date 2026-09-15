@@ -45,7 +45,7 @@ internal suspend fun captureWindowRegion(window: Window, rect: Rect): Bitmap? {
         bitmap,
         { result ->
           if (continuation.isActive) {
-            continuation.resume(result) { bitmap.recycle() }
+            continuation.resume(result)
           } else {
             bitmap.recycle()
           }
