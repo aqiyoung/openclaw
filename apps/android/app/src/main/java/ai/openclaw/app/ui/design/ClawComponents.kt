@@ -64,6 +64,23 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import android.graphics.Bitmap
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 internal enum class ClawStatus {
   Neutral,
@@ -517,16 +534,64 @@ internal fun ClawGlassSurface(
   val fill = (if (isDark) colors.surface else colors.surfacePressed).copy(alpha = if (isDark) 0.5f else 0.9f)
   val border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.border.copy(alpha = 0.55f))
   if (blurBehind) {
-    Surface(
-      modifier = modifier.frostedBackdrop(fill = fill, radius = 18.dp),
-      shape = shape,
-      color = Color.Transparent,
-      contentColor = contentColor,
-      border = border,
-      shadowElevation = 2.dp,
-      tonalElevation = 0.dp,
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val window = remember(view) { view.context.findActivity()?.window }
+    val radiusPx = with(density) { 18.dp.toPx() }
+    val blurEffect =
+      remember(radiusPx) {
+        RenderEffect.createBlurEffect(radiusPx, radiusPx, Shader.TileMode.CLAMP).asComposeRenderEffect()
+      }
+    val rect = remember { mutableStateOf<Rect?>(null) }
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(window) {
+      val job =
+        scope.launch {
+          while (isActive) {
+            delay(90)
+            val w = window ?: continue
+            val r = rect.value ?: continue
+            if (r.width <= 0f || r.height <= 0f) continue
+            val bmp = captureWindowRegion(w, r) ?: continue
+            bitmap?.recycle()
+            bitmap = bmp
+          }
+        }
+      onDispose {
+        job.cancel()
+        bitmap?.recycle()
+        bitmap = null
+      }
+    }
+    Box(
+      modifier =
+        modifier.onGloballyPositioned { coordinates ->
+          val pos = coordinates.localToWindow(Offset.Zero)
+          rect.value =
+            Rect(pos.x, pos.y, pos.x + coordinates.size.width, pos.y + coordinates.size.height)
+        },
     ) {
-      content()
+      Box(Modifier.matchParentSize().clip(shape).background(fill))
+      bitmap?.let { captured ->
+        Image(
+          bitmap = captured.asImageBitmap(),
+          contentDescription = null,
+          modifier =
+            Modifier.matchParentSize().clip(shape).graphicsLayer { renderEffect = blurEffect },
+        )
+      }
+      Surface(
+        modifier = Modifier.matchParentSize(),
+        shape = shape,
+        color = Color.Transparent,
+        contentColor = contentColor,
+        border = border,
+        shadowElevation = 2.dp,
+        tonalElevation = 0.dp,
+      ) {
+        content()
+      }
     }
   } else {
     Surface(
