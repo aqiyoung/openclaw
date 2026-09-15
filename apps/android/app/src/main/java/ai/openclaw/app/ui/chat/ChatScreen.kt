@@ -4452,7 +4452,7 @@ private fun ChatInputPill(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
   ) {
-    Column(modifier = Modifier.background(Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.18f), Color.White.copy(alpha = 0.05f), Color.Transparent)))) {
+    Column(modifier = Modifier.background(Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.12f))))) {
       ChatTextFieldValueAdapter(
         value = value,
         onValueChange = onValueChange,
