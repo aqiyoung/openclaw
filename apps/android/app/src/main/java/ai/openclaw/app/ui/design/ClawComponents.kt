@@ -516,10 +516,10 @@ internal fun ClawGlassSurface(
   Surface(
     modifier = modifier,
     shape = shape,
-    color = colors.surface.copy(alpha = if (isDark) 0.5f else 0.82f),
+    color = colors.surface.copy(alpha = if (isDark) 0.5f else 0.9f),
     contentColor = contentColor,
-    border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.borderStrong.copy(alpha = 0.9f)),
-    shadowElevation = if (isDark) 2.dp else 1.dp,
+    border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.border.copy(alpha = 0.55f)),
+    shadowElevation = 2.dp,
     tonalElevation = 0.dp,
   ) {
     content()

@@ -4458,7 +4458,7 @@ private fun ChatInputPill(
     val sheenColors = if (isDark) {
       listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.12f))
     } else {
-      listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.22f), Color.Transparent, colors.surfacePressed.copy(alpha = 0.4f))
+      listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)
     }
     Column(modifier = Modifier.background(Brush.verticalGradient(colors = sheenColors))) {
       ChatTextFieldValueAdapter(
