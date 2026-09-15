@@ -4449,7 +4449,7 @@ private fun ChatInputPill(
   Surface(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
-    color = ClawTheme.colors.surfaceRaised,
+    color = ClawTheme.colors.surface.copy(alpha = 0.66f),
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.borderStrong),
     shadowElevation = 1.dp,
