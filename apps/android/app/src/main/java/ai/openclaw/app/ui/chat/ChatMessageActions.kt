@@ -173,7 +173,7 @@ internal fun ChatTextReaderDialog(
             factory = { context ->
               TextView(context).apply {
                 gravity = Gravity.TOP or Gravity.START
-                typeface = resources.getFont(R.font.manrope_500_medium)
+                typeface = resources.getFont(R.font.inter)
                 includeFontPadding = false
                 isVerticalScrollBarEnabled = true
                 setHorizontallyScrolling(false)

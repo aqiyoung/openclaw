@@ -150,7 +150,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import ai.openclaw.app.ui.design.ClawToggle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -1291,7 +1291,7 @@ private fun NotificationPackageAppRow(
         overflow = TextOverflow.Ellipsis,
       )
     }
-    Switch(checked = selected, onCheckedChange = onSelectedChange)
+    ClawToggle(checked = selected, onCheckedChange = onSelectedChange)
   }
 }
 
@@ -1931,7 +1931,7 @@ private fun GatewaySettingsScreen(
               },
               trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  Switch(
+                  ClawToggle(
                     checked = entry.stableId == activeGatewayStableId || entry.stableId in connectedGatewayStableIds,
                     onCheckedChange = { enabled ->
                       viewModel.setGatewayConnectionEnabled(entry.stableId, enabled)
@@ -3613,7 +3613,7 @@ private fun SettingsToggleListRow(row: SettingsToggleRow) {
       Text(text = row.title, style = ClawTheme.type.body, color = ClawTheme.colors.text, maxLines = 1)
       Text(text = row.subtitle, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
-    Switch(checked = row.checked, onCheckedChange = row.onCheckedChange, enabled = row.enabled)
+    ClawToggle(checked = row.checked, onCheckedChange = row.onCheckedChange, enabled = row.enabled)
   }
 }
 

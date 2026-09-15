@@ -192,7 +192,7 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import ai.openclaw.app.ui.design.ClawToggle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -3876,7 +3876,7 @@ private fun ChatEffortSheet(
             color = ClawTheme.colors.textMuted,
           )
         }
-        Switch(
+        ClawToggle(
           checked = fastMode,
           onCheckedChange = onFastModeChange,
           enabled = fastModeEnabled,

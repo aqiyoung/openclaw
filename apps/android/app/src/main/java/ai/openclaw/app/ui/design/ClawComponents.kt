@@ -6,10 +6,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,8 +34,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -47,10 +45,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -110,7 +112,7 @@ internal fun ClawSectionHeader(
   }
 }
 
-/** Primary call-to-action button using the mobile design token set. */
+/** Primary call-to-action button styled after the iOS pill with a tinted gradient. */
 @Composable
 internal fun ClawPrimaryButton(
   text: String,
@@ -119,26 +121,44 @@ internal fun ClawPrimaryButton(
   enabled: Boolean = true,
   icon: ImageVector? = null,
 ) {
-  Button(
+  val colors = ClawTheme.colors
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
+  val scale by animateFloatAsState(if (enabled && pressed) 0.98f else 1f, label = "primaryPressScale")
+  val contentColor = if (enabled) colors.primaryText else colors.textSubtle
+  Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
-    colors =
-      ButtonDefaults.buttonColors(
-        containerColor = ClawTheme.colors.primary,
-        contentColor = ClawTheme.colors.primaryText,
-        disabledContainerColor = ClawTheme.colors.surfacePressed,
-        disabledContentColor = ClawTheme.colors.textSubtle,
-      ),
-    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
+    modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget).scale(scale),
+    shape = RoundedCornerShape(50),
+    color = Color.Transparent,
+    contentColor = contentColor,
+    border = if (enabled) BorderStroke(0.75.dp, colors.primary.copy(alpha = 0.85f)) else null,
+    interactionSource = interactionSource,
   ) {
-    if (icon != null) {
-      Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
-      Spacer(modifier = Modifier.width(6.dp))
+    Box(
+      modifier =
+        Modifier
+          .background(
+            if (enabled) {
+              Brush.verticalGradient(0f to colors.primary, 1f to colors.primary.copy(alpha = 0.9f))
+            } else {
+              Brush.verticalGradient(0f to colors.surfacePressed, 1f to colors.surfacePressed)
+            },
+          ).padding(horizontal = 18.dp, vertical = 8.dp),
+      contentAlignment = Alignment.Center,
+    ) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+      ) {
+        if (icon != null) {
+          Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+        }
+        Text(text = text, style = ClawTheme.type.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      }
     }
-    Text(text = text, style = ClawTheme.type.label)
   }
 }
 
@@ -155,7 +175,7 @@ internal fun ClawSecondaryButton(
     onClick = onClick,
     enabled = enabled,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
+    shape = RoundedCornerShape(50),
     color = if (enabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surface,
     contentColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
     border = BorderStroke(1.dp, if (enabled) ClawTheme.colors.borderStrong else ClawTheme.colors.border),
@@ -169,7 +189,7 @@ internal fun ClawSecondaryButton(
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(6.dp))
       }
-      Text(text = text, style = ClawTheme.type.label)
+      Text(text = text, style = ClawTheme.type.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
   }
 }
@@ -302,7 +322,7 @@ internal fun ClawStatusPill(
       Box(
         modifier =
           Modifier
-            .size(5.dp)
+            .size(6.dp)
             .clip(CircleShape)
             .background(accentColor),
       )
@@ -372,6 +392,33 @@ internal fun <T> ClawSeparatedColumn(
   }
 }
 
+/** Two-line settings/detail row with caller-provided leading and trailing slots. */
+@Composable
+internal fun ClawDetailRow(
+  title: String,
+  subtitle: String,
+  modifier: Modifier = Modifier,
+  leading: @Composable () -> Unit,
+  trailing: @Composable () -> Unit,
+) {
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .heightIn(min = ClawTheme.spacing.row)
+        .padding(vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
+  ) {
+    leading()
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(text = title, style = ClawTheme.type.body, color = ClawTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Text(text = subtitle, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    trailing()
+  }
+}
+
 /** Circular text badge used for compact numeric or initials-style row marks. */
 @Composable
 internal fun ClawTextBadge(
@@ -410,7 +457,74 @@ internal fun ClawIconBadge(
   }
 }
 
-/** Keeps labels together and flows controls below when their intrinsic widths cannot fit. */
+/**
+ * iOS-style toggle: a 52x32 capsule track with a 28dp thumb, fully tappable as a row.
+ */
+@Composable
+internal fun ClawToggle(
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+) {
+  val colors = ClawTheme.colors
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
+  val trackColor = if (!enabled) colors.surfacePressed else if (checked) colors.primary else colors.borderStrong
+  val thumbColor = if (enabled) Color.White else colors.textSubtle
+  Box(
+    modifier =
+      modifier
+        .size(width = 52.dp, height = 32.dp)
+        .clip(RoundedCornerShape(50))
+        .background(trackColor)
+        .clickable(
+          enabled = enabled,
+          role = Role.Switch,
+          interactionSource = interactionSource,
+          indication = null,
+          onClick = { onCheckedChange(!checked) },
+        ).padding(2.dp),
+    contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .size(28.dp)
+          .clip(CircleShape)
+          .background(thumbColor)
+          .scale(if (pressed) 0.92f else 1f),
+    )
+  }
+}
+
+/**
+ * Frosted "Liquid Glass" surface approximation for interactive chrome (top bars,
+ * FABs, sheets). Android has no true backdrop blur, so this layers a translucent
+ * surface tint with a hairline border and soft shadow over the content behind it.
+ */
+@Composable
+internal fun ClawGlassSurface(
+  modifier: Modifier = Modifier,
+  shape: Shape = RoundedCornerShape(ClawTheme.radii.panel),
+  contentColor: Color = ClawTheme.colors.text,
+  content: @Composable () -> Unit,
+) {
+  val colors = ClawTheme.colors
+  Surface(
+    modifier = modifier,
+    shape = shape,
+    color = colors.surface.copy(alpha = 0.66f),
+    contentColor = contentColor,
+    border = BorderStroke(0.5.dp, colors.border.copy(alpha = 0.6f)),
+    shadowElevation = 1.dp,
+    tonalElevation = 0.dp,
+  ) {
+    content()
+  }
+}
+
+/** Reusable one-line list row with optional subtitle, metadata, slots, and click handling. */
 @Composable
 internal fun ClawListItem(
   title: String,
@@ -428,37 +542,37 @@ internal fun ClawListItem(
       modifier.clickable(onClick = onClick)
     }
 
-  FlowRow(
+  Row(
     modifier =
       rowModifier
         .fillMaxWidth()
         .heightIn(min = ClawTheme.spacing.touchTarget)
         .clip(RoundedCornerShape(ClawTheme.radii.row))
         .padding(vertical = 6.dp),
-    horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs, Alignment.End),
-    verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
-    itemVerticalAlignment = Alignment.CenterVertically,
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
   ) {
-    Row(
-      modifier = Modifier.weight(1f),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
-    ) {
-      leading?.invoke()
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    leading?.invoke()
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(
+        text = title,
+        style = ClawTheme.type.body,
+        color = ClawTheme.colors.text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      if (subtitle != null) {
         Text(
-          text = title,
-          style = ClawTheme.type.body,
-          color = ClawTheme.colors.text,
+          text = subtitle,
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textSubtle,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
         )
-        listOfNotNull(subtitle, metadata).forEach { detail ->
-          Text(
-            text = detail,
-            style = ClawTheme.type.caption,
-            color = ClawTheme.colors.textMuted,
-          )
-        }
       }
+    }
+    if (metadata != null) {
+      Text(text = metadata, style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle, maxLines = 1)
     }
     trailing?.invoke()
   }
@@ -533,6 +647,8 @@ internal fun ClawSegmentedControl(
                   enabled -> ClawTheme.colors.textMuted
                   else -> ClawTheme.colors.textSubtle
                 },
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
             )
           }
         }

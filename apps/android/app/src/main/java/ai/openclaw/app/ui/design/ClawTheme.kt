@@ -25,12 +25,34 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal val clawFontFamily =
+/**
+ * iOS design font stack: Red Hat Display for display/headings, Inter for body/UI text,
+ * JetBrains Mono for code. Each variable font is registered per-weight so Android
+ * instantiates the correct wght (and opsz) axis instance.
+ */
+internal val clawDisplayFontFamily =
   FontFamily(
-    Font(resId = R.font.manrope_400_regular, weight = FontWeight.Normal),
-    Font(resId = R.font.manrope_500_medium, weight = FontWeight.Medium),
-    Font(resId = R.font.manrope_600_semibold, weight = FontWeight.SemiBold),
-    Font(resId = R.font.manrope_700_bold, weight = FontWeight.Bold),
+    Font(resId = R.font.redhatdisplay, weight = FontWeight.Normal),
+    Font(resId = R.font.redhatdisplay, weight = FontWeight.Medium),
+    Font(resId = R.font.redhatdisplay, weight = FontWeight.SemiBold),
+    Font(resId = R.font.redhatdisplay, weight = FontWeight.Bold),
+  )
+
+internal val clawBodyFontFamily =
+  FontFamily(
+    Font(resId = R.font.inter, weight = FontWeight.Normal),
+    Font(resId = R.font.inter, weight = FontWeight.Medium),
+    Font(resId = R.font.inter, weight = FontWeight.SemiBold),
+    Font(resId = R.font.inter, weight = FontWeight.Bold),
+    Font(resId = R.font.inter_italic, style = FontStyle.Italic, weight = FontWeight.Normal),
+    Font(resId = R.font.inter_italic, style = FontStyle.Italic, weight = FontWeight.Medium),
+  )
+
+internal val clawMonoFontFamily =
+  FontFamily(
+    Font(resId = R.font.jetbrainsmono_regular, weight = FontWeight.Normal),
+    Font(resId = R.font.jetbrainsmono_medium, weight = FontWeight.Medium),
+    Font(resId = R.font.jetbrainsmono_semibold, weight = FontWeight.SemiBold),
   )
 
 /**
@@ -93,13 +115,16 @@ internal data class ClawSpacing(
  */
 @Immutable
 internal data class ClawRadii(
-  val row: Dp = 6.dp,
-  val control: Dp = 10.dp,
-  val button: Dp = 10.dp,
-  val panel: Dp = 12.dp,
-  val sheet: Dp = 16.dp,
+  val row: Dp = 10.dp,
+  val control: Dp = 12.dp,
+  val button: Dp = 12.dp,
+  val panel: Dp = 16.dp,
+  val sheet: Dp = 20.dp,
   // Full-round for a `control`-height capsule; larger surfaces use `panel`.
   val pill: Dp = 18.dp,
+  // iOS-style radii: cards and chat bubbles use continuous 16/18pt corners.
+  val card: Dp = 16.dp,
+  val bubble: Dp = 18.dp,
 )
 
 /**
@@ -121,20 +146,20 @@ internal data class ClawTypography(
 // alpha-based so a tint composites correctly over canvas, panel, and row surfaces.
 private val ClawDarkColors =
   ClawColors(
-    canvas = Color(0xFF0E1015),
+    canvas = Color(0xFF0C0D0F),
     surface = Color(0xFF161920),
     surfaceRaised = Color(0xFF191C24),
     surfacePressed = Color(0xFF1F2330),
-    accent = Color(0xFFFF5C5C),
-    accentSoft = Color(0x1AFF5C5C),
-    accentBorder = Color(0xFFD13C3C),
-    userMessageSurface = Color(0xFFFF5C5C).copy(alpha = 0.12f).compositeOver(Color(0xFF0E1015)),
+    accent = Color(0xFFC63E38),
+    accentSoft = Color(0x1AC63E38),
+    accentBorder = Color(0xFF9E332F),
+    userMessageSurface = Color(0xFFC63E38).copy(alpha = 0.12f).compositeOver(Color(0xFF0C0D0F)),
     border = Color(0xFF1E2028),
     borderStrong = Color(0xFF2E3040),
     text = Color(0xFFF4F4F5),
     textMuted = Color(0xFFBCBCC0),
     textSubtle = Color(0xFF8B8B94),
-    primary = Color(0xFFD13C3C),
+    primary = Color(0xFFE85C56),
     primaryText = Color(0xFFFFFFFF),
     secondary = Color(0xFF14B8A6),
     success = Color(0xFF22C55E),
@@ -156,16 +181,16 @@ private val ClawLightColors =
     surface = Color(0xFFFFFFFF),
     surfaceRaised = Color(0xFFFFFFFF),
     surfacePressed = Color(0xFFEFEFF3),
-    accent = Color(0xFFC23434),
-    accentSoft = Color(0x1AC23434),
-    accentBorder = Color(0xFFA32C2C),
-    userMessageSurface = Color(0x26C23434).compositeOver(Color(0xFFF7F7F9)),
+    accent = Color(0xFFB73833),
+    accentSoft = Color(0x1AB73833),
+    accentBorder = Color(0xFF8F2925),
+    userMessageSurface = Color(0x26B73833).compositeOver(Color(0xFFF7F7F9)),
     border = Color(0xFFE4E4EA),
     borderStrong = Color(0xFFCFCFD8),
     text = Color(0xFF101014),
     textMuted = Color(0xFF52525B),
     textSubtle = Color(0xFF787885),
-    primary = Color(0xFFC23434),
+    primary = Color(0xFFCC4B45),
     primaryText = Color(0xFFFFFFFF),
     secondary = Color(0xFF0F8F81),
     success = Color(0xFF15803D),
@@ -336,7 +361,10 @@ internal fun clawColorsForTheme(
 private val LocalClawColors = staticCompositionLocalOf { ClawDarkColors }
 private val LocalClawSpacing = staticCompositionLocalOf { ClawSpacing() }
 private val LocalClawRadii = staticCompositionLocalOf { ClawRadii() }
-private val LocalClawTypography = staticCompositionLocalOf { clawTypography(clawFontFamily) }
+private val LocalClawTypography =
+  staticCompositionLocalOf {
+    clawTypography(clawDisplayFontFamily, clawBodyFontFamily, clawMonoFontFamily)
+  }
 
 /**
  * Composition-local access point for OpenClaw Android design tokens.
@@ -374,7 +402,7 @@ internal fun ClawDesignTheme(
   content: @Composable () -> Unit,
 ) {
   val colors = clawColorsForTheme(dark = dark, family = family, accentArgb = accentArgb)
-  val typography = clawTypography(clawFontFamily)
+  val typography = clawTypography(clawDisplayFontFamily, clawBodyFontFamily, clawMonoFontFamily)
 
   val spacing = ClawSpacing()
 
@@ -396,11 +424,11 @@ internal fun ClawDesignTheme(
   }
 }
 
-private fun clawTypography(fontFamily: FontFamily) =
+private fun clawTypography(display: FontFamily, body: FontFamily, mono: FontFamily) =
   ClawTypography(
     display =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = display,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
@@ -408,7 +436,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     title =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = display,
         fontWeight = FontWeight.SemiBold,
         fontSize = 17.sp,
         lineHeight = 22.sp,
@@ -416,7 +444,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     section =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = display,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -424,7 +452,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     body =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = body,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 19.sp,
@@ -432,7 +460,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     label =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = body,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -440,7 +468,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     caption =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = body,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -448,7 +476,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     captionSmall =
       TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = body,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 14.sp,
@@ -456,7 +484,7 @@ private fun clawTypography(fontFamily: FontFamily) =
       ),
     mono =
       TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = mono,
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 18.sp,

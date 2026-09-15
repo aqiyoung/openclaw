@@ -9,8 +9,8 @@ import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.i18n.nativeString
 import ai.openclaw.app.isClawHubSkillInstalled
 import ai.openclaw.app.isClawHubSkillOperationActive
+import ai.openclaw.app.ui.design.ClawDetailRow
 import ai.openclaw.app.ui.design.ClawIconButton
-import ai.openclaw.app.ui.design.ClawListItem
 import ai.openclaw.app.ui.design.ClawListPanel
 import ai.openclaw.app.ui.design.ClawPanel
 import ai.openclaw.app.ui.design.ClawPill
@@ -45,7 +45,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import ai.openclaw.app.ui.design.ClawToggle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -407,7 +407,7 @@ private fun SkillSwitchPanel(
           color = ClawTheme.colors.textMuted,
         )
       }
-      Switch(
+      ClawToggle(
         checked = !skill.disabled,
         onCheckedChange = { onSkillEnabledChange(skill.skillKey, it) },
         enabled = canManageSkills && !isMutating,
@@ -489,7 +489,7 @@ private fun SkillListRow(
   onClick: () -> Unit,
   onSkillEnabledChange: (String, Boolean) -> Unit,
 ) {
-  ClawListItem(
+  ClawDetailRow(
     title = skill.name,
     subtitle = skillSubtitle(skill),
     modifier = Modifier.clickable(onClickLabel = nativeString("Open skill detail"), onClick = onClick),
@@ -497,7 +497,7 @@ private fun SkillListRow(
     trailing = {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         ClawStatusPill(text = skillStatusText(skill), status = skillStatus(skill))
-        Switch(
+        ClawToggle(
           checked = !skill.disabled,
           onCheckedChange = { onSkillEnabledChange(skill.skillKey, it) },
           enabled = canManageSkills && !isMutating,
@@ -573,7 +573,7 @@ private fun ClawHubSkillSearchPanel(
           // An install-only row never opens a review dialog, so the warning has to show here.
           nativeString("Not scanned by ClawHub").takeIf { skill.isUnscannedSource },
         )
-      ClawListItem(
+      ClawDetailRow(
         title = skill.displayName,
         subtitle = subtitleParts.joinToString(" · "),
         leading = { ClawTextBadge(text = skillBadge(skill.displayName)) },
