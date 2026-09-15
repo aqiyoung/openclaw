@@ -4452,6 +4452,7 @@ private fun ChatInputPill(
   ClawGlassSurface(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
+    blurBehind = true,
   ) {
     val colors = ClawTheme.colors
     val isDark = colors.canvas.luminance() < 0.5f

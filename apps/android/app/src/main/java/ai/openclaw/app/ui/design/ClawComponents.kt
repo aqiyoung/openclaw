@@ -509,20 +509,37 @@ internal fun ClawGlassSurface(
   modifier: Modifier = Modifier,
   shape: Shape = RoundedCornerShape(ClawTheme.radii.panel),
   contentColor: Color = ClawTheme.colors.text,
+  blurBehind: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val colors = ClawTheme.colors
   val isDark = colors.canvas.luminance() < 0.5f
-  Surface(
-    modifier = modifier,
-    shape = shape,
-    color = (if (isDark) colors.surface else colors.surfacePressed).copy(alpha = if (isDark) 0.5f else 0.9f),
-    contentColor = contentColor,
-    border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.border.copy(alpha = 0.55f)),
-    shadowElevation = 2.dp,
-    tonalElevation = 0.dp,
-  ) {
-    content()
+  val fill = (if (isDark) colors.surface else colors.surfacePressed).copy(alpha = if (isDark) 0.5f else 0.9f)
+  val border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.border.copy(alpha = 0.55f))
+  if (blurBehind) {
+    Surface(
+      modifier = modifier.frostedBackdrop(fill = fill, radius = 18.dp),
+      shape = shape,
+      color = Color.Transparent,
+      contentColor = contentColor,
+      border = border,
+      shadowElevation = 2.dp,
+      tonalElevation = 0.dp,
+    ) {
+      content()
+    }
+  } else {
+    Surface(
+      modifier = modifier,
+      shape = shape,
+      color = fill,
+      contentColor = contentColor,
+      border = border,
+      shadowElevation = 2.dp,
+      tonalElevation = 0.dp,
+    ) {
+      content()
+    }
   }
 }
 
