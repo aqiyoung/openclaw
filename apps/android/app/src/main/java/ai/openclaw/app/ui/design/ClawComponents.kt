@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -511,13 +512,14 @@ internal fun ClawGlassSurface(
   content: @Composable () -> Unit,
 ) {
   val colors = ClawTheme.colors
+  val isDark = colors.canvas.luminance() < 0.5f
   Surface(
     modifier = modifier,
     shape = shape,
-    color = colors.surface.copy(alpha = 0.5f),
+    color = colors.surface.copy(alpha = if (isDark) 0.5f else 0.82f),
     contentColor = contentColor,
-    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.30f)),
-    shadowElevation = 2.dp,
+    border = BorderStroke(0.5.dp, if (isDark) Color.White.copy(alpha = 0.30f) else colors.borderStrong.copy(alpha = 0.9f)),
+    shadowElevation = if (isDark) 2.dp else 1.dp,
     tonalElevation = 0.dp,
   ) {
     content()

@@ -221,6 +221,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -4452,7 +4453,14 @@ private fun ChatInputPill(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
   ) {
-    Column(modifier = Modifier.background(Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.12f))))) {
+    val colors = ClawTheme.colors
+    val isDark = colors.canvas.luminance() < 0.5f
+    val sheenColors = if (isDark) {
+      listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.12f))
+    } else {
+      listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.22f), Color.Transparent, colors.surfacePressed.copy(alpha = 0.4f))
+    }
+    Column(modifier = Modifier.background(Brush.verticalGradient(colors = sheenColors))) {
       ChatTextFieldValueAdapter(
         value = value,
         onValueChange = onValueChange,
