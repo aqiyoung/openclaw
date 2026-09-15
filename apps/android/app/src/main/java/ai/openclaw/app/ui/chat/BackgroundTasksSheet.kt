@@ -142,7 +142,8 @@ internal fun BackgroundTasksSheet(
     modifier = Modifier.foldAwareSheet(opening.geometry),
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    containerColor = ClawTheme.colors.surface,
+    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    containerColor = ClawTheme.colors.surface.copy(alpha = 0.66f),
     contentColor = ClawTheme.colors.text,
   ) {
     if (selectedTask != null) {
