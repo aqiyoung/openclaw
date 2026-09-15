@@ -3,9 +3,9 @@ package ai.openclaw.app.ui.design
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
-import android.graphics.Handler
-import android.graphics.PixelCopy
+import android.os.Handler
 import android.os.Looper
+import android.view.PixelCopy
 import android.view.Window
 import androidx.compose.ui.geometry.Rect
 import androidx.core.app.ComponentActivity
