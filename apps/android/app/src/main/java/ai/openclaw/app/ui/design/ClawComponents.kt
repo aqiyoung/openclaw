@@ -566,7 +566,7 @@ internal fun ClawGlassSurface(
     }
     Box(
       modifier =
-        modifier.onGloballyPositioned { coordinates ->
+        Modifier.onGloballyPositioned { coordinates ->
           val pos = coordinates.localToWindow(Offset.Zero)
           rect.value =
             Rect(pos.x, pos.y, pos.x + coordinates.size.width, pos.y + coordinates.size.height)
@@ -582,7 +582,7 @@ internal fun ClawGlassSurface(
         )
       }
       Surface(
-        modifier = Modifier.matchParentSize(),
+        modifier = modifier,
         shape = shape,
         color = Color.Transparent,
         contentColor = contentColor,
