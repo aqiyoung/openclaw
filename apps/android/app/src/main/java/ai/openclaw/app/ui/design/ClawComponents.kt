@@ -670,6 +670,43 @@ internal fun ClawGlassSurface(
   }
 }
 
+/**
+ * Quiet, opaque writing surface for content panels such as the chat composer.
+ *
+ * Mirrors the web composer contract (`ui/src/styles/chat/composer.css`): ONE surface
+ * whose separation comes from luminance plus a hairline - never a stack of backdrop
+ * blur, sheen, strong border and shadow, which reads as a dark frame in light themes.
+ * Light themes drop the painted edge for a 6% black ring ("Light surfaces get depth
+ * from translucent layers instead of a painted edge"); dark themes use a 9% hairline.
+ */
+@Composable
+internal fun ClawComposerSurface(
+  modifier: Modifier = Modifier,
+  shape: Shape = RoundedCornerShape(ClawTheme.radii.panel),
+  contentColor: Color = ClawTheme.colors.text,
+  content: @Composable () -> Unit,
+) {
+  val colors = ClawTheme.colors
+  val isDark = colors.canvas.luminance() < 0.5f
+  val border =
+    if (isDark) {
+      BorderStroke(1.dp, colors.text.copy(alpha = 0.09f))
+    } else {
+      BorderStroke(1.dp, Color.Black.copy(alpha = 0.06f))
+    }
+  Surface(
+    modifier = modifier,
+    shape = shape,
+    color = colors.surface,
+    contentColor = contentColor,
+    border = border,
+    shadowElevation = 2.dp,
+    tonalElevation = 0.dp,
+  ) {
+    content()
+  }
+}
+
 /** Reusable one-line list row with optional subtitle, metadata, slots, and click handling. */
 @Composable
 internal fun ClawListItem(

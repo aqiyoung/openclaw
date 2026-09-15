@@ -72,7 +72,7 @@ import ai.openclaw.app.ui.ProviderSignInDialog
 import ai.openclaw.app.ui.TabletopPaneBounds
 import ai.openclaw.app.ui.copyGatewayDiagnosticsReport
 import ai.openclaw.app.ui.design.ClawAgentAvatar
-import ai.openclaw.app.ui.design.ClawGlassSurface
+import ai.openclaw.app.ui.design.ClawComposerSurface
 import ai.openclaw.app.ui.design.ClawListItem
 import ai.openclaw.app.ui.design.ClawLoadingState
 import ai.openclaw.app.ui.design.ClawPanel
@@ -219,9 +219,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -3446,7 +3444,7 @@ private fun ChatComposer(
     }
   }
 
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
@@ -4449,19 +4447,11 @@ private fun ChatInputPill(
   var attachmentMenuExpanded by remember { mutableStateOf(false) }
   val draftStyle = chatDraftStyle()
 
-  ClawGlassSurface(
+  ClawComposerSurface(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
-    blurBehind = true,
   ) {
-    val colors = ClawTheme.colors
-    val isDark = colors.canvas.luminance() < 0.5f
-    val sheenColors = if (isDark) {
-      listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.12f))
-    } else {
-      listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)
-    }
-    Column(modifier = Modifier.background(Brush.verticalGradient(colors = sheenColors))) {
+    Column {
       ChatTextFieldValueAdapter(
         value = value,
         onValueChange = onValueChange,
