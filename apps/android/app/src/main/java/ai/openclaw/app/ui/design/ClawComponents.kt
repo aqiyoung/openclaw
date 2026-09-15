@@ -536,8 +536,7 @@ internal fun ClawGlassSurface(
   if (blurBehind) {
     val view = LocalView.current
     val density = LocalDensity.current
-    val window = remember(view) { view.context.findActivity()?.window }
-    val radiusPx = with(density) { 18.dp.toPx() }
+    val radiusPx = with(density) { 16.dp.toPx() }
     val blurEffect =
       remember(radiusPx) {
         RenderEffect.createBlurEffect(radiusPx, radiusPx, Shader.TileMode.CLAMP).asComposeRenderEffect()
@@ -545,12 +544,18 @@ internal fun ClawGlassSurface(
     val rect = remember { mutableStateOf<Rect?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     val scope = rememberCoroutineScope()
-    DisposableEffect(window) {
+    // Translucent frosted base — keeps the surface readable if backdrop capture is
+    // unavailable (e.g. no host Activity). NOT opaque, so it reads as glass, not a plate.
+    val baseFill = (if (isDark) colors.surface else colors.surfacePressed).copy(alpha = if (isDark) 0.5f else 0.55f)
+    DisposableEffect(Unit) {
       val job =
         scope.launch {
           while (isActive) {
             delay(90)
-            val w = window ?: continue
+            // Resolve the host window on EVERY poll: a `remember(view)`-cached window can
+            // stick at null (Activity not attached yet on first composition) and silently
+            // disable the whole backdrop blur forever.
+            val w = view.context.findActivity()?.window ?: continue
             val r = rect.value ?: continue
             if (r.width <= 0f || r.height <= 0f) continue
             val bmp = captureWindowRegion(w, r) ?: continue
@@ -572,7 +577,9 @@ internal fun ClawGlassSurface(
             Rect(pos.x, pos.y, pos.x + coordinates.size.width, pos.y + coordinates.size.height)
         },
     ) {
-      Box(Modifier.matchParentSize().clip(shape).background(fill))
+      // 1) Frosted base (fallback / backing).
+      Box(Modifier.matchParentSize().clip(shape).background(baseFill))
+      // 2) Real backdrop blur: the window region behind the composer, frosted.
       bitmap?.let { captured ->
         Image(
           bitmap = captured.asImageBitmap(),
@@ -581,6 +588,25 @@ internal fun ClawGlassSurface(
             Modifier.matchParentSize().clip(shape).graphicsLayer { renderEffect = blurEffect },
         )
       }
+      // 3) Glassy brighten tint over the blur — reads as glass, not a raw screenshot.
+      Box(
+        Modifier
+          .matchParentSize()
+          .clip(shape)
+          .background(if (isDark) Color.Black.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.16f)),
+      )
+      // 4) Specular sheen along the top edge — the "liquid glass" highlight.
+      Box(
+        Modifier
+          .matchParentSize()
+          .clip(shape)
+          .background(
+            Brush.verticalGradient(
+              colors = listOf(Color.White.copy(alpha = if (isDark) 0.12f else 0.30f), Color.Transparent),
+            ),
+          ),
+      )
+      // 5) Content on top, transparent so the glass shows through.
       Surface(
         modifier = modifier,
         shape = shape,
