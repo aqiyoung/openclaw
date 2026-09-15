@@ -72,6 +72,7 @@ import ai.openclaw.app.ui.ProviderSignInDialog
 import ai.openclaw.app.ui.TabletopPaneBounds
 import ai.openclaw.app.ui.copyGatewayDiagnosticsReport
 import ai.openclaw.app.ui.design.ClawAgentAvatar
+import ai.openclaw.app.ui.design.ClawGlassSurface
 import ai.openclaw.app.ui.design.ClawListItem
 import ai.openclaw.app.ui.design.ClawLoadingState
 import ai.openclaw.app.ui.design.ClawPanel
@@ -218,6 +219,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -4446,15 +4448,11 @@ private fun ChatInputPill(
   var attachmentMenuExpanded by remember { mutableStateOf(false) }
   val draftStyle = chatDraftStyle()
 
-  Surface(
+  ClawGlassSurface(
     modifier = modifier.testTag("chat-composer-surface"),
     shape = RoundedCornerShape(20.dp),
-    color = ClawTheme.colors.surface.copy(alpha = 0.66f),
-    contentColor = ClawTheme.colors.text,
-    border = BorderStroke(1.dp, ClawTheme.colors.borderStrong),
-    shadowElevation = 1.dp,
   ) {
-    Column {
+    Column(modifier = Modifier.background(Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.18f), Color.White.copy(alpha = 0.05f), Color.Transparent)))) {
       ChatTextFieldValueAdapter(
         value = value,
         onValueChange = onValueChange,
