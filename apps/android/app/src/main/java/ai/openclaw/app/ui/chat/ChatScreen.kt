@@ -2227,7 +2227,7 @@ internal fun ChatBubble(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(if (isUser) CHAT_BUBBLE_CORNER_RADIUS_DP.dp else ClawTheme.radii.bubble),
         color = if (isUser) ClawTheme.colors.userMessageSurface else ClawTheme.colors.surfaceRaised,
-        contentColor = ClawTheme.colors.text,
+        contentColor = if (isUser) ClawTheme.colors.primaryText else ClawTheme.colors.text,
         border = null,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -2259,7 +2259,7 @@ internal fun ChatBubble(
           displayableContent.forEach { part ->
             when {
               part.type == "text" && !collapsibleUserText -> {
-                ChatText(text = part.text.orEmpty(), textColor = ClawTheme.colors.text, isStreaming = live)
+                ChatText(text = part.text.orEmpty(), textColor = if (isUser) ClawTheme.colors.primaryText else ClawTheme.colors.text, isStreaming = live)
               }
 
               part.type == "text" -> {}
@@ -2416,7 +2416,7 @@ private fun ChatUserMessageText(
       modifier = anchor?.modifier ?: Modifier,
       onTextLayout = anchor?.onTextLayout,
       style = ClawTheme.type.body.copy(fontWeight = FontWeight.Normal),
-      color = ClawTheme.colors.text,
+      color = ClawTheme.colors.primaryText,
     )
   } else {
     Column(
@@ -2432,7 +2432,7 @@ private fun ChatUserMessageText(
       textParts.forEach { text ->
         ChatMarkdown(
           text = text,
-          textColor = ClawTheme.colors.text,
+          textColor = ClawTheme.colors.primaryText,
           isStreaming = false,
           bodyStyle = ClawTheme.type.body.copy(fontWeight = FontWeight.Normal),
         )

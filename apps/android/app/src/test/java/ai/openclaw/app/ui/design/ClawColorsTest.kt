@@ -115,7 +115,7 @@ class ClawColorsTest {
         assertNotEquals(base.accentSoft, colors.accentSoft)
         assertNotEquals(base.accentBorder, colors.accentBorder)
         assertEquals(
-          accent.copy(alpha = if (dark) 0.12f else 0.15f).compositeOver(base.canvas),
+          accent,
           colors.userMessageSurface,
         )
         assertEquals(

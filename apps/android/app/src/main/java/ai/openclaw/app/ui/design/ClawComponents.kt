@@ -164,7 +164,19 @@ internal fun ClawPrimaryButton(
             } else {
               Brush.verticalGradient(0f to colors.surfacePressed, 1f to colors.surfacePressed)
             },
-          ).padding(horizontal = 18.dp, vertical = 8.dp),
+          )
+          .background(
+            if (enabled) {
+              Brush.verticalGradient(
+                0f to Color.White.copy(alpha = 0.14f),
+                0.5f to Color.Transparent,
+                1f to Color.White.copy(alpha = 0.08f),
+              )
+            } else {
+              Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Transparent)
+            },
+          )
+          .padding(horizontal = 18.dp, vertical = 8.dp),
       contentAlignment = Alignment.Center,
     ) {
       Row(
@@ -195,20 +207,43 @@ internal fun ClawSecondaryButton(
     enabled = enabled,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
     shape = RoundedCornerShape(50),
-    color = if (enabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surface,
+    color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
-    border = BorderStroke(1.dp, if (enabled) ClawTheme.colors.borderStrong else ClawTheme.colors.border),
+    border = BorderStroke(0.75.dp, if (enabled) ClawTheme.colors.borderStrong else ClawTheme.colors.border),
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.Center,
+    Box(
+      modifier =
+        Modifier
+          .background(
+            if (enabled) {
+              Brush.verticalGradient(0f to ClawTheme.colors.surfaceRaised, 1f to ClawTheme.colors.surface)
+            } else {
+              Brush.verticalGradient(0f to ClawTheme.colors.surface, 1f to ClawTheme.colors.surface)
+            },
+          )
+          .background(
+            if (enabled) {
+              Brush.verticalGradient(
+                0f to Color.White.copy(alpha = 0.42f),
+                0.6f to Color.Transparent,
+              )
+            } else {
+              Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Transparent)
+            },
+          )
+          .padding(horizontal = 12.dp, vertical = 6.dp),
+      contentAlignment = Alignment.Center,
     ) {
-      if (icon != null) {
-        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(6.dp))
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+      ) {
+        if (icon != null) {
+          Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+        }
+        Text(text = text, style = ClawTheme.type.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
-      Text(text = text, style = ClawTheme.type.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
   }
 }
