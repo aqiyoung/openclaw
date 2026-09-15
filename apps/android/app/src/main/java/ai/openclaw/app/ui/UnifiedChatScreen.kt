@@ -4,6 +4,9 @@ import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.ui.chat.ChatScreen
 import ai.openclaw.app.ui.chat.rememberChatRealtimeTalkLauncher
 import ai.openclaw.app.ui.design.ClawScaffold
+import ai.openclaw.app.ui.design.ClawTheme
+import ai.openclaw.app.ui.design.clawChatCanvasBrush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -32,6 +35,7 @@ internal fun UnifiedChatShellScreen(
   ClawScaffold(
     contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = 0.dp),
     contentWindowInsets = WindowInsets.safeDrawing,
+    background = clawChatCanvasBrush(ClawTheme.colors.canvas.luminance() < 0.5f),
   ) {
     ChatScreen(
       viewModel = viewModel,

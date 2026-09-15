@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -562,3 +563,18 @@ private fun clawMaterialColorScheme(
     onError = colors.primaryText,
   )
 }
+/**
+ * iOS chat canvas: subtle 3-stop vertical gradient (ChatTheme.background).
+ * The app-wide [ClawColors.canvas] stays flat (iOS uiVoid); this gradient is
+ * applied only to the chat conversation surface via ClawScaffold.background.
+ */
+internal fun clawChatCanvasBrush(dark: Boolean): Brush =
+  if (dark) {
+    Brush.verticalGradient(
+      colors = listOf(Color(0xFF0C0D0F), Color(0xFF07080A), Color(0xFF040506)),
+    )
+  } else {
+    Brush.verticalGradient(
+      colors = listOf(Color(0xFFF6F7F9), Color(0xFFFAFBFC), Color(0xFFFFFFFF)),
+    )
+  }
