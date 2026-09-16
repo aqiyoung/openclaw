@@ -173,8 +173,8 @@ private fun squirclePath(size: Size, radius: Float): Path {
       val t = (PI / 2) * (i.toDouble() / steps)
       val ct = Math.abs(Math.cos(t))
       val st = Math.abs(Math.sin(t))
-      val px = r * (1f - Math.pow(ct, e).toFloat())
-      val py = r * (1f - Math.pow(st, e).toFloat())
+      val px = r * Math.pow(ct, e).toFloat()
+      val py = r * Math.pow(st, e).toFloat()
       pts.add((ox + sx * px) to (oy + sy * py))
     }
     return pts
