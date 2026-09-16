@@ -2327,16 +2327,6 @@ internal fun ChatBubble(
               onToggle = { onToggleListen(checkNotNull(messageId), messageText) },
             )
           }
-          if (!isUser) {
-            timestampMs?.let {
-              Text(
-                text = formatChatTimestamp(it),
-                style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
-                color = ClawTheme.colors.textSubtle,
-                modifier = Modifier.align(Alignment.Start),
-              )
-            }
-          }
         }
       }
         if (isUser) {
@@ -2346,6 +2336,16 @@ internal fun ChatBubble(
               style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
               color = ClawTheme.colors.textSubtle,
               modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+            )
+          }
+        }
+        if (!isUser) {
+          timestampMs?.let {
+            Text(
+              text = formatChatTimestamp(it),
+              style = ClawTheme.type.caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp, fontWeight = FontWeight.Normal),
+              color = ClawTheme.colors.textSubtle,
+              modifier = Modifier.align(Alignment.Start).padding(top = 2.dp),
             )
           }
         }
