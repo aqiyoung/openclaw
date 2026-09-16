@@ -575,6 +575,6 @@ internal fun clawChatCanvasBrush(dark: Boolean): Brush =
     )
   } else {
     Brush.verticalGradient(
-      colors = listOf(Color(0xFFF6F7F9), Color(0xFFFAFBFC), Color(0xFFF7F8FA)),
+      colors = listOf(Color(0xFFF4F5F7), Color(0xFFF0F1F4), Color(0xFFF1F2F4)),
     )
   }

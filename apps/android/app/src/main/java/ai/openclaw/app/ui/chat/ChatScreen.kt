@@ -3444,7 +3444,7 @@ private fun ChatComposer(
     }
   }
 
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 14.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
