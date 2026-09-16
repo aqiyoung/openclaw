@@ -81,6 +81,7 @@ import ai.openclaw.app.ui.design.ClawSecondaryButton
 import ai.openclaw.app.ui.design.ClawStatus
 import ai.openclaw.app.ui.design.ClawStatusPill
 import ai.openclaw.app.ui.design.ClawTheme
+import ai.openclaw.app.ui.design.NoticeBanner
 import ai.openclaw.app.ui.design.ProviderBrandIcon
 import ai.openclaw.app.ui.design.agentAvatarSource
 import ai.openclaw.app.ui.design.sessionColor
@@ -142,6 +143,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Difference
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -3059,25 +3061,12 @@ private fun ChatNotice(
   title: String,
   body: String,
 ) {
-  Surface(
-    modifier = Modifier.fillMaxWidth(),
-    shape = ClawTheme.shapes.panel,
-    color = ClawTheme.colors.surface,
-    contentColor = ClawTheme.colors.text,
-    border = BorderStroke(1.dp, ClawTheme.colors.border),
-  ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(9.dp),
-    ) {
-      Box(modifier = Modifier.size(6.dp).background(ClawTheme.colors.warning, CircleShape))
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = title, style = ClawTheme.type.section, color = ClawTheme.colors.text)
-        Text(text = body, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-      }
-    }
-  }
+  NoticeBanner(
+    icon = Icons.Filled.Warning,
+    title = title,
+    message = body,
+    tint = ClawTheme.colors.warning,
+  )
 }
 
 internal fun progressCardIsComplete(
