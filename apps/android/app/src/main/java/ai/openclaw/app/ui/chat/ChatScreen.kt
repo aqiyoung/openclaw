@@ -4438,9 +4438,12 @@ private fun ChatInputPill(
 
   ClawComposerSurface(
     modifier = modifier.testTag("chat-composer-surface"),
-    shape = RoundedCornerShape(20.dp),
+    shape = ClawTheme.shapes.sheet,
   ) {
-    Column {
+    Column(
+      modifier = Modifier.heightIn(min = 104.dp),
+      verticalArrangement = Arrangement.Bottom,
+    ) {
       ChatTextFieldValueAdapter(
         value = value,
         onValueChange = onValueChange,
@@ -4461,7 +4464,7 @@ private fun ChatInputPill(
               // Reserve the action row before measuring the draft in the IME viewport.
               .weight(1f, fill = false)
               .heightIn(min = ClawTheme.spacing.touchTarget)
-              .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 4.dp)
+              .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 4.dp)
               .onPreInterceptKeyBeforeSoftKeyboard { event ->
                 inputEnabled &&
                   hardwareEnterHandler.handle(
@@ -4484,7 +4487,7 @@ private fun ChatInputPill(
         )
       }
       Row(
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         if (onOpenDetails != null) {
