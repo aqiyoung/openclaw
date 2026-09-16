@@ -165,28 +165,26 @@ private fun squirclePath(size: Size, radius: Float): Path {
   }
   val e = 0.4
   val steps = 24
-  fun cornerPoint(a: Double, sx: Int, sy: Int, ox: Float, oy: Float): Pair<Float, Float> {
-    val u = (r * Math.pow(cos(a), e).toFloat())
-    val v = (r * Math.pow(sin(a), e).toFloat())
-    return (ox + sx * u) to (oy + sy * v)
-  }
-  fun halfArc(from: Double, to: Double, sx: Int, sy: Int, ox: Float, oy: Float): List<Pair<Float, Float>> {
+  // One quarter superellipse corner, t in [0, PI/2], relative to its outer corner.
+  // Signed magnitude (|cos|^e * sign) keeps coordinates finite for the whole arc.
+  fun quarter(ox: Float, oy: Float, sx: Float, sy: Float): List<Pair<Float, Float>> {
     val pts = mutableListOf<Pair<Float, Float>>()
     for (i in 0..steps) {
-      val a = from + (to - from) * (i.toDouble() / steps)
-      pts.add(cornerPoint(a, sx, sy, ox, oy))
+      val t = (PI / 2) * (i.toDouble() / steps)
+      val ct = Math.abs(Math.cos(t))
+      val st = Math.abs(Math.sin(t))
+      val px = r * (1f - Math.pow(ct, e).toFloat())
+      val py = r * (1f - Math.pow(st, e).toFloat())
+      pts.add((ox + sx * px) to (oy + sy * py))
     }
     return pts
   }
   val pts = mutableListOf<Pair<Float, Float>>()
-  pts += halfArc(0.0, PI, -1, -1, r, r)            // top-left: (0,r) -> (r,0)
-  pts += (w - r to 0f)                              // top edge
-  pts += halfArc(PI / 2, 0.0, 1, -1, w - r, r)      // top-right: (w-r,0) -> (w,r)
-  pts += (w to h - r)                               // right edge
-  pts += halfArc(0.0, PI / 2, 1, 1, w - r, h - r)   // bottom-right: (w,h-r) -> (w-r,h)
-  pts += (r to h)                                   // bottom edge
-  pts += halfArc(PI / 2, 0.0, -1, 1, r, h - r)      // bottom-left: (r,h) -> (0,h-r)
-  pts += (0f to r)                                  // left edge -> closes to start
+  pts += quarter(0f, 0f, 1f, 1f)        // top-left:    (0,r) -> (r,0)
+  pts += quarter(w - r, r, 1f, -1f)     // top-right:   (w-r,0) -> (w,r)
+  pts += quarter(w, h, -1f, -1f)        // bottom-right:(w,h-r) -> (w-r,h)
+  val bl = quarter(0f, h, 1f, -1f)      // bottom-left: (0,h-r) -> (r,h)
+  pts += bl.asReversed()                // keep clockwise order, then close
   path.moveTo(pts[0].first, pts[0].second)
   for (i in 1 until pts.size) path.lineTo(pts[i].first, pts[i].second)
   path.close()
