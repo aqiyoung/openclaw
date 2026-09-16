@@ -181,7 +181,7 @@ private fun ChatLinkPreview(
       }
   }
   val uriHandler = LocalUriHandler.current
-  val cardShape = RoundedCornerShape(ClawTheme.radii.sheet)
+  val cardShape = ClawTheme.shapes.sheet
   val metadataAnchor = rememberChatReaderAnchor(result)
   Surface(
     onClick = { uriHandler.openUri(url) },

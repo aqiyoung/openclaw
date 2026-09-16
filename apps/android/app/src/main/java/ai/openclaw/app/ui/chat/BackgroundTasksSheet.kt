@@ -142,7 +142,7 @@ internal fun BackgroundTasksSheet(
     modifier = Modifier.foldAwareSheet(opening.geometry),
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    shape = ClawTheme.shapes.sheet,
     containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
@@ -374,7 +374,7 @@ private fun TaskTextBlock(
       modifier = Modifier.fillMaxWidth(),
       color = ClawTheme.colors.surfaceRaised,
       contentColor = ClawTheme.colors.text,
-      shape = RoundedCornerShape(ClawTheme.radii.panel),
+      shape = ClawTheme.shapes.panel,
     ) {
       SelectionContainer {
         Text(text, style = ClawTheme.type.mono, modifier = Modifier.padding(12.dp))

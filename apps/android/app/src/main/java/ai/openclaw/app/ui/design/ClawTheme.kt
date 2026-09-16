@@ -26,6 +26,18 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sin
 
 /**
  * iOS design font stack: Red Hat Display for display/headings, Inter for body/UI text,
@@ -67,6 +79,7 @@ internal data class ClawColors(
   val surfaceRaised: Color,
   val surfacePressed: Color,
   val accent: Color,
+  val accentForeground: Color = Color(0xFFB73833),
   val accentSoft: Color,
   val accentBorder: Color,
   val userMessageSurface: Color,
@@ -130,6 +143,72 @@ internal data class ClawRadii(
 )
 
 /**
+ * iOS 26-style continuous (super-ellipse) corner. Unlike [RoundedCornerShape], which uses
+ * circular arcs, this blends each corner with a super-ellipse so the straight edge meets the
+ * curve tangentially — the signature iOS "squircle" silhouette. `cornerRadius` mirrors [ClawRadii].
+ */
+@Immutable
+internal class SquircleShape(private val cornerRadius: Dp) : Shape {
+  override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+    val radius = with(density) { cornerRadius.toPx() }
+    return Outline.Generic(squirclePath(size, radius))
+  }
+}
+
+private fun squirclePath(size: Size, radius: Float): Path {
+  val path = Path()
+  val w = size.width
+  val h = size.height
+  val r = radius.coerceAtMost(min(w, h) / 2f).coerceAtLeast(0f)
+  if (r <= 0f) {
+    path.addRect(Rect(0f, 0f, w, h))
+    return path
+  }
+  val e = 0.4
+  val steps = 24
+  fun cornerPoint(a: Double, sx: Int, sy: Int, ox: Float, oy: Float): Pair<Float, Float> {
+    val u = (r * pow(cos(a), e)).toFloat()
+    val v = (r * pow(sin(a), e)).toFloat()
+    return (ox + sx * u) to (oy + sy * v)
+  }
+  fun halfArc(from: Double, to: Double, sx: Int, sy: Int, ox: Float, oy: Float): List<Pair<Float, Float>> {
+    val pts = mutableListOf<Pair<Float, Float>>()
+    for (i in 0..steps) {
+      val a = from + (to - from) * (i.toDouble() / steps)
+      pts.add(cornerPoint(a, sx, sy, ox, oy))
+    }
+    return pts
+  }
+  val pts = mutableListOf<Pair<Float, Float>>()
+  pts += halfArc(0.0, PI, -1, -1, r, r)            // top-left: (0,r) -> (r,0)
+  pts += (w - r to 0f)                              // top edge
+  pts += halfArc(PI / 2, 0.0, 1, -1, w - r, r)      // top-right: (w-r,0) -> (w,r)
+  pts += (w to h - r)                               // right edge
+  pts += halfArc(0.0, PI / 2, 1, 1, w - r, h - r)   // bottom-right: (w,h-r) -> (w-r,h)
+  pts += (r to h)                                   // bottom edge
+  pts += halfArc(PI / 2, 0.0, -1, 1, r, h - r)      // bottom-left: (r,h) -> (0,h-r)
+  pts += (0f to r)                                  // left edge -> closes to start
+  path.moveTo(pts[0].first, pts[0].second)
+  for (i in 1 until pts.size) path.lineTo(pts[i].first, pts[i].second)
+  path.close()
+  return path
+}
+
+/** Continuous-corner variants of [ClawRadii] for cards, panels, sheets, bubbles, and controls. */
+@Immutable
+internal object ClawShapes {
+  val row = SquircleShape(10.dp)
+  val control = SquircleShape(12.dp)
+  val button = SquircleShape(12.dp)
+  val panel = SquircleShape(16.dp)
+  val sheet = SquircleShape(20.dp)
+  val pill = SquircleShape(18.dp)
+  val card = SquircleShape(16.dp)
+  val bubble = SquircleShape(18.dp)
+}
+
+
+/**
  * App text styles kept independent from Material typography names.
  */
 @Immutable
@@ -153,6 +232,7 @@ private val ClawDarkColors =
     surfaceRaised = Color(0xFF191C24),
     surfacePressed = Color(0xFF1F2330),
     accent = Color(0xFFC63E38),
+    accentForeground = Color(0xFFFF6B66),
     accentSoft = Color(0x1AC63E38),
     accentBorder = Color(0xFF9E332F),
     userMessageSurface = Color(0xFFC63E42),
@@ -184,6 +264,7 @@ private val ClawLightColors =
     surfaceRaised = Color(0xFFFFFFFF),
     surfacePressed = Color(0xFFEFEFF3),
     accent = Color(0xFFB73833),
+    accentForeground = Color(0xFFB73833),
     accentSoft = Color(0x1AB73833),
     accentBorder = Color(0xFF8F2925),
     userMessageSurface = Color(0xFFDC2626),
@@ -391,6 +472,7 @@ internal object ClawTheme {
     @Composable
     @ReadOnlyComposable
     get() = LocalClawTypography.current
+  val shapes: ClawShapes = ClawShapes
 }
 
 /**

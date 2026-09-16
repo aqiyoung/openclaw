@@ -651,7 +651,7 @@ private fun OverviewStatusPill(
   Surface(
     onClick = onClick,
     modifier = Modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = Color.Transparent,
   ) {
     Row(
@@ -721,7 +721,7 @@ private fun OverviewActionPill(
   Surface(
     onClick = onClick,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color =
       if (emphasized) {
         ClawTheme.colors.surfacePressed.copy(alpha = 0.9f)
@@ -758,7 +758,7 @@ private fun OverviewLayeredPanel(
 ) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
+    shape = ClawTheme.shapes.button,
     color = if (elevated) ClawTheme.colors.surfaceRaised.copy(alpha = 0.98f) else ClawTheme.colors.surfaceRaised.copy(alpha = 0.86f),
     contentColor = ClawTheme.colors.text,
     tonalElevation = if (elevated) 4.dp else 1.dp,
@@ -806,7 +806,7 @@ private fun OverviewStateChip(
 ) {
   Surface(
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = ClawTheme.colors.surfacePressed.copy(alpha = 0.58f),
   ) {
     Column(
@@ -854,7 +854,7 @@ private fun OverviewMetricTile(
   Surface(
     onClick = onClick,
     modifier = modifier.heightIn(min = overviewMetricTileMinHeight),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
+    shape = ClawTheme.shapes.button,
     color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.84f),
     contentColor = ClawTheme.colors.text,
     tonalElevation = 2.dp,
@@ -925,7 +925,7 @@ private fun TalkEntryPanel(
   Surface(
     onClick = onOpenVoice,
     modifier = Modifier.fillMaxWidth().heightIn(min = overviewTalkPanelMinHeight),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
+    shape = ClawTheme.shapes.button,
     color = ClawTheme.colors.surfaceRaised.copy(alpha = 0.9f),
     contentColor = ClawTheme.colors.text,
     tonalElevation = 2.dp,
@@ -1334,7 +1334,7 @@ private fun HomeAttentionListRow(
         Modifier
           .fillMaxWidth()
           .heightIn(min = 54.dp)
-          .clip(RoundedCornerShape(ClawTheme.radii.row))
+          .clip(ClawTheme.shapes.row)
           .clickable(onClick = onClick)
           .padding(horizontal = 0.dp, vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -1440,7 +1440,7 @@ private fun RecentSessionRowContent(
         Modifier
           .fillMaxWidth()
           .heightIn(min = overviewListRowMinHeight)
-          .clip(RoundedCornerShape(ClawTheme.radii.row))
+          .clip(ClawTheme.shapes.row)
           .clickable(onClick = onClick)
           .padding(horizontal = 0.dp, vertical = 5.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -1857,7 +1857,7 @@ private fun ProfilePanel(
       modifier =
         Modifier
           .fillMaxWidth()
-          .clip(RoundedCornerShape(ClawTheme.radii.row))
+          .clip(ClawTheme.shapes.row)
           .clickable(onClick = onClick),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -124,7 +124,7 @@ internal class VoiceNoteRecorderOwnerTracker(
 internal fun VoiceNotePreparing(modifier: Modifier = Modifier) {
   Surface(
     modifier = modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.textSubtle,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -153,7 +153,7 @@ internal fun VoiceNoteRecordingControls(
 ) {
   Surface(
     modifier = modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),

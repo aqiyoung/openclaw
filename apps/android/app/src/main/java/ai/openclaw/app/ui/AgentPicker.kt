@@ -78,7 +78,7 @@ internal fun AgentPicker(
     Surface(
       onClick = { expanded = true },
       modifier = Modifier.widthIn(max = 160.dp).heightIn(min = ClawTheme.spacing.touchTarget),
-      shape = RoundedCornerShape(ClawTheme.radii.pill),
+      shape = ClawTheme.shapes.pill,
       color = ClawTheme.colors.surfaceRaised.copy(alpha = 0f),
       contentColor = ClawTheme.colors.text,
       border = null,

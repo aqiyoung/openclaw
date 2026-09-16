@@ -29,7 +29,7 @@ internal fun ClawPanel(
 ) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),

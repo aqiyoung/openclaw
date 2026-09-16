@@ -982,7 +982,7 @@ private fun VoiceSetupActionRow(
     onClick = onClick ?: {},
     enabled = onClick != null,
     modifier = rowModifier,
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -1030,7 +1030,7 @@ private fun SettingsWaveformPanel(
   Surface(
     onClick = onClick,
     modifier = Modifier.fillMaxWidth().height(64.dp),
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -2131,7 +2131,7 @@ private fun AppearanceThemeFamilyCard(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val shape = RoundedCornerShape(ClawTheme.radii.control)
+  val shape = ClawTheme.shapes.control
   Column(
     modifier =
       modifier
@@ -2495,7 +2495,7 @@ private fun AppUpdateDialog(
               modifier =
                 Modifier
                   .fillMaxWidth()
-                  .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(ClawTheme.radii.control))
+                  .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
                   .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
             )
           }
@@ -2528,7 +2528,7 @@ private fun AppUpdateDialog(
               modifier =
                 Modifier
                   .fillMaxWidth()
-                  .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(ClawTheme.radii.control))
+                  .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
                   .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
             )
           }
@@ -2577,9 +2577,9 @@ private fun UpdateVersionChip(
   highlighted: Boolean,
 ) {
   Surface(
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = if (highlighted) ClawTheme.colors.accentSoft else ClawTheme.colors.surfacePressed,
-    contentColor = if (highlighted) ClawTheme.colors.accent else ClawTheme.colors.textMuted,
+    contentColor = if (highlighted) ClawTheme.colors.accentForeground else ClawTheme.colors.textMuted,
   ) {
     Text(
       text = text,

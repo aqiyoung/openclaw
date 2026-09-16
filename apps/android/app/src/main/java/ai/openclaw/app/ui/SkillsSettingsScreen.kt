@@ -295,7 +295,7 @@ private fun SkillDistributionBar(
       Modifier
         .fillMaxWidth()
         .height(6.dp)
-        .clip(RoundedCornerShape(ClawTheme.radii.pill))
+        .clip(ClawTheme.shapes.pill)
         .background(ClawTheme.colors.surfacePressed),
   ) {
     if (total > 0) {
@@ -634,7 +634,7 @@ private fun ClawHubNoticeCard(
 
   Surface(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = background,
     border = BorderStroke(1.dp, accent.copy(alpha = 0.45f)),
   ) {
@@ -651,7 +651,7 @@ private fun ClawHubNoticeCard(
       if (detailsExpanded && details != null) {
         Surface(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(ClawTheme.radii.control),
+          shape = ClawTheme.shapes.control,
           color = ClawTheme.colors.surface.copy(alpha = 0.72f),
         ) {
           Text(

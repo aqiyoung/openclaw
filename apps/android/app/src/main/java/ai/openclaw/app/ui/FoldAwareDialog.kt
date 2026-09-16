@@ -161,7 +161,7 @@ internal fun FoldAwarePrompt(
   FoldAwareDialog(onDismissRequest = onDismissRequest, title = title) {
     Surface(
       modifier = Modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(ClawTheme.radii.sheet),
+      shape = ClawTheme.shapes.sheet,
       color = containerColor,
       contentColor = ClawTheme.colors.text,
     ) {

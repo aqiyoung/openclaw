@@ -1402,7 +1402,7 @@ internal fun ChatScreen(
     ModalBottomSheet(
       onDismissRequest = { showApprovalDialog = false },
       sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-      shape = RoundedCornerShape(ClawTheme.radii.sheet),
+      shape = ClawTheme.shapes.sheet,
       containerColor = ClawTheme.colors.surface,
       contentColor = ClawTheme.colors.text,
     ) {
@@ -2083,7 +2083,7 @@ private fun StarterPromptRow(
         modifier =
           Modifier
             .size(30.dp)
-            .background(ClawTheme.colors.surfacePressed, RoundedCornerShape(ClawTheme.radii.row)),
+            .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.row),
         contentAlignment = Alignment.Center,
       ) {
         Text(text = prompt.mark, style = ClawTheme.type.label, color = ClawTheme.colors.text)
@@ -3033,7 +3033,7 @@ private fun DiffStatChip(
   color: Color,
   background: Color,
 ) {
-  Surface(shape = RoundedCornerShape(ClawTheme.radii.control), color = background) {
+  Surface(shape = ClawTheme.shapes.control, color = background) {
     Text(
       text = text,
       modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
@@ -3061,7 +3061,7 @@ private fun ChatNotice(
 ) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -3836,7 +3836,7 @@ private fun ChatEffortSheet(
     modifier = Modifier.foldAwareSheet(opening.geometry),
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    shape = ClawTheme.shapes.sheet,
     containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
@@ -3903,7 +3903,7 @@ private fun BranchSwitcherSheet(
     modifier = Modifier.foldAwareSheet(opening.geometry),
     onDismissRequest = onDismiss,
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    shape = ClawTheme.shapes.sheet,
     containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
   ) {
@@ -4005,7 +4005,7 @@ private fun ChatModelPickerSheet(
     onDismissRequest = onDismiss,
     // IME dismissal can remove a partial-height anchor while the selector opens.
     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    shape = ClawTheme.shapes.sheet,
     containerColor = ClawTheme.colors.surface,
     contentColor = ClawTheme.colors.text,
     properties =
@@ -4786,7 +4786,7 @@ private fun ChatComposerModelPicker(
         contextDescription?.let { stateDescription = it }
         role = Role.Button
       },
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    shape = ClawTheme.shapes.pill,
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
   ) {
@@ -4875,7 +4875,7 @@ private fun LiveTalkButton(
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
     color = Color.Transparent,
-    contentColor = if (active) ClawTheme.colors.accent else ClawTheme.colors.primaryText,
+    contentColor = if (active) ClawTheme.colors.accentForeground else ClawTheme.colors.primaryText,
   ) {
     Box(modifier = Modifier.padding(8.dp).background(if (active) Color.Transparent else ClawTheme.colors.primary, CircleShape), contentAlignment = Alignment.Center) {
       LiveTalkWaveform(active = active, modifier = Modifier.size(20.dp))
@@ -4956,7 +4956,7 @@ private fun AttachmentChip(
       attachment.videoThumbnailBase64?.let(::decodeBase64Bitmap)
     }
   Surface(
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    shape = ClawTheme.shapes.pill,
     color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),

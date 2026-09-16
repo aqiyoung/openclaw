@@ -130,7 +130,7 @@ private fun ClawBottomNavItem(
   Surface(
     onClick = onClick,
     modifier = modifier.heightIn(min = ClawTheme.spacing.row),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = if (selected) ClawTheme.colors.accentSoft else Color.Transparent,
     contentColor = if (selected) ClawTheme.colors.text else ClawTheme.colors.textMuted,
   ) {

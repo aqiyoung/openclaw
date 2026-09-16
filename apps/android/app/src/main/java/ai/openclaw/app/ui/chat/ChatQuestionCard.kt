@@ -65,7 +65,7 @@ internal fun ChatQuestionCard(
 
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.sheet),
+    shape = ClawTheme.shapes.sheet,
     color = ClawTheme.colors.surfaceRaised,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
@@ -164,7 +164,7 @@ private fun ChatQuestionSummary(
 ) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.row),
+    shape = ClawTheme.shapes.row,
     color = ClawTheme.colors.surfaceRaised,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
   ) {
@@ -211,7 +211,7 @@ private fun QuestionSection(
       Surface(
         onClick = { onDraftChanged { it.toggle(question, option.label) } },
         enabled = enabled,
-        shape = RoundedCornerShape(ClawTheme.radii.row),
+        shape = ClawTheme.shapes.row,
         color = if (selected) ClawTheme.colors.surfacePressed else ClawTheme.colors.surface,
       ) {
         Row(

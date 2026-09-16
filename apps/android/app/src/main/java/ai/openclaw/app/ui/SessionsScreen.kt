@@ -232,7 +232,7 @@ internal fun SessionsScreen(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
           Surface(
             modifier = Modifier.widthIn(min = 140.dp, max = 180.dp).heightIn(min = 36.dp),
-            shape = RoundedCornerShape(ClawTheme.radii.row),
+            shape = ClawTheme.shapes.row,
             color = Color.Transparent,
             contentColor = ClawTheme.colors.textMuted,
             border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -688,7 +688,7 @@ private fun SessionRow(
 
           Surface(
             modifier = Modifier.size(32.dp),
-            shape = RoundedCornerShape(ClawTheme.radii.control),
+            shape = ClawTheme.shapes.control,
             color = Color.Transparent,
             border = BorderStroke(1.dp, ClawTheme.colors.borderStrong),
           ) {

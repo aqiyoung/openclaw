@@ -1214,7 +1214,7 @@ private fun SoftPanel(
 ) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
@@ -1415,7 +1415,7 @@ private fun SetupScanErrorDialog(
   ) {
     Surface(
       modifier = Modifier.fillMaxWidth(),
-      shape = RoundedCornerShape(ClawTheme.radii.sheet),
+      shape = ClawTheme.shapes.sheet,
       color = ClawTheme.colors.surfaceRaised,
       contentColor = ClawTheme.colors.text,
       border = BorderStroke(1.dp, ClawTheme.colors.borderStrong),
@@ -1930,7 +1930,7 @@ private fun SetupInstruction(
     if (monospaceBody) {
       Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
-        shape = RoundedCornerShape(ClawTheme.radii.control),
+        shape = ClawTheme.shapes.control,
         color = ClawTheme.colors.surfaceRaised,
         border = BorderStroke(1.dp, ClawTheme.colors.border),
       ) {
@@ -2304,7 +2304,7 @@ private fun OnboardingLoadingPrimaryButton(
     onClick = onClick,
     enabled = !loading,
     modifier = modifier.heightIn(min = ClawTheme.spacing.touchTarget),
-    shape = RoundedCornerShape(ClawTheme.radii.button),
+    shape = ClawTheme.shapes.button,
     colors =
       ButtonDefaults.buttonColors(
         containerColor = ClawTheme.colors.primary,
@@ -2548,7 +2548,7 @@ private fun TogglePill(
     onClick = onClick,
     enabled = enabled,
     modifier = modifier.heightIn(min = 34.dp).semantics { role = Role.Button },
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    shape = ClawTheme.shapes.pill,
     color = if (selected) ClawTheme.colors.primary else ClawTheme.colors.surfaceRaised,
     contentColor = if (selected) ClawTheme.colors.primaryText else ClawTheme.colors.textMuted,
     border = BorderStroke(1.dp, if (selected) ClawTheme.colors.primary else ClawTheme.colors.border),
@@ -2569,7 +2569,7 @@ private fun PermissionRow(row: PermissionRowModel) {
   Surface(
     onClick = row.onClick,
     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-    shape = RoundedCornerShape(ClawTheme.radii.control),
+    shape = ClawTheme.shapes.control,
     color = ClawTheme.colors.surfaceRaised,
     contentColor = ClawTheme.colors.text,
     border = BorderStroke(1.dp, ClawTheme.colors.borderStrong),

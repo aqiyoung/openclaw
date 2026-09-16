@@ -299,7 +299,7 @@ private fun CommandActionRow(
     modifier =
       Modifier
         .heightIn(min = 52.dp)
-        .clip(RoundedCornerShape(ClawTheme.radii.row))
+        .clip(ClawTheme.shapes.row)
         .clickable(onClickLabel = commandActionAccessibilityDescription(row.action, title), onClick = { onOpen(row.action) })
         .padding(horizontal = 2.dp),
     leading = { CommandRowIcon(icon = row.icon) },
@@ -330,7 +330,7 @@ private fun CommandSessionListRow(
         Modifier
           .fillMaxWidth()
           .heightIn(min = 58.dp)
-          .clip(RoundedCornerShape(ClawTheme.radii.row))
+          .clip(ClawTheme.shapes.row)
           .clickable(onClick = onClick)
           .padding(horizontal = 2.dp, vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,

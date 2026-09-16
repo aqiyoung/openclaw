@@ -364,7 +364,7 @@ internal fun ClawStatusPill(
 
   Surface(
     modifier = modifier,
-    shape = RoundedCornerShape(ClawTheme.radii.row),
+    shape = ClawTheme.shapes.row,
     color = backgroundColor,
     border = BorderStroke(1.dp, if (status == ClawStatus.Neutral) colors.border else accentColor.copy(alpha = 0.35f)),
   ) {
@@ -402,7 +402,7 @@ internal fun ClawPill(
 
   Surface(
     modifier = surfaceModifier,
-    shape = RoundedCornerShape(ClawTheme.radii.pill),
+    shape = ClawTheme.shapes.pill,
     color = if (selected) ClawTheme.colors.accentSoft else ClawTheme.colors.surfaceRaised,
     contentColor = if (selected) ClawTheme.colors.text else ClawTheme.colors.textMuted,
     border = BorderStroke(1.dp, if (selected) ClawTheme.colors.accent.copy(alpha = 0.45f) else ClawTheme.colors.border),
@@ -560,7 +560,7 @@ internal fun ClawToggle(
 @Composable
 internal fun ClawGlassSurface(
   modifier: Modifier = Modifier,
-  shape: Shape = RoundedCornerShape(ClawTheme.radii.panel),
+  shape: Shape = ClawTheme.shapes.panel,
   contentColor: Color = ClawTheme.colors.text,
   blurBehind: Boolean = false,
   content: @Composable () -> Unit,
@@ -682,7 +682,7 @@ internal fun ClawGlassSurface(
 @Composable
 internal fun ClawComposerSurface(
   modifier: Modifier = Modifier,
-  shape: Shape = RoundedCornerShape(ClawTheme.radii.panel),
+  shape: Shape = ClawTheme.shapes.panel,
   contentColor: Color = ClawTheme.colors.text,
   content: @Composable () -> Unit,
 ) {
@@ -730,7 +730,7 @@ internal fun ClawListItem(
       rowModifier
         .fillMaxWidth()
         .heightIn(min = ClawTheme.spacing.touchTarget)
-        .clip(RoundedCornerShape(ClawTheme.radii.row))
+        .clip(ClawTheme.shapes.row)
         .padding(vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
@@ -796,9 +796,9 @@ internal fun ClawSegmentedControl(
     modifier =
       modifier
         .selectableGroup()
-        .clip(RoundedCornerShape(ClawTheme.radii.control))
+        .clip(ClawTheme.shapes.control)
         .background(ClawTheme.colors.surface)
-        .border(1.dp, ClawTheme.colors.border, RoundedCornerShape(ClawTheme.radii.control))
+        .border(1.dp, ClawTheme.colors.border, ClawTheme.shapes.control)
         .padding(2.dp),
     verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
@@ -815,7 +815,7 @@ internal fun ClawSegmentedControl(
               Modifier
                 .weight(1f)
                 .heightIn(min = ClawTheme.spacing.control)
-                .clip(RoundedCornerShape(ClawTheme.radii.row))
+                .clip(ClawTheme.shapes.row)
                 .background(if (active) ClawTheme.colors.surfacePressed else Color.Transparent)
                 .selectable(selected = active, enabled = enabled, role = Role.RadioButton) { onSelect(option) }
                 .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -868,12 +868,12 @@ internal fun ClawTextField(
         fieldModifier
           .fillMaxWidth()
           .heightIn(min = ClawTheme.spacing.touchTarget)
-          .clip(RoundedCornerShape(ClawTheme.radii.control))
+          .clip(ClawTheme.shapes.control)
           .background(ClawTheme.colors.surface)
           .border(
             1.dp,
             if (focused) ClawTheme.colors.accent else ClawTheme.colors.border,
-            RoundedCornerShape(ClawTheme.radii.control),
+            ClawTheme.shapes.control,
           ).padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
       textStyle =
         ClawTheme.type.body.copy(

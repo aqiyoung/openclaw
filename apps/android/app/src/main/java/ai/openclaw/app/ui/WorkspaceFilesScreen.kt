@@ -236,7 +236,7 @@ private fun WorkspaceDirectoryScreen(
             modifier =
               Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(ClawTheme.radii.row))
+                .clip(ClawTheme.shapes.row)
                 .clickable(enabled = !requestInFlight) {
                   if (isWorkspaceDirectoryRequestInFlight(loading, loadingMore)) return@clickable
                   loadingMore = true
@@ -287,7 +287,7 @@ private fun WorkspaceEntryRow(
     modifier =
       Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(ClawTheme.radii.row))
+        .clip(ClawTheme.shapes.row)
         .clickable(onClick = onClick)
         .padding(horizontal = 10.dp, vertical = 10.dp),
     verticalAlignment = Alignment.CenterVertically,

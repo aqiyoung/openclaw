@@ -299,7 +299,7 @@ private fun ProviderMetricTile(
 ) {
   Surface(
     modifier = modifier,
-    shape = RoundedCornerShape(ClawTheme.radii.panel),
+    shape = ClawTheme.shapes.panel,
     color = ClawTheme.colors.surface,
     border = BorderStroke(1.dp, ClawTheme.colors.border),
     contentColor = ClawTheme.colors.text,
@@ -341,7 +341,7 @@ internal fun configuredModelsCountText(count: Int): String =
 
 @Composable
 private fun ProviderModelRow(model: GatewayModelSummary) {
-  Surface(shape = RoundedCornerShape(ClawTheme.radii.row), color = ClawTheme.colors.surface, border = BorderStroke(1.dp, ClawTheme.colors.border)) {
+  Surface(shape = ClawTheme.shapes.row, color = ClawTheme.colors.surface, border = BorderStroke(1.dp, ClawTheme.colors.border)) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -406,7 +406,7 @@ private fun formatContextTokens(tokens: Long): String = if (tokens >= 1_000) "${
 
 @Composable
 private fun ProviderBadge(text: String) {
-  Surface(modifier = Modifier.size(30.dp), shape = RoundedCornerShape(ClawTheme.radii.row), color = ClawTheme.colors.surfacePressed, border = BorderStroke(1.dp, ClawTheme.colors.border)) {
+  Surface(modifier = Modifier.size(30.dp), shape = ClawTheme.shapes.row, color = ClawTheme.colors.surfacePressed, border = BorderStroke(1.dp, ClawTheme.colors.border)) {
     Box(contentAlignment = Alignment.Center) {
       Text(text = providerInitials(text), style = ClawTheme.type.label, color = ClawTheme.colors.text, textAlign = TextAlign.Center)
     }
