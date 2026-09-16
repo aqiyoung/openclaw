@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sin
 
 /**
@@ -167,8 +166,8 @@ private fun squirclePath(size: Size, radius: Float): Path {
   val e = 0.4
   val steps = 24
   fun cornerPoint(a: Double, sx: Int, sy: Int, ox: Float, oy: Float): Pair<Float, Float> {
-    val u = (r * pow(cos(a), e)).toFloat()
-    val v = (r * pow(sin(a), e)).toFloat()
+    val u = (r * Math.pow(cos(a), e).toFloat())
+    val v = (r * Math.pow(sin(a), e).toFloat())
     return (ox + sx * u) to (oy + sy * v)
   }
   fun halfArc(from: Double, to: Double, sx: Int, sy: Int, ox: Float, oy: Float): List<Pair<Float, Float>> {
