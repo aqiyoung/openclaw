@@ -179,12 +179,14 @@ private fun squirclePath(size: Size, radius: Float): Path {
     }
     return pts
   }
+  // Walk the four corner arcs edge-to-edge so each arc ends on the edge the
+  // next one starts from (reverse the first three; their natural sweep ends
+  // on the far edge, which self-intersects the outline and leaves stray tabs).
   val pts = mutableListOf<Pair<Float, Float>>()
-  pts += quarter(0f, 0f, 1f, 1f)        // top-left:    (0,r) -> (r,0)
-  pts += quarter(w - r, r, 1f, -1f)     // top-right:   (w-r,0) -> (w,r)
-  pts += quarter(w, h, -1f, -1f)        // bottom-right:(w,h-r) -> (w-r,h)
-  val bl = quarter(0f, h, 1f, -1f)      // bottom-left: (0,h-r) -> (r,h)
-  pts += bl.asReversed()                // keep clockwise order, then close
+  pts += quarter(0f, 0f, 1f, 1f).asReversed()        // top-left:    (0,r) -> (r,0)
+  pts += quarter(w - r, r, 1f, -1f).asReversed()     // top-right:   (w-r,0) -> (w,r)
+  pts += quarter(w, h, -1f, -1f).asReversed()        // bottom-right:(w,h-r) -> (w-r,h)
+  pts += quarter(0f, h, 1f, -1f)      // bottom-left: (0,h-r) -> (r,h)
   path.moveTo(pts[0].first, pts[0].second)
   for (i in 1 until pts.size) path.lineTo(pts[i].first, pts[i].second)
   path.close()
