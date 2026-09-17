@@ -1,5 +1,6 @@
 // Owns managed plugin install, policy and uninstall mutations under the lifecycle lease.
 import { normalizeOptionalString } from "@openclaw/normalization-core/string-coerce";
+import type { PluginsInstallParams } from "../../packages/gateway-protocol/src/schema/plugins.js";
 import { collectChangedPaths } from "../config/config-change-paths.js";
 import {
   assertConfigWriteAllowedInCurrentMode,
@@ -49,20 +50,16 @@ import { refreshPluginRegistryAfterConfigMutation } from "./registry-refresh.js"
 import { applySlotSelectionForPlugin } from "./slot-selection.js";
 import { setPluginEnabledInConfig } from "./toggle-config.js";
 
-type ManagedPluginInstallRequest =
-  | {
-      source: "clawhub";
-      packageName: string;
-      version?: string;
-      acknowledgeInstallPolicyWarning?: true;
-      acknowledgeCapabilities?: PluginCapabilityConsentAcknowledgment;
-    }
-  | {
-      source: "official";
-      pluginId: string;
-      acknowledgeInstallPolicyWarning?: true;
-      acknowledgeCapabilities?: PluginCapabilityConsentAcknowledgment;
-    };
+/**
+ * Gateway plugin install request narrowed to the sources this layer routes.
+ *
+ * Kept as an extract of the wire type so optional request fields that upstream
+ * adds later keep flowing through instead of being dropped by a hand copy.
+ */
+export type ManagedPluginInstallRequest = Extract<
+  PluginsInstallParams,
+  { source: "clawhub" | "official" }
+>;
 
 function createSilentRuntime(): RuntimeEnv {
   return {

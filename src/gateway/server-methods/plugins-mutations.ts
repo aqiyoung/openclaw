@@ -40,6 +40,17 @@ export const pluginMutationHandlers: GatewayRequestHandlers = {
     if (!assertValidParams(params, validatePluginsInstallParams, "plugins.install", respond)) {
       return;
     }
+    if (params.source !== "clawhub" && params.source !== "official") {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `plugins.install does not accept source "${params.source}" over the Gateway; run it on the Gateway host instead.`,
+        ),
+      );
+      return;
+    }
     try {
       const result = await installManagedPlugin({ request: params });
       respond(

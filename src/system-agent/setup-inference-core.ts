@@ -60,10 +60,16 @@ export const SETUP_INFERENCE_TEST_PROMPT = "Reply with the single word OK. Do no
 const PROVIDER_AUTO_SETUP_KIND_PREFIX = "provider-auto:";
 
 export type ProviderAutoSetupInferenceKind = `provider-auto:${string}`;
+export type SavedAuthSetupInferenceKind = `saved-auth:${string}`;
 
-export type SetupInferenceKind = InferenceBackendKind | ProviderAutoSetupInferenceKind;
+export type SetupInferenceKind =
+  | InferenceBackendKind
+  | ProviderAutoSetupInferenceKind
+  | SavedAuthSetupInferenceKind;
 
 export type SetupInferenceCandidate = {
+  /** Utility-only route target; absent on an ordinary primary candidate. */
+  modelTarget?: "utility";
   kind: SetupInferenceKind;
   /** Canonical provider identity for clients with bundled brand artwork. */
   brandId?: string;

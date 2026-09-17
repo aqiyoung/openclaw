@@ -23,6 +23,7 @@ import {
   resolvePluginControlPlaneWorkspace,
 } from "./control-plane-workspace.js";
 import { getProcessGatewayPluginMetadataSnapshot } from "./current-plugin-metadata-state.js";
+import { emptyInstalledPluginComponents } from "./installed-plugin-components.js";
 import {
   createInstalledPluginEnabledPredicate,
   isInstalledPluginEnabled,
@@ -465,6 +466,7 @@ export const inspectManagedPlugin = withManagedPluginCache(
           enabled,
         },
         declared: pendingReview.declared,
+        components: emptyInstalledPluginComponents(),
         grants: pendingReview.grants,
         reviewToken: pendingReview.reviewToken,
         ...(pendingReview.source ? { source: pendingReview.source } : {}),
@@ -531,6 +533,7 @@ export const inspectManagedPlugin = withManagedPluginCache(
         ...(source ? { source } : {}),
         ...summary,
         declared,
+        components: emptyInstalledPluginComponents(),
         reviewToken: computeDeclaredSurfaceHash(declared),
         ...(trust ? { trust } : {}),
       };
@@ -576,6 +579,7 @@ export const inspectManagedPlugin = withManagedPluginCache(
           : {}),
       },
       ...summary,
+      components: emptyInstalledPluginComponents(),
       reviewToken: computeDeclaredSurfaceHash(summary.declared),
     };
   },
