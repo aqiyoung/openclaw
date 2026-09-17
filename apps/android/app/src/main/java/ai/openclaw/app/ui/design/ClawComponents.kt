@@ -202,6 +202,9 @@ internal fun ClawSecondaryButton(
   enabled: Boolean = true,
   icon: ImageVector? = null,
 ) {
+  // Dark themes take a much quieter sheen: a 42% white wash reads as a bright
+  // smudge on near-black surfaces (mirrors the 12% sheen in ClawGlassSurface).
+  val isDark = ClawTheme.colors.canvas.luminance() < 0.5f
   Surface(
     onClick = onClick,
     enabled = enabled,
@@ -224,7 +227,7 @@ internal fun ClawSecondaryButton(
           .background(
             if (enabled) {
               Brush.verticalGradient(
-                0f to Color.White.copy(alpha = 0.42f),
+                0f to Color.White.copy(alpha = if (isDark) 0.12f else 0.42f),
                 0.6f to Color.Transparent,
               )
             } else {
