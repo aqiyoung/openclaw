@@ -148,6 +148,11 @@ const config = {
   ignoreIssues: {
     // The memory-state compatibility facade must retain its pre-registry-bundle type export.
     "src/plugins/memory-state.ts": ["types"],
+    // The fork has not ported the upstream gateway/UI consumers for these protocol
+    // surfaces yet, so the full-tree audit classifies them as unused too.
+    "packages/gateway-protocol/src/svg-image.ts": ["exports"],
+    "packages/gateway-protocol/src/system-agent-context.ts": ["exports", "types"],
+    "src/system-agent/setup-inference-core.ts": ["types"],
     "test/fixtures/ts-topology/basic/**": [
       "exports",
       "nsExports",

@@ -244,6 +244,15 @@ export function buildPluginInspectMock() {
       },
       source: fixture.source,
       declared,
+      components: {
+        mapped: [],
+        skills: [],
+        mcpServers: [],
+        commands: [],
+        hooks: [],
+        lspServers: [],
+        unavailable: { capabilities: [], mcpServers: [], lspServers: [] },
+      },
       reviewToken: createHash("sha256").update(JSON.stringify(declared)).digest("hex"),
       grants: {
         hooks: {
