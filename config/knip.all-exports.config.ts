@@ -139,6 +139,19 @@ const config = {
     // inputs, not executable roots.
     "test/external-script-modules.d.ts",
     "test/vitest/**/*.d.{mts,ts}",
+    // The fork mirrors the protocol package verbatim and has not ported the
+    // upstream consumers of these two modules yet, so the test-aware graph sees
+    // no importer for them. The production pass already excludes the first one
+    // and treats the second as test support; this pass deliberately drops both
+    // exclusions, so repeat them here. Upstream importers to port:
+    // src/gateway/server-methods/diagnostics.ts + src/logging/diagnostic-heap-profile.ts,
+    // and ui/src/api/gateway.node.test.ts + packages/gateway-client/src/client.handshake.test.ts.
+    "packages/gateway-protocol/src/schema/diagnostics.ts",
+    "packages/gateway-protocol/src/connect-compatibility.test-support.ts",
+    // Upstream invokes this from packages/gateway-protocol's build script (after
+    // tsdown emits dist, which is why the fork's build script omits it for now);
+    // it stays a repository file until that build step is ported.
+    "scripts/check-protocol-registry-types.mts",
   ],
   // Keep only build artifacts out of the full-tree export audit. In
   // particular, do not inherit production's test-support exclusions.
