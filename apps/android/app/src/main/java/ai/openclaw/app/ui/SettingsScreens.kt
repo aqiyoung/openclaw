@@ -9,6 +9,7 @@ import ai.openclaw.app.AppUpdateInfo
 import ai.openclaw.app.BuildConfig
 import ai.openclaw.app.CronEditorDraftState
 import ai.openclaw.app.GatewayAgentSummary
+import ai.openclaw.app.GatewayApprovalKind
 import ai.openclaw.app.GatewayCronActionState
 import ai.openclaw.app.GatewayCronJobDetail
 import ai.openclaw.app.GatewayCronJobDetailState
@@ -650,7 +651,7 @@ private fun ApprovalsSettingsScreen(
       ClawPanel {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
           Text(text = nativeString("No gateway approvals."), style = ClawTheme.type.section, color = ClawTheme.colors.text)
-          Text(text = nativeString("Exec approval requests will appear here while this phone is connected."), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
+          Text(text = nativeString("Approval requests will appear here while this phone is connected."), style = ClawTheme.type.body, color = ClawTheme.colors.textMuted)
         }
       }
     } else {
@@ -2899,14 +2900,19 @@ internal fun ExecApprovalCard(
     Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs)) {
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs)) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-          Text(text = nativeString("Command approval"), style = ClawTheme.type.section, color = ClawTheme.colors.text)
+          Text(text = approval.title ?: nativeString("Command approval"), style = ClawTheme.type.section, color = ClawTheme.colors.text)
           approval.commandPreview?.let { preview ->
             Text(text = preview, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
           }
         }
         ClawStatusPill(text = if (resolving) nativeString("Sending") else nativeString("Review"), status = if (resolving) ClawStatus.Warning else ClawStatus.Success)
       }
-      ExecApprovalCommandReview(approval.commandText.resolveNativeTextResource())
+      if (approval.kind == GatewayApprovalKind.Exec) {
+        ExecApprovalCommandReview(approval.commandText.resolveNativeTextResource())
+      } else {
+        Text(approval.commandText.resolveNativeTextResource(), style = ClawTheme.type.body, color = ClawTheme.colors.text)
+      }
+      approval.externalResolutionLabel?.let { Text(it, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted) }
       approval.warningText?.let { warningText ->
         Text(text = warningText, style = ClawTheme.type.body, color = ClawTheme.colors.warning)
       }
@@ -2915,7 +2921,7 @@ internal fun ExecApprovalCard(
         Text(text = gatewayExecApprovalTextForDisplay(errorText), style = ClawTheme.type.caption, color = ClawTheme.colors.warning)
       }
       Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        execApprovalActions(approval.allowedDecisions).forEach { action ->
+        execApprovalActions(approval.allowedDecisions.filterNot { it in approval.externalResolutionDecisions }).forEach { action ->
           if (action.decision == "allow-once") {
             ClawPrimaryButton(
               text = action.label,
