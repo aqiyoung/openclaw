@@ -2,10 +2,7 @@
 // confirmation contract before either lifecycle request can be dispatched.
 import { showConfirmDialog } from "../../components/confirm-dialog.ts";
 import { t } from "../../i18n/index.ts";
-import {
-  pluginInstallRequestName,
-  type PluginInstallRequest,
-} from "../../lib/plugins/index.ts";
+import { pluginInstallRequestName, type PluginInstallRequest } from "../../lib/plugins/index.ts";
 
 export function confirmPluginInstall(request: PluginInstallRequest): Promise<boolean> {
   const name = pluginInstallRequestName(request);
