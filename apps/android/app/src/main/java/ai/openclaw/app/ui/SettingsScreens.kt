@@ -1777,7 +1777,7 @@ private fun GatewaySettingsScreen(
       ClawPlainIconButton(
         icon = Icons.Default.QrCode2,
         contentDescription = nativeString("Scan QR"),
-        onClick = viewModel::pairNewGateway,
+        onClick = viewModel::openGatewayAddition,
       )
     },
   ) {
@@ -1809,7 +1809,7 @@ private fun GatewaySettingsScreen(
     if (gatewayShowsScanHero(pairedGateways.size)) {
       ClawPrimaryButton(
         text = nativeString("Scan QR to Pair"),
-        onClick = viewModel::pairNewGateway,
+        onClick = viewModel::openGatewayAddition,
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Default.QrCode2,
       )
@@ -1870,7 +1870,7 @@ private fun GatewaySettingsScreen(
           style = ClawTheme.type.body,
           color = ClawTheme.colors.textMuted,
         )
-        ClawSecondaryButton(text = nativeString("Scan QR"), onClick = viewModel::pairNewGateway, modifier = Modifier.fillMaxWidth(), icon = Icons.Default.QrCode2)
+        ClawSecondaryButton(text = nativeString("Scan QR"), onClick = viewModel::openGatewayAddition, modifier = Modifier.fillMaxWidth(), icon = Icons.Default.QrCode2)
         ClawTextField(value = setupCode, onValueChange = { setupCode = it }, placeholder = nativeString("Setup code"), secret = true)
         ClawSecondaryButton(text = nativeString("Connect"), onClick = ::connectSetupCode, modifier = Modifier.fillMaxWidth(), icon = Icons.Default.Cloud)
         TextButton(onClick = { showSetupCodeHelp = !showSetupCodeHelp }) {
