@@ -502,6 +502,12 @@ const config = {
     // asserted by the focused Beam mirror tests; production wires only the service.
     "extensions/beam/src/mirror.ts": ["exports", "types"],
     "src/infra/heartbeat-wake.ts": ["exports"],
+    // The protocol package mirrors upstream verbatim; these surfaces only gain a consumer
+    // once the matching upstream gateway/UI code is ported into this fork.
+    "packages/gateway-protocol/src/svg-image.ts": ["exports"],
+    "packages/gateway-protocol/src/system-agent-context.ts": ["exports", "types"],
+    // Saved-auth setup inference is published for the not-yet-ported caller.
+    "src/system-agent/setup-inference-core.ts": ["types"],
   },
   workspaces: {
     ".": {
