@@ -459,6 +459,9 @@ const config = {
     "**/live-*.ts",
     "src/shared/text/assistant-visible-text.ts",
     bundledPluginFile("telegram", "src/draft-chunking.ts"),
+    // The protocol package mirrors upstream verbatim; this module is only
+    // referenced once the matching upstream gateway code is ported here.
+    "packages/gateway-protocol/src/schema/diagnostics.ts",
   ],
   // Knip's `ignoreFiles` only suppresses unused-file findings. Test helpers
   // belong in `ignore` so they do not inflate unused-export/type findings.

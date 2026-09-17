@@ -20,6 +20,7 @@ const generation = "bdca439a-e787-4f9f-b5f3-a878c662cc76";
 const requestId = "bdca439a-e787-4f9f-b5f3-a878c662cc77";
 const options: GitHubPublicationOptions = {
   shared,
+  latestShared: null,
   personal: {
     state: "connected",
     generation,
@@ -479,7 +480,7 @@ describe("explicit GitHub publication", () => {
   );
 
   it("offers shared publication without a personal owner and never auto-selects personal when shared is absent", async () => {
-    const unbound = setup({ shared, personal: null, pendingPersonal: null });
+    const unbound = setup({ shared, personal: null, pendingPersonal: null, latestShared: null });
     expect((await settled(unbound.controller)).selection).toEqual({
       source: "shared",
       expected: shared,

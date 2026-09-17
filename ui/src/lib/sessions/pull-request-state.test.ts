@@ -223,6 +223,7 @@ describe("application-owned publication custody", () => {
     const requestId = "bdca439a-e787-4f9f-b5f3-a878c662cc77";
     const options: GitHubPublicationOptions = {
       shared: null,
+      latestShared: null,
       personal: {
         state: "connected",
         generation,

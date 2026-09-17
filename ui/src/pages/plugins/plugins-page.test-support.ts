@@ -96,6 +96,15 @@ export function createInspectResult(
       enabled: false,
     },
     source: { kind: "npm", packageName: "workboard" },
+    components: {
+      mapped: [],
+      skills: [],
+      mcpServers: [],
+      commands: [],
+      hooks: [],
+      lspServers: [],
+      unavailable: { capabilities: [], mcpServers: [], lspServers: [] },
+    },
     declared: {
       channels: [],
       providers: [],

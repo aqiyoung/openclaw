@@ -219,6 +219,16 @@ const enableWorkboardResult = {
   restartRequired: false,
 } satisfies PluginMutationResult;
 
+const workboardInspectionComponents = {
+  mapped: [],
+  skills: [],
+  mcpServers: [],
+  commands: [],
+  hooks: [],
+  lspServers: [],
+  unavailable: { capabilities: [], mcpServers: [], lspServers: [] },
+};
+
 const workboardInspection = {
   ok: true,
   reviewToken: "a".repeat(64),
@@ -230,6 +240,7 @@ const workboardInspection = {
     enabled: false,
   },
   source: { kind: "npm", packageName: workboardDisabled.packageName },
+  components: workboardInspectionComponents,
   declared: {
     channels: [],
     providers: [],

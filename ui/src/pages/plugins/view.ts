@@ -339,6 +339,8 @@ function stateLabel(plugin: PluginCatalogItem): string {
       return t("pluginsPage.needsAttention");
     case "not-installed":
       return t("pluginsPage.available");
+    case "needs-setup":
+      return t("pluginsPage.needsAttention");
     default:
       return plugin.state satisfies never;
   }
