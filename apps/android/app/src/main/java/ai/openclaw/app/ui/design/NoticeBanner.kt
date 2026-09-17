@@ -1,5 +1,6 @@
 package ai.openclaw.app.ui.design
 
+import ai.openclaw.app.i18n.nativeString
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -102,7 +103,7 @@ internal fun NoticeBanner(
                 )
               is NoticeDetail.RequestId ->
                 Text(
-                  text = "Request ID: ${noticeDetail.value}",
+                  text = nativeString("Request ID: \$requestId", noticeDetail.value),
                   style = ClawTheme.type.caption,
                   color = ClawTheme.colors.textMuted,
                 )
