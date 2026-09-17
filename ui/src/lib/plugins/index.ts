@@ -50,6 +50,7 @@ export function pluginInstallRequestName(request: PluginInstallRequest): string 
     case "marketplace":
       return `${request.marketplace}:${request.plugin}`;
   }
+  return request satisfies never;
 }
 
 export function resolvePluginInstallIdentity(

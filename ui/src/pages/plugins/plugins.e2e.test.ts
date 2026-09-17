@@ -120,18 +120,9 @@ const calendarPlugin = {
 } satisfies PluginCatalogItem;
 
 const initialInventory = inventory([workboardDisabled, lobsterPlugin, remoteIconPlugin]);
-const installedInventory = inventory([
-  workboardDisabled,
-  lobsterPlugin,
-  remoteIconPlugin,
-  calendarPlugin,
-]);
-const finalInventory = inventory([
-  workboardEnabled,
-  lobsterPlugin,
-  remoteIconPlugin,
-  calendarPlugin,
-]);
+const otherCatalogPlugins = [lobsterPlugin, remoteIconPlugin, calendarPlugin];
+const installedInventory = inventory([workboardDisabled, ...otherCatalogPlugins]);
+const finalInventory = inventory([workboardEnabled, ...otherCatalogPlugins]);
 const uninstalledInventory = inventory([workboardEnabled, lobsterPlugin, remoteIconPlugin]);
 
 const calendarSearchResponse = {
@@ -232,13 +223,7 @@ const workboardInspectionComponents = {
 const workboardInspection = {
   ok: true,
   reviewToken: "a".repeat(64),
-  plugin: {
-    id: workboardDisabled.id,
-    name: workboardDisabled.name,
-    origin: workboardDisabled.origin,
-    installed: true,
-    enabled: false,
-  },
+  plugin: { ...workboardDisabled, installed: true, enabled: false },
   source: { kind: "npm", packageName: workboardDisabled.packageName },
   components: workboardInspectionComponents,
   declared: {
@@ -264,13 +249,7 @@ const workboardInspection = {
 const lobsterInspection = {
   ...workboardInspection,
   reviewToken: "b".repeat(64),
-  plugin: {
-    id: lobsterPlugin.id,
-    name: lobsterPlugin.name,
-    origin: lobsterPlugin.origin,
-    installed: false,
-    enabled: false,
-  },
+  plugin: { ...lobsterPlugin, installed: false, enabled: false },
   source: { kind: "npm", packageName: "@openclaw/lobster" },
 } satisfies PluginsInspectResult;
 
