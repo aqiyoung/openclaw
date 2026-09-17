@@ -3,13 +3,22 @@ import { createLazyPromise } from "../../shared/lazy-promise.js";
 import {
   listCoreGatewayHandlerMethodNames,
   type CoreGatewayHandlerFamily,
-} from "../methods/core-method-policy.js";
+} from "../methods/core-descriptors.js";
 import { createLazyCoreHandlers } from "./lazy-core-handlers.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
 type CoreGatewayHandlerModuleLoader = () => Promise<GatewayRequestHandlers>;
 
-const CORE_GATEWAY_HANDLER_MODULES = {
+/**
+ * Loaders for the core handler families this build implements.
+ *
+ * Upstream's method table also lists families whose handler modules are not
+ * ported here yet. The table stays partial so an unported family is left out of
+ * the dispatch table instead of being registered against an unimportable loader.
+ */
+const CORE_GATEWAY_HANDLER_MODULES: Partial<
+  Record<CoreGatewayHandlerFamily, CoreGatewayHandlerModuleLoader>
+> = {
   agent: () => import("./agent.js").then((module) => module.agentHandlers),
   "agent-identity": () =>
     import("./agent-identity.js").then((module) => module.agentIdentityHandlers),
@@ -161,18 +170,20 @@ const CORE_GATEWAY_HANDLER_MODULES = {
   "system-changes": () =>
     import("./system-changes.js").then((module) => module.systemChangesHandlers),
   wizard: () => import("./wizard.js").then((module) => module.wizardHandlers),
-} satisfies Record<CoreGatewayHandlerFamily, CoreGatewayHandlerModuleLoader>;
+};
 
 export const coreGatewayHandlers: GatewayRequestHandlers = Object.fromEntries(
-  Array.from(listCoreGatewayHandlerMethodNames()).flatMap(([family, methods]) =>
-    Object.entries(
+  Array.from(listCoreGatewayHandlerMethodNames()).flatMap(([family, methods]) => {
+    const loadHandlers = CORE_GATEWAY_HANDLER_MODULES[family];
+    if (!loadHandlers) {
+      return [];
+    }
+    return Object.entries(
       createLazyCoreHandlers({
         methods,
         // Failed family imports stay cached until restart, just like successful loads.
-        loadHandlers: createLazyPromise(CORE_GATEWAY_HANDLER_MODULES[family], {
-          cacheRejections: true,
-        }),
+        loadHandlers: createLazyPromise(loadHandlers, { cacheRejections: true }),
       }),
-    ),
-  ),
+    );
+  }),
 );
