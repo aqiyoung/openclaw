@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.9.17.15 - 2026-09-18
+
+Maintains Android client parity with the latest OpenClaw chat experience across web and iOS.
+
+Adds Chinese localization throughout the app, an in-app update check, and a bottom-sheet composer. Fixes crash-on-open and composer geometry issues from earlier builds.
+
 ## 2026.8.2 - 2026-08-31
 
 View your connected machine's desktop from your phone, and follow live subagent progress in chat.
