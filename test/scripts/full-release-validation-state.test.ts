@@ -3582,62 +3582,65 @@ printf '%s\\n' '{"id":101,"event":"workflow_dispatch","path":".github/workflows/
   });
 
   // Windows-sandbox signal handling is unreliable (gh-ready file wait times out); these pass on Linux CI.
-  it.skipIf(process.platform === "win32")("writes the execution plan immediately when SIGTERM interrupts a stalled reuse API", async () => {
-    const root = mkdtempSync(join(tmpdir(), "frv-plan-signal-"));
-    const gh = join(root, "gh");
-    const ghReady = join(root, "gh-ready");
-    const output = join(root, "full-release-execution-plan.json");
-    writeFileSync(gh, '#!/bin/sh\nprintf ready > "$FRV_GH_READY"\nsleep 30\n');
-    chmodSync(gh, 0o755);
-    const childProcess = spawn(process.execPath, [SCRIPT, "plan"], {
-      env: {
-        ...process.env,
-        EVIDENCE_CHANGED_PATHS: "[]",
-        FRV_GH_READY: ghReady,
-        FULL_RELEASE_EXECUTION_PLAN_PATH: output,
-        FULL_RELEASE_PLAN_INPUTS_JSON: JSON.stringify({
-          candidateRequestInput: canonicalCandidateRequest(),
-          children: { normalCi: { result: "skipped", runAttempt: "", runId: "" } },
-          dockerPreflightResult: "skipped",
-          evidenceChangedPaths: [],
-          evidencePolicy: "exact-target-full-validation-v1",
-          evidenceReuse: true,
-          evidenceRootRunId: "99",
-          evidenceRunId: "99",
-          evidenceRunUrl: "https://example.invalid/runs/99",
-          evidenceSha: TARGET_SHA,
-          parentRunAttempt: 1,
-          parentRunId: "77",
-          candidateBindingResult: "skipped",
-          rerunGroup: "ci",
-          resolveTargetResult: "success",
-          trustedWorkflow: TRUSTED_MAIN,
-          workflowRef: "release-ci/tooling",
-          workflowSha: SHA,
-        }),
-        GITHUB_REF_NAME: "release-ci/tooling",
-        GITHUB_REPOSITORY: "openclaw/openclaw",
-        GITHUB_RUN_ATTEMPT: "1",
-        GITHUB_RUN_ID: "77",
-        GITHUB_SHA: SHA,
-        PATH: `${root}:${process.env.PATH}`,
-        RELEASE_PROFILE: "stable",
-        RERUN_GROUP: "ci",
-        TARGET_SHA,
-      },
-      stdio: "ignore",
-    });
-    await waitForFile(ghReady, 5_000);
-    const exitPromise = waitForChildClose(childProcess);
-    const started = Date.now();
-    expect(childProcess.kill("SIGTERM")).toBe(true);
-    await expect(exitPromise).resolves.toEqual({ code: 1, signal: null });
-    expect(Date.now() - started).toBeLessThan(2_000);
-    expect(JSON.parse(readFileSync(output, "utf8"))).toMatchObject({
-      errors: [expect.objectContaining({ kind: "collector_cancelled" })],
-      parentRunAttempt: 1,
-    });
-  });
+  it.skipIf(process.platform === "win32")(
+    "writes the execution plan immediately when SIGTERM interrupts a stalled reuse API",
+    async () => {
+      const root = mkdtempSync(join(tmpdir(), "frv-plan-signal-"));
+      const gh = join(root, "gh");
+      const ghReady = join(root, "gh-ready");
+      const output = join(root, "full-release-execution-plan.json");
+      writeFileSync(gh, '#!/bin/sh\nprintf ready > "$FRV_GH_READY"\nsleep 30\n');
+      chmodSync(gh, 0o755);
+      const childProcess = spawn(process.execPath, [SCRIPT, "plan"], {
+        env: {
+          ...process.env,
+          EVIDENCE_CHANGED_PATHS: "[]",
+          FRV_GH_READY: ghReady,
+          FULL_RELEASE_EXECUTION_PLAN_PATH: output,
+          FULL_RELEASE_PLAN_INPUTS_JSON: JSON.stringify({
+            candidateRequestInput: canonicalCandidateRequest(),
+            children: { normalCi: { result: "skipped", runAttempt: "", runId: "" } },
+            dockerPreflightResult: "skipped",
+            evidenceChangedPaths: [],
+            evidencePolicy: "exact-target-full-validation-v1",
+            evidenceReuse: true,
+            evidenceRootRunId: "99",
+            evidenceRunId: "99",
+            evidenceRunUrl: "https://example.invalid/runs/99",
+            evidenceSha: TARGET_SHA,
+            parentRunAttempt: 1,
+            parentRunId: "77",
+            candidateBindingResult: "skipped",
+            rerunGroup: "ci",
+            resolveTargetResult: "success",
+            trustedWorkflow: TRUSTED_MAIN,
+            workflowRef: "release-ci/tooling",
+            workflowSha: SHA,
+          }),
+          GITHUB_REF_NAME: "release-ci/tooling",
+          GITHUB_REPOSITORY: "openclaw/openclaw",
+          GITHUB_RUN_ATTEMPT: "1",
+          GITHUB_RUN_ID: "77",
+          GITHUB_SHA: SHA,
+          PATH: `${root}:${process.env.PATH}`,
+          RELEASE_PROFILE: "stable",
+          RERUN_GROUP: "ci",
+          TARGET_SHA,
+        },
+        stdio: "ignore",
+      });
+      await waitForFile(ghReady, 5_000);
+      const exitPromise = waitForChildClose(childProcess);
+      const started = Date.now();
+      expect(childProcess.kill("SIGTERM")).toBe(true);
+      await expect(exitPromise).resolves.toEqual({ code: 1, signal: null });
+      expect(Date.now() - started).toBeLessThan(2_000);
+      expect(JSON.parse(readFileSync(output, "utf8"))).toMatchObject({
+        errors: [expect.objectContaining({ kind: "collector_cancelled" })],
+        parentRunAttempt: 1,
+      });
+    },
+  );
 
   it("records target resolution failure even when no target SHA exists", () => {
     const root = mkdtempSync(join(tmpdir(), "frv-state-target-failure-"));
@@ -3699,27 +3702,29 @@ printf '%s\\n' '{"id":101,"event":"workflow_dispatch","path":".github/workflows/
   });
 
   // Windows-sandbox signal handling is unreliable (gh-ready file wait times out); these pass on Linux CI.
-  it.skipIf(process.platform === "win32")("writes an immediate terminal handoff with active identity on SIGTERM", async () => {
-    const root = mkdtempSync(join(tmpdir(), "frv-state-signal-"));
-    const gh = join(root, "gh");
-    const ghReady = join(root, "gh-ready");
-    const output = join(root, "drain.json");
-    const executionPlanPath = join(root, "full-release-execution-plan.json");
-    writeFileSync(
-      executionPlanPath,
-      JSON.stringify(
-        executionPlan({
-          children: { normalCi: { result: "success", runAttempt: 1, runId: "101" } },
-          dockerPreflightResult: "skipped",
-          candidateBindingResult: "skipped",
-          rerunGroup: "ci",
-          resolveTargetResult: "success",
-        }),
-      ),
-    );
-    writeFileSync(
-      gh,
-      `#!/bin/sh
+  it.skipIf(process.platform === "win32")(
+    "writes an immediate terminal handoff with active identity on SIGTERM",
+    async () => {
+      const root = mkdtempSync(join(tmpdir(), "frv-state-signal-"));
+      const gh = join(root, "gh");
+      const ghReady = join(root, "gh-ready");
+      const output = join(root, "drain.json");
+      const executionPlanPath = join(root, "full-release-execution-plan.json");
+      writeFileSync(
+        executionPlanPath,
+        JSON.stringify(
+          executionPlan({
+            children: { normalCi: { result: "success", runAttempt: 1, runId: "101" } },
+            dockerPreflightResult: "skipped",
+            candidateBindingResult: "skipped",
+            rerunGroup: "ci",
+            resolveTargetResult: "success",
+          }),
+        ),
+      );
+      writeFileSync(
+        gh,
+        `#!/bin/sh
 printf ready > "$FRV_GH_READY"
 case "$*" in
   "api --paginate repos/openclaw/openclaw/actions/runs/101/attempts/1/jobs?per_page=100 --jq .jobs[] | @json")
@@ -3728,38 +3733,39 @@ case "$*" in
 esac
 printf '%s\\n' '{"id":101,"event":"workflow_dispatch","path":".github/workflows/ci.yml@refs/heads/release-ci/tooling","display_title":"CI full-release-validation-77-1-ci","head_branch":"release-ci/tooling","head_sha":"${SHA}","run_attempt":1,"status":"in_progress","conclusion":null,"created_at":"2026-08-21T00:00:00Z","updated_at":"2026-08-21T00:01:00Z","html_url":"https://example.invalid/runs/101","actor":{"login":"github-actions[bot]"},"triggering_actor":{"login":"github-actions[bot]"},"repository":{"full_name":"openclaw/openclaw"}}'
 `,
-    );
-    chmodSync(gh, 0o755);
-    const childProcess = spawn(process.execPath, [SCRIPT, "drain"], {
-      env: {
-        ...process.env,
-        FAIL_FAST: "false",
-        FRV_GH_READY: ghReady,
-        FULL_RELEASE_EXECUTION_PLAN_PATH: executionPlanPath,
-        FULL_RELEASE_POLL_INTERVAL_MS: "60000",
-        FULL_RELEASE_STATE_PATH: output,
-        GITHUB_REF_NAME: "release-ci/tooling",
-        GITHUB_REPOSITORY: "openclaw/openclaw",
-        GITHUB_RUN_ATTEMPT: "2",
-        GITHUB_RUN_ID: "77",
-        GITHUB_SHA: SHA,
-        PATH: `${root}:${process.env.PATH}`,
-        RELEASE_PROFILE: "stable",
-        RERUN_GROUP: "ci",
-        TARGET_SHA: "b".repeat(40),
-      },
-      stdio: "ignore",
-    });
-    await waitForFile(ghReady, 5_000);
-    const exitPromise = waitForChildClose(childProcess);
-    expect(childProcess.kill("SIGTERM")).toBe(true);
-    await expect(exitPromise).resolves.toEqual({ code: 1, signal: null });
-    expect(JSON.parse(readFileSync(output, "utf8"))).toMatchObject({
-      activeRunIds: ["101"],
-      cancellation: { requested: true },
-      state: "cancelled_with_children",
-    });
-  });
+      );
+      chmodSync(gh, 0o755);
+      const childProcess = spawn(process.execPath, [SCRIPT, "drain"], {
+        env: {
+          ...process.env,
+          FAIL_FAST: "false",
+          FRV_GH_READY: ghReady,
+          FULL_RELEASE_EXECUTION_PLAN_PATH: executionPlanPath,
+          FULL_RELEASE_POLL_INTERVAL_MS: "60000",
+          FULL_RELEASE_STATE_PATH: output,
+          GITHUB_REF_NAME: "release-ci/tooling",
+          GITHUB_REPOSITORY: "openclaw/openclaw",
+          GITHUB_RUN_ATTEMPT: "2",
+          GITHUB_RUN_ID: "77",
+          GITHUB_SHA: SHA,
+          PATH: `${root}:${process.env.PATH}`,
+          RELEASE_PROFILE: "stable",
+          RERUN_GROUP: "ci",
+          TARGET_SHA: "b".repeat(40),
+        },
+        stdio: "ignore",
+      });
+      await waitForFile(ghReady, 5_000);
+      const exitPromise = waitForChildClose(childProcess);
+      expect(childProcess.kill("SIGTERM")).toBe(true);
+      await expect(exitPromise).resolves.toEqual({ code: 1, signal: null });
+      expect(JSON.parse(readFileSync(output, "utf8"))).toMatchObject({
+        activeRunIds: ["101"],
+        cancellation: { requested: true },
+        state: "cancelled_with_children",
+      });
+    },
+  );
 
   // fork: the release-validation 'decision' command does not emit the cancel call asserted here
   // (upstream-only cancel behavior the fork does not run), so skip rather than assert upstream behavior.
