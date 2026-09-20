@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, assert, describe, expect, it } from "vitest";
+import { afterAll, afterEach, assert, beforeAll, describe, expect, it } from "vitest";
 import {
   buildFullReleaseCandidateBinding,
   buildFullReleaseCandidateRequest,
@@ -47,6 +47,22 @@ const SHA = "a".repeat(40);
 const TARGET_SHA = "b".repeat(40);
 const TRUSTED_MAIN = { fullRef: "refs/heads/main", ref: "main", sha: SHA };
 const tempDirs = useAutoCleanupTempDirTracker(afterEach);
+
+// The release-state readers resolve their expected repository from the ambient
+// GitHub environment even when a case runs in-process, so a fork checkout would
+// silently rewrite every provenance binding recorded by this file. Pin the
+// canonical repository for the whole file and restore the caller's value.
+const ambientGithubRepository = process.env.GITHUB_REPOSITORY;
+beforeAll(() => {
+  process.env.GITHUB_REPOSITORY = "openclaw/openclaw";
+});
+afterAll(() => {
+  if (ambientGithubRepository === undefined) {
+    delete process.env.GITHUB_REPOSITORY;
+    return;
+  }
+  process.env.GITHUB_REPOSITORY = ambientGithubRepository;
+});
 
 function candidateRequestInput(overrides: Record<string, unknown> = {}) {
   return {

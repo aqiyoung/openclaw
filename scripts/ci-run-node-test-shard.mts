@@ -237,12 +237,28 @@ export function clonePersistentCacheSlots(root: string | undefined, concurrency:
 }
 
 const MAX_PENDING_LINE_CHARS = 1_000_000;
+const MAX_REPORTED_FAILURES = 40;
+
+// Vitest's github-actions reporter already emits one `::error` command per
+// failed case. The shard label is useful for interleaved plans, but GitHub only
+// parses workflow commands at the very start of a line, so annotations must be
+// forwarded verbatim. Their titles are also collected so a failing shard can
+// always publish one compact annotation of its own.
+const failedTestTitles = new Set<string>();
 
 function relayChildStream(stream: Readable, label: string) {
   const decoder = new StringDecoder("utf8");
   let pending = "";
   const writeLine = (line: string) => {
-    if (!process.stdout.write(`[shard:${label}] ${line}\n`)) {
+    const isWorkflowCommand = line.startsWith("::");
+    if (isWorkflowCommand) {
+      const title = line.match(/^::error\s+.*?title=\[tooling\]\s*(.*?)::/u);
+      if (title && failedTestTitles.size < MAX_REPORTED_FAILURES) {
+        failedTestTitles.add(title[1]);
+      }
+    }
+    const rendered = isWorkflowCommand ? line : `[shard:${label}] ${line}`;
+    if (!process.stdout.write(`${rendered}\n`)) {
       stream.pause();
       process.stdout.once("drain", () => stream.resume());
     }
@@ -447,7 +463,14 @@ export async function runShardPlans(plans: ShardPlan[], options: RunShardOptions
 
 if (isDirectRunUrl(process.argv[1], import.meta.url)) {
   const plans = resolveShardPlans();
-  process.exitCode = await runShardPlans(plans, {
+  const exitCode = await runShardPlans(plans, {
     continueOnFailure: process.env.OPENCLAW_NODE_TEST_PLAN_CONTINUE_ON_FAILURE === "1",
   });
+  if (exitCode !== 0 && failedTestTitles.size > 0) {
+    const shard = process.env.OPENCLAW_VITEST_SHARD_NAME || plans[0]?.name || "node test shard";
+    process.stdout.write(
+      `::error title=${shard} failed tests::${[...failedTestTitles].join(" | ").slice(0, 8000)}\n`,
+    );
+  }
+  process.exitCode = exitCode;
 }
