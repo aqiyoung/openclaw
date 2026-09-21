@@ -36,28 +36,28 @@ and families.
 
 Dark:
 
-- Canvas: `#0E1015`
-- Card surface: `#161920`
-- Elevated surface: `#191C24`
-- Pressed/hover surface: `#1F2330`
-- Border: `#1E2028`
-- Border strong: `#2E3040`
+- Canvas: `#0B0C11`
+- Card surface: `#13151C`
+- Elevated surface: `#1A1D25`
+- Pressed/hover surface: `#232630`
+- Border: `#2A2D36`
+- Border strong: `#3A3D48`
 - Text strong: `#F4F4F5`
-- Text body: `#BCBCC0`
-- Text muted: `#8B8B94`
-- Accent: `#FF5C5C`
+- Text body: `#A8AABF`
+- Text muted: `#8A8DA0`
+- Accent: `#C63838`
 - Accent soft: accent at about 10 percent opacity
-- Primary button: `#D13C3C`
-- Secondary accent: `#14B8A6`
-- Success `#22C55E`, warning `#F59E0B`, danger `#F87171`
+- Primary button: `#E85C56`
+- Secondary accent: `#00C4B0`
+- Success `#30D158`, warning `#9A5700`, danger `#FCA5A5`
 
 Light:
 
-- Canvas `#F7F7F9`, surface `#FFFFFF`, pressed `#EFEFF3`
+- Canvas `#F6F7F9`, surface `#FFFFFF`, pressed `#E8EBF0`
 - Border `#E4E4EA`, border strong `#CFCFD8`
-- Text `#101014` / `#52525B` / `#787885`
-- Accent and primary button `#C23434`, secondary accent `#0F8F81`
-- Success `#15803D`, warning `#B45309`, danger `#B91C1C`
+- Text `#101014` / `#5A5E6E` / `#7A7E8E`
+- Accent and primary button `#B73833`, secondary accent `#00C4B0`
+- Success `#1A7E34`, warning `#9A5700`, danger `#DC2626`
 
 Rules:
 

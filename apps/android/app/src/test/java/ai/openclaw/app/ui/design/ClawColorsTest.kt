@@ -72,8 +72,8 @@ class ClawColorsTest {
   fun nullAccentPreservesHardcodedDarkAndLightPalettes() {
     val expectedAccents =
       mapOf(
-        true to Triple(Color(0xFFFF5C5C), Color(0x1AFF5C5C), Color(0xFFD13C3C)),
-        false to Triple(Color(0xFFC23434), Color(0x1AC23434), Color(0xFFA32C2C)),
+        true to Triple(Color(0xFFC63838), Color(0x1AC63838), Color(0xFFB73833)),
+        false to Triple(Color(0xFFB73833), Color(0x1AB73833), Color(0xFFA32C2C)),
       )
 
     for ((dark, expected) in expectedAccents) {

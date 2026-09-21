@@ -8,7 +8,7 @@ enum class AppearanceThemeFamily(
   val previewSecondaryArgb: Long,
   val previewCanvasArgb: Long,
 ) {
-  Claw("claw", "Claw", 0xFFFF5C5C, 0xFF14B8A6, 0xFF0E1015),
+  Claw("claw", "Claw", 0xFFC63838, 0xFF00C4B0, 0xFF0B0C11),
   Knot("knot", "Knot", 0xFFE5243B, 0xFFB8BDC4, 0xFF080808),
   Dash("dash", "Dash", 0xFFCF8B4D, 0xFFDCB878, 0xFF1A1210),
   Absolutely("absolutely", "Absolutely", 0xFFD97757, 0xFFB8926A, 0xFF1C1C1A),
@@ -29,7 +29,7 @@ enum class AppearanceThemeFamily(
 internal val appearanceAccentPalette: List<Long> =
   listOf(
     0xFFFFC233,
-    0xFFFF5C5C,
+    0xFFC63838,
     0xFFFF7F6B,
     0xFFF2B84B,
     0xFF5CCFA5,
