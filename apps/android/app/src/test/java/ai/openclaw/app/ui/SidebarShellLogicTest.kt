@@ -27,7 +27,9 @@ class SidebarShellLogicTest {
         assertEquals(colors.surfaceRaised, palette.elevated)
         assertEquals(colors.accentSoft, palette.selection)
         assertEquals(colors.text, palette.text)
+        assertEquals(colors.text, palette.textStrong)
         assertEquals(colors.textMuted, palette.muted)
+        assertEquals(colors.accent, palette.accent)
         assertEquals(colors.border, palette.hairline)
       }
     }

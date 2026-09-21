@@ -386,7 +386,9 @@ internal data class SidebarPalette(
   val elevated: Color,
   val selection: Color,
   val text: Color,
+  val textStrong: Color,
   val muted: Color,
+  val accent: Color,
   val hairline: Color,
 )
 
@@ -418,7 +420,9 @@ internal fun sidebarPalette(colors: ClawColors): SidebarPalette =
     elevated = colors.surfaceRaised,
     selection = colors.accentSoft,
     text = colors.text,
+    textStrong = colors.text,
     muted = colors.textMuted,
+    accent = colors.accent,
     hairline = colors.border,
   )
 
