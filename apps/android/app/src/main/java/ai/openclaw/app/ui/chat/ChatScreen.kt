@@ -4520,7 +4520,6 @@ private fun ChatInputPill(
       Row(
         modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         if (onOpenDetails != null) {
           IconButton(onClick = onOpenDetails, modifier = Modifier.size(ClawTheme.spacing.touchTarget)) {
@@ -4544,7 +4543,13 @@ private fun ChatInputPill(
               ),
           )
         }
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+          modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 4.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
             contextUsage = contextUsage,
@@ -4564,22 +4569,24 @@ private fun ChatInputPill(
             )
           }
         }
-        if (talkActive) {
-          LiveTalkButton(active = true, onClick = onToggleTalk)
-        } else {
-          ChatComposerMicButton(
-            dictationActive = dictationActive,
-            dictationEnabled = dictationEnabled,
-            voiceNoteEnabled = recordVoiceNoteEnabled,
-            onToggleDictation = onToggleDictation,
-            onStartVoiceNote = onStartVoiceNote,
-          )
-        }
-        when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
-          ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend)
-          ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-          ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort)
-          ChatComposerPrimaryAction.None -> Unit
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+          if (talkActive) {
+            LiveTalkButton(active = true, onClick = onToggleTalk)
+          } else {
+            ChatComposerMicButton(
+              dictationActive = dictationActive,
+              dictationEnabled = dictationEnabled,
+              voiceNoteEnabled = recordVoiceNoteEnabled,
+              onToggleDictation = onToggleDictation,
+              onStartVoiceNote = onStartVoiceNote,
+            )
+          }
+          when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
+            ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend)
+            ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+            ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort)
+            ChatComposerPrimaryAction.None -> Unit
+          }
         }
       }
     }
