@@ -4518,9 +4518,10 @@ private fun ChatInputPill(
         )
       }
       Row(
-        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         if (onOpenDetails != null) {
           IconButton(onClick = onOpenDetails, modifier = Modifier.size(ClawTheme.spacing.touchTarget)) {
@@ -4554,7 +4555,7 @@ private fun ChatInputPill(
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f, fill = true),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
             ChatThinkingLevelPicker(
@@ -4568,7 +4569,7 @@ private fun ChatInputPill(
             )
           }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
           if (talkActive) {
             LiveTalkButton(active = true, onClick = onToggleTalk)
           } else {
