@@ -4523,11 +4523,6 @@ private fun ChatInputPill(
           .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        if (onOpenDetails != null) {
-          IconButton(onClick = onOpenDetails, modifier = Modifier.size(ClawTheme.spacing.touchTarget)) {
-            Icon(Icons.Default.MoreVert, contentDescription = nativeString("Details"))
-          }
-        }
         Box {
           Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
             Box(contentAlignment = Alignment.Center) {
@@ -4548,7 +4543,7 @@ private fun ChatInputPill(
         Row(
           modifier = Modifier.weight(1f),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(1.dp),
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
@@ -4569,7 +4564,7 @@ private fun ChatInputPill(
             )
           }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
           if (talkActive) {
             LiveTalkButton(active = true, onClick = onToggleTalk)
           } else {
