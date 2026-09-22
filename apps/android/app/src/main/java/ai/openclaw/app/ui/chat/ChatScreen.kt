@@ -4520,7 +4520,7 @@ private fun ChatInputPill(
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+          .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         if (onOpenDetails != null) {
@@ -4548,7 +4548,7 @@ private fun ChatInputPill(
         Row(
           modifier = Modifier.weight(1f),
           verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
+          horizontalArrangement = Arrangement.spacedBy(1.dp),
         ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
@@ -4569,7 +4569,7 @@ private fun ChatInputPill(
             )
           }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(1.dp)) {
           if (talkActive) {
             LiveTalkButton(active = true, onClick = onToggleTalk)
           } else {
