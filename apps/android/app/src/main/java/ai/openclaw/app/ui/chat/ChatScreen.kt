@@ -4495,7 +4495,7 @@ private fun ChatInputPill(
               // Reserve the action row before measuring the draft in the IME viewport.
               .weight(1f, fill = false)
               .heightIn(min = ClawTheme.spacing.touchTarget)
-              .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 4.dp)
+              .padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 4.dp)
               .onPreInterceptKeyBeforeSoftKeyboard { event ->
                 inputEnabled &&
                   hardwareEnterHandler.handle(
