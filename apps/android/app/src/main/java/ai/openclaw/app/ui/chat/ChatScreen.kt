@@ -4523,6 +4523,7 @@ private fun ChatInputPill(
           .fillMaxWidth()
           .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Box {
           Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
@@ -4541,7 +4542,6 @@ private fun ChatInputPill(
               ),
           )
         }
-        Spacer(modifier = Modifier.weight(1f))
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(2.dp),
