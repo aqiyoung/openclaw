@@ -4556,7 +4556,7 @@ private fun ChatInputPill(
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
             ChatThinkingLevelPicker(
