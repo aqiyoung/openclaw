@@ -4525,27 +4525,27 @@ private fun ChatInputPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
-        Box {
-          Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
-            }
-          }
-          FoldAwareDropdownMenu(
-            expanded = attachmentMenuExpanded && inputEnabled,
-            onDismissRequest = { attachmentMenuExpanded = false },
-            items =
-              listOf(
-                FoldAwareMenuItem("photos", nativeString("Photos"), onPickImages, Icons.Default.Photo),
-                FoldAwareMenuItem("videos", nativeString("Videos"), onPickVideo, Icons.Default.Videocam),
-                FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
-              ),
-          )
-        }
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
+          Box {
+            Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
+              }
+            }
+            FoldAwareDropdownMenu(
+              expanded = attachmentMenuExpanded && inputEnabled,
+              onDismissRequest = { attachmentMenuExpanded = false },
+              items =
+                listOf(
+                  FoldAwareMenuItem("photos", nativeString("Photos"), onPickImages, Icons.Default.Photo),
+                  FoldAwareMenuItem("videos", nativeString("Videos"), onPickVideo, Icons.Default.Videocam),
+                  FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
+                ),
+            )
+          }
           ChatComposerModelPicker(
             label = selectedModelLabel,
             contextUsage = contextUsage,
@@ -4563,6 +4563,11 @@ private fun ChatInputPill(
               onOpen = onOpenEffortPicker,
             )
           }
+        }
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
           if (talkActive) {
             LiveTalkButton(active = true, onClick = onToggleTalk)
           } else {
