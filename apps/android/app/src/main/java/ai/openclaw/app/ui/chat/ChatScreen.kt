@@ -4523,7 +4523,6 @@ private fun ChatInputPill(
           .fillMaxWidth()
           .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
@@ -4550,13 +4549,14 @@ private fun ChatInputPill(
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(2.dp),
-          modifier = Modifier.weight(1f, fill = false),
+          modifier = Modifier.weight(1f),
         ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
+            modifier = Modifier.weight(1f, fill = false),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
             ChatThinkingLevelPicker(
@@ -4831,8 +4831,9 @@ private fun ChatComposerModelPicker(
       Text(
         text = label,
         style = ClawTheme.type.caption,
-        // Weight (not fill) so the name yields width to the chevron instead of elbowing it out.
-        modifier = Modifier.weight(1f, fill = false),
+        // Fill available space so the name truncates (middle ellipsis) instead of elbowing
+        // the thinking/mic/send controls out of the row.
+        modifier = Modifier.weight(1f),
         // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
         maxLines = 1,
         overflow = TextOverflow.MiddleEllipsis,
