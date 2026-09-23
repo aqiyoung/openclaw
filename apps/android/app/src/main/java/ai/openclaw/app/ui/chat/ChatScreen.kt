@@ -4528,7 +4528,6 @@ private fun ChatInputPill(
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(2.dp),
-          modifier = Modifier.weight(1f),
         ) {
           Box {
             Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
@@ -4547,12 +4546,17 @@ private fun ChatInputPill(
                 ),
             )
           }
+        }
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(2.dp),
+          modifier = Modifier.weight(1f, fill = false),
+        ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
-            modifier = Modifier.weight(1f, fill = false),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
             ChatThinkingLevelPicker(
@@ -4565,11 +4569,6 @@ private fun ChatInputPill(
               onOpen = onOpenEffortPicker,
             )
           }
-        }
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
           if (talkActive) {
             LiveTalkButton(active = true, onClick = onToggleTalk)
           } else {
