@@ -4523,7 +4523,6 @@ private fun ChatInputPill(
           .fillMaxWidth()
           .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
@@ -4546,12 +4545,17 @@ private fun ChatInputPill(
                 ),
             )
           }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
           ChatComposerModelPicker(
             label = selectedModelLabel,
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
-            modifier = Modifier.widthIn(max = 140.dp),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
             ChatThinkingLevelPicker(
