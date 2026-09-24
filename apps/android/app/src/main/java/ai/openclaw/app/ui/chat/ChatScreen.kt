@@ -4521,12 +4521,19 @@ private fun ChatInputPill(
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
+          .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         Box {
-          Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
+          Surface(
+            onClick = { attachmentMenuExpanded = true },
+            enabled = inputEnabled,
+            modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+            shape = CircleShape,
+            color = if (inputEnabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surfaceRaised.copy(alpha = 0.5f),
+            contentColor = if (inputEnabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
+          ) {
             Box(contentAlignment = Alignment.Center) {
               Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
             }
