@@ -331,7 +331,7 @@ internal fun ClawStatusRow(
   modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget).padding(vertical = 6.dp),
+    modifier = modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget).padding(horizontal = 12.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
   ) {
