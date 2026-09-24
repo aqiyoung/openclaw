@@ -4830,9 +4830,9 @@ private fun ChatComposerModelPicker(
       Text(
         text = label,
         style = ClawTheme.type.caption,
-        // Fill available space so the name truncates (middle ellipsis) instead of elbowing
-        // the thinking/mic/send controls out of the row.
-        modifier = Modifier.weight(1f),
+        // Truncate (middle ellipsis) when the model name is long; do NOT use weight(1f)
+        // here — it makes the picker expand and elbow the thinking/mic/send controls out.
+        modifier = Modifier.widthIn(max = 110.dp),
         // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
         maxLines = 1,
         overflow = TextOverflow.MiddleEllipsis,
