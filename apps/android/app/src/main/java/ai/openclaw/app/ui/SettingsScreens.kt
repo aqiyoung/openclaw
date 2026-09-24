@@ -2298,7 +2298,6 @@ private fun AboutSettingsScreen(
   val scope = rememberCoroutineScope()
   var checkingUpdate by remember { mutableStateOf(false) }
   var updateInfo by remember { mutableStateOf<AppUpdateInfo?>(null) }
-  var showUpdateDialog by remember { mutableStateOf(false) }
 
   SettingsDetailFrame(title = nativeString("About"), subtitle = nativeString("OpenClaw for Android."), icon = Icons.Default.Info, onBack = onBack) {
     AboutHeroPanel()
@@ -2328,7 +2327,6 @@ private fun AboutSettingsScreen(
           onResult = { info ->
             updateInfo = info
             checkingUpdate = false
-            showUpdateDialog = true
           },
         ),
         trailing = {
@@ -2347,11 +2345,10 @@ private fun AboutSettingsScreen(
         },
       )
     }
-    if (showUpdateDialog && updateInfo != null) {
-      AppUpdateDialog(
+    if (updateInfo != null) {
+      AppUpdateInlinePanel(
         info = updateInfo!!,
         currentVersion = BuildConfig.VERSION_NAME,
-        onDismiss = { showUpdateDialog = false },
       )
     }
     SettingsMetricPanel(
@@ -2405,170 +2402,140 @@ private fun onCheckForUpdateClick(
 }
 
 @Composable
-private fun AppUpdateDialog(
+private fun AppUpdateInlinePanel(
   info: AppUpdateInfo,
   currentVersion: String,
-  onDismiss: () -> Unit,
 ) {
   val uriHandler = LocalUriHandler.current
-  // `error` is set only when every reachable path failed, and such a result always carries
-  // hasUpdate = false. Folding it into the "nothing to update" branch is what let a dead
-  // transport reassure the user that they were already on the latest build.
   val checkFailed = info.error != null
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    icon = {
-      // The head used to be a bare 24dp glyph with nothing to anchor it; the soft disc mirrors
-      // how the rest of the app frames status marks, and it holds the only colour up here.
-      // A failed check borrows the warning ink the onboarding screens already use for the same
-      // "could not test connection" condition, so the two read as one product.
-      Box(
-        modifier =
-          Modifier
-            .size(48.dp)
-            .background(
-              color =
-                when {
-                  checkFailed -> ClawTheme.colors.warningSoft
-                  info.isCritical -> ClawTheme.colors.dangerSoft
-                  else -> ClawTheme.colors.accentSoft
-                },
-              shape = CircleShape,
-            ),
-        contentAlignment = Alignment.Center,
+  val accentColor =
+    when {
+      checkFailed -> ClawTheme.colors.warning
+      info.isCritical -> ClawTheme.colors.danger
+      else -> ClawTheme.colors.primary
+    }
+  val accentSoft =
+    when {
+      checkFailed -> ClawTheme.colors.warningSoft
+      info.isCritical -> ClawTheme.colors.dangerSoft
+      else -> ClawTheme.colors.accentSoft
+    }
+  val statusText =
+    when {
+      checkFailed -> nativeString("Could not test connection")
+      info.hasUpdate -> nativeString("Update Available")
+      else -> nativeString("Up to date")
+    }
+  val statusIcon =
+    when {
+      checkFailed -> Icons.Default.CloudOff
+      info.isCritical -> Icons.Default.Bolt
+      else -> Icons.Default.Cloud
+    }
+
+  ClawPanel(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)) {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.sm),
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
       ) {
-        Icon(
-          imageVector =
-            when {
-              checkFailed -> Icons.Default.CloudOff
-              info.isCritical -> Icons.Default.Bolt
-              else -> Icons.Default.Cloud
-            },
-          contentDescription = null,
-          modifier = Modifier.size(24.dp),
-          tint =
-            when {
-              checkFailed -> ClawTheme.colors.warning
-              info.isCritical -> ClawTheme.colors.danger
-              else -> ClawTheme.colors.primary
-            },
+        Box(
+          modifier =
+            Modifier
+              .size(32.dp)
+              .background(accentSoft, CircleShape),
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = statusIcon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = accentColor,
+          )
+        }
+        Text(
+          text = statusText,
+          style = ClawTheme.type.section,
+          color = ClawTheme.colors.text,
+          maxLines = 1,
         )
       }
-    },
-    title = {
-      Text(
-        text =
-          when {
-            checkFailed -> nativeString("Could not test connection")
-            info.hasUpdate -> nativeString("Update Available")
-            else -> nativeString("Up to date")
-          },
-        style = ClawTheme.type.display,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
-      )
-    },
-    text = {
+
       if (checkFailed) {
-        Column(
-          modifier = Modifier.fillMaxWidth(),
-          verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs),
-        ) {
+        Text(
+          text = nativeString("Network error"),
+          style = ClawTheme.type.body,
+          color = ClawTheme.colors.textMuted,
+        )
+        info.error.trim().takeIf { it.isNotBlank() }?.let { detail ->
           Text(
-            text = nativeString("Network error"),
-            style = ClawTheme.type.body,
-            color = ClawTheme.colors.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            text = detail,
+            style = ClawTheme.type.captionSmall,
+            color = ClawTheme.colors.textSubtle,
+            maxLines = 5,
+            overflow = TextOverflow.Ellipsis,
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
+                .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
           )
-          // The checker carries one line per reachable path; keeping the raw diagnostic on
-          // screen is what turns a silently failed check into something reportable.
-          // No safe call on `error`: `checkFailed` is a stable val, so K2 already smart-casts
-          // it to non-null here and flags the `?.` as unnecessary (a warning, and
-          // `allWarningsAsErrors` promotes that to a hard error).
-          info.error.trim().takeIf { it.isNotBlank() }?.let { detail ->
-            Text(
-              text = detail,
-              style = ClawTheme.type.captionSmall,
-              color = ClawTheme.colors.textSubtle,
-              maxLines = 5,
-              overflow = TextOverflow.Ellipsis,
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
-                  .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
-            )
-          }
         }
       } else if (info.hasUpdate) {
-        Column(verticalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xs)) {
-          // "old → new" only reads as a transition once the incoming build carries the accent;
-          // the previous "$current -> $latest" line was a wall of digits in body type.
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs, Alignment.CenterHorizontally),
-          ) {
-            UpdateVersionChip(text = currentVersion, highlighted = false)
-            Icon(
-              imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-              contentDescription = null,
-              modifier = Modifier.size(14.dp),
-              tint = ClawTheme.colors.textSubtle,
-            )
-            UpdateVersionChip(text = info.latestVersion, highlighted = true)
-          }
-          info.releaseNotes?.takeIf { it.isNotBlank() }?.let { notes ->
-            Text(
-              text = notes,
-              style = ClawTheme.type.caption,
-              color = ClawTheme.colors.textMuted,
-              maxLines = 4,
-              overflow = TextOverflow.Ellipsis,
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
-                  .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
-            )
-          }
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs, Alignment.CenterHorizontally),
+        ) {
+          UpdateVersionChip(text = currentVersion, highlighted = false)
+          Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = ClawTheme.colors.textSubtle,
+          )
+          UpdateVersionChip(text = info.latestVersion, highlighted = true)
+        }
+        info.releaseNotes?.takeIf { it.isNotBlank() }?.let { notes ->
+          Text(
+            text = notes,
+            style = ClawTheme.type.caption,
+            color = ClawTheme.colors.textMuted,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .background(ClawTheme.colors.surfacePressed, ClawTheme.shapes.control)
+                .padding(horizontal = ClawTheme.spacing.xs, vertical = ClawTheme.spacing.xxs),
+          )
         }
       } else {
         Text(
           text = nativeString("You're running the latest version."),
           style = ClawTheme.type.body,
           color = ClawTheme.colors.textMuted,
-          textAlign = TextAlign.Center,
-          modifier = Modifier.fillMaxWidth(),
         )
       }
-    },
-    confirmButton = {
+
       if (info.hasUpdate) {
-        ClawPrimaryButton(
-          text = nativeString("Download"),
-          onClick = {
-            onDismiss()
-            uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL)
-          },
-          // The action says Download, so the "open in new" glyph was the wrong promise.
-          icon = Icons.Default.Download,
-        )
-      } else {
-        TextButton(onClick = onDismiss) {
-          Text(nativeString("OK"))
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(ClawTheme.spacing.xxs, Alignment.End),
+        ) {
+          TextButton(
+            onClick = { uriHandler.openUri(AppUpdateCheck.RELEASE_PAGE_URL) },
+          ) {
+            Text(nativeString("Download"))
+          }
         }
       }
-    },
-    dismissButton = if (info.hasUpdate) {
-      {
-        TextButton(onClick = onDismiss) {
-          Text(nativeString("Later"))
-        }
-      }
-    } else null,
-  )
+    }
+  }
 }
 
 /** One half of the update transition; only the incoming build carries the accent. */
