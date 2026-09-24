@@ -4523,68 +4523,59 @@ private fun ChatInputPill(
           .fillMaxWidth()
           .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
       ) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-          Box {
-            Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
-              Box(contentAlignment = Alignment.Center) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
-              }
+        Box {
+          Surface(onClick = { attachmentMenuExpanded = true }, enabled = inputEnabled, modifier = Modifier.size(ClawTheme.spacing.touchTarget), shape = CircleShape, color = Color.Transparent, contentColor = ClawTheme.colors.textMuted) {
+            Box(contentAlignment = Alignment.Center) {
+              Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
             }
-            FoldAwareDropdownMenu(
-              expanded = attachmentMenuExpanded && inputEnabled,
-              onDismissRequest = { attachmentMenuExpanded = false },
-              items =
-                listOf(
-                  FoldAwareMenuItem("photos", nativeString("Photos"), onPickImages, Icons.Default.Photo),
-                  FoldAwareMenuItem("videos", nativeString("Videos"), onPickVideo, Icons.Default.Videocam),
-                  FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
-                ),
-            )
           }
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-          ChatComposerModelPicker(
-            label = selectedModelLabel,
-            contextUsage = contextUsage,
-            enabled = modelPickerEnabled,
-            onClick = onOpenModelPicker,
+          FoldAwareDropdownMenu(
+            expanded = attachmentMenuExpanded && inputEnabled,
+            onDismissRequest = { attachmentMenuExpanded = false },
+            items =
+              listOf(
+                FoldAwareMenuItem("photos", nativeString("Photos"), onPickImages, Icons.Default.Photo),
+                FoldAwareMenuItem("videos", nativeString("Videos"), onPickVideo, Icons.Default.Videocam),
+                FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
+              ),
           )
-          if (thinkingSupported || fastModeEnabled || fastMode) {
-            ChatThinkingLevelPicker(
-              options = thinkingOptions,
-              selectedId = thinkingLevel,
-              thinkingSupported = thinkingSupported,
-              thinkingLevelEnabled = thinkingLevelEnabled,
-              fastMode = fastMode,
-              fastModeEnabled = fastModeEnabled,
-              onOpen = onOpenEffortPicker,
-            )
-          }
-          if (talkActive) {
-            LiveTalkButton(active = true, onClick = onToggleTalk)
-          } else {
-            ChatComposerMicButton(
-              dictationActive = dictationActive,
-              dictationEnabled = dictationEnabled,
-              voiceNoteEnabled = recordVoiceNoteEnabled,
-              onToggleDictation = onToggleDictation,
-              onStartVoiceNote = onStartVoiceNote,
-            )
-          }
-          when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
-            ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend)
-            ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-            ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort)
-            ChatComposerPrimaryAction.None -> Unit
-          }
+        }
+        ChatComposerModelPicker(
+          label = selectedModelLabel,
+          contextUsage = contextUsage,
+          enabled = modelPickerEnabled,
+          onClick = onOpenModelPicker,
+          modifier = Modifier.weight(1f),
+        )
+        if (thinkingSupported || fastModeEnabled || fastMode) {
+          ChatThinkingLevelPicker(
+            options = thinkingOptions,
+            selectedId = thinkingLevel,
+            thinkingSupported = thinkingSupported,
+            thinkingLevelEnabled = thinkingLevelEnabled,
+            fastMode = fastMode,
+            fastModeEnabled = fastModeEnabled,
+            onOpen = onOpenEffortPicker,
+          )
+        }
+        if (talkActive) {
+          LiveTalkButton(active = true, onClick = onToggleTalk)
+        } else {
+          ChatComposerMicButton(
+            dictationActive = dictationActive,
+            dictationEnabled = dictationEnabled,
+            voiceNoteEnabled = recordVoiceNoteEnabled,
+            onToggleDictation = onToggleDictation,
+            onStartVoiceNote = onStartVoiceNote,
+          )
+        }
+        when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
+          ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend)
+          ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
+          ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort)
+          ChatComposerPrimaryAction.None -> Unit
         }
       }
     }
@@ -4822,7 +4813,7 @@ private fun ChatComposerModelPicker(
     Row(
       // Web mobile: the trigger is a 2px-gap / 6px-inset chip; the usage ring lives in its own
       // 32px box, which is why the dial reads ~10px clear of the model name.
-      modifier = Modifier.padding(horizontal = 6.dp),
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -4830,9 +4821,9 @@ private fun ChatComposerModelPicker(
       Text(
         text = label,
         style = ClawTheme.type.caption,
-        // Truncate (middle ellipsis) when the model name is long; do NOT use weight(1f)
-        // here — it makes the picker expand and elbow the thinking/mic/send controls out.
-        modifier = Modifier.widthIn(max = 110.dp),
+        // weight(1f) inside the picker Row so the name shrinks/truncates within the
+        // Surface (which itself gets weight(1f) from the outer action row).
+        modifier = Modifier.weight(1f),
         // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
         maxLines = 1,
         overflow = TextOverflow.MiddleEllipsis,
