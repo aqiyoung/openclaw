@@ -16,8 +16,8 @@ data class CloudflareAccessSession(
   val expiresAt: Date,
   val token: String,
 ) {
-  fun authorizationHeader(`for`: URL, now: Date = Date()): String? {
-    if (!origin.contains(for)) return null
+  fun authorizationHeader(targetURL: URL, now: Date = Date()): String? {
+    if (!origin.contains(targetURL)) return null
     if (expiresAt <= now) return null
     return token
   }
