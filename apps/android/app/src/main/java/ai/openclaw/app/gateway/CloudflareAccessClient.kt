@@ -34,7 +34,7 @@ object CloudflareAccessClient {
   suspend fun discover(
     gatewayURL: URL,
     session: CloudflareAccessSession? = null,
-    request: suspend (URL, Map<String, String>, String?) -> Pair<Int, Map<String, String>, ByteArray?>,
+    request: suspend (URL, Map<String, String>, String?) -> Triple<Int, Map<String, String>, ByteArray?>,
   ): CloudflareAccessApplication? {
     val origin = try { CloudflareAccessOrigin.parse(gatewayURL) } catch (_: Exception) { return null }
     val url = URL("https", origin.url.host, origin.url.port, "/")
@@ -73,7 +73,7 @@ object CloudflareAccessClient {
   suspend fun verifiedSession(
     token: String,
     application: CloudflareAccessApplication,
-    request: suspend (URL, Map<String, String>, String?) -> Pair<Int, Map<String, String>, ByteArray?>,
+    request: suspend (URL, Map<String, String>, String?) -> Triple<Int, Map<String, String>, ByteArray?>,
   ): CloudflareAccessSession {
     // Verify the token signature.
     val jwks = keys(application, request)
@@ -104,7 +104,7 @@ object CloudflareAccessClient {
 
   private suspend fun keys(
     application: CloudflareAccessApplication,
-    request: suspend (URL, Map<String, String>, String?) -> Pair<Int, Map<String, String>, ByteArray?>,
+    request: suspend (URL, Map<String, String>, String?) -> Triple<Int, Map<String, String>, ByteArray?>,
   ): ByteArray {
     val host = application.issuer.host ?: throw CloudflareAccessError.InvalidApplication
     if (CloudflareAccessJWT.issuer(host) != application.issuer) throw CloudflareAccessError.InvalidApplication

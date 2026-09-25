@@ -1,5 +1,6 @@
 package ai.openclaw.app.chat
 
+import ai.openclaw.app.gateway.GatewayMediaKind
 import ai.openclaw.app.gateway.SessionObserverDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
