@@ -126,6 +126,7 @@ class SecurePrefs(
     private val appearanceSyncKeys = setOf("ui.theme", "ui.themeMode", "ui.accent")
     private const val maxChatModelRecents = 5
     private const val gatewayCustomHeadersKeyPrefix = "gateway.customHeaders."
+    private const val cloudflareAccessSessionKeyPrefix = "gateway.cfAccess."
   }
 
   private val appContext = context.applicationContext
@@ -604,6 +605,33 @@ class SecurePrefs(
   }
 
   private fun gatewayCustomHeadersKey(stableId: String) = "$gatewayCustomHeadersKeyPrefix${stableId.trim()}"
+
+  /**
+   * Cloudflare Access session token per gateway stable ID.
+   * Stored as the raw JWT string; the session struct validates expiry on read.
+   * Like custom headers, this is a credential — never log its value.
+   */
+  fun loadCloudflareAccessSession(stableId: String): String? {
+    val key = cloudflareAccessSessionKey(stableId)
+    return securePrefs.getString(key, null)?.trim()?.takeIf { it.isNotEmpty() }
+  }
+
+  fun saveCloudflareAccessSession(stableId: String, token: String) {
+    val key = cloudflareAccessSessionKey(stableId)
+    val trimmed = token.trim()
+    if (trimmed.isEmpty()) {
+      securePrefs.edit { remove(key) }
+      return
+    }
+    securePrefs.edit { putString(key, trimmed) }
+  }
+
+  fun clearCloudflareAccessSession(stableId: String) {
+    securePrefs.edit { remove(cloudflareAccessSessionKey(stableId)) }
+  }
+
+  private fun cloudflareAccessSessionKey(stableId: String) =
+    "$cloudflareAccessSessionKeyPrefix${stableId.trim()}"
 
   /** Loads the pinned gateway TLS fingerprint for a discovered/manual stable endpoint id. */
   fun loadGatewayTlsFingerprint(stableId: String): String? {

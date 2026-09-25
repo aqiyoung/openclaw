@@ -86,6 +86,23 @@ enum class GatewayMediaKind(
   Image("image", 12L * 1024L * 1024L),
   Audio("audio", 16L * 1024L * 1024L),
   Video("video", 0L),
+  File("file", 0L),
+
+  val acceptHeader: String
+    get() = if (this == File) "*/*" else "${wireValue}/*"
+
+  fun acceptsMIMEType(mimeType: String): Boolean {
+    if (mimeType.isEmpty()) return false
+    return if (this == File) true else mimeType.startsWith("${wireValue}/")
+  }
+
+  fun acceptsManagedArtifactID(artifactID: String): Boolean {
+    val normalized = artifactID.trim().takeIf { it.isNotEmpty() } ?: return false
+    return when (this) {
+      Image -> normalized.startsWith("artifact_managed_image_")
+      Audio, Video, File -> normalized.startsWith("artifact_managed_media_")
+    }
+  }
 }
 
 sealed interface GatewayLoadedMedia {

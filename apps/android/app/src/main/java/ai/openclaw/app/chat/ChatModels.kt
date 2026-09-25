@@ -57,6 +57,8 @@ data class ChatMessage(
   val turnBoundary: Boolean = false,
   /** Display phase supplied by the Gateway, including signed text blocks. */
   val phase: String? = null,
+  val activity: List<ChatAgentActivityItem>? = null,
+  val streamFallback: ChatStreamFallback? = null,
   val isError: Boolean = false,
   /** Derived from current history; not retained by the offline transcript cache. */
   val sourceTools: List<ChatSourceTool> = emptyList(),
@@ -67,6 +69,13 @@ data class ChatMessage(
     get() = role == "assistant" && truncated && !isSyntheticDisplay && !entryId.isNullOrBlank()
 
   internal fun matchesFullRead(other: ChatMessage): Boolean = canReadFullMessage && other.canReadFullMessage && entryId == other.entryId && content == other.content
+
+  val streamSegmentID: String?
+    get() {
+      if (role.trim().lowercase(Locale.US) != "assistant") return null
+      val itemID = streamFallback?.itemId?.trim()?.takeIf { it.isNotEmpty() }
+      return itemID
+    }
 }
 
 @Serializable
@@ -176,6 +185,9 @@ data class ChatTranscriptAnchorState(
 data class ChatMessageContent(
   val type: String = "text",
   val text: String? = null,
+  val textSignature: String? = null,
+  val thinking: String? = null,
+  val thinkingSignature: String? = null,
   val mimeType: String? = null,
   val fileName: String? = null,
   val artifactId: String? = null,
@@ -190,7 +202,35 @@ data class ChatMessageContent(
   val playback: String? = null,
   val widget: ChatWidgetPreview? = null,
   val toolActivity: ChatToolActivity? = null,
-)
+  val runId: String? = null,
+  val name: String? = null,
+  val arguments: kotlinx.serialization.json.JsonObject? = null,
+) {
+  val isToolCall: Boolean
+    get() = type?.lowercase(Locale.US) in setOf("toolcall", "tool_call", "tooluse", "tool_use") ||
+      (name != null && arguments != null)
+
+  val isToolResult: Boolean
+    get() = type?.lowercase(Locale.US) in setOf("toolresult", "tool_result")
+
+  val isInlineAttachment: Boolean
+    get() = type?.lowercase(Locale.US) in setOf("file", "attachment", "image", "audio", "video")
+
+  val mediaKind: GatewayMediaKind?
+    get() {
+      val normalizedType = type?.trim()?.lowercase(Locale.US)
+      when (normalizedType) {
+        "image" -> return GatewayMediaKind.Image
+        "audio" -> return GatewayMediaKind.Audio
+        "video" -> return GatewayMediaKind.Video
+      }
+      val normalizedMIME = mimeType?.trim()?.lowercase(Locale.US)
+      if (normalizedMIME?.startsWith("image/") == true) return GatewayMediaKind.Image
+      if (normalizedMIME?.startsWith("audio/") == true) return GatewayMediaKind.Audio
+      if (normalizedMIME?.startsWith("video/") == true) return GatewayMediaKind.Video
+      return if (isInlineAttachment) GatewayMediaKind.File else null
+    }
+}
 
 /** Bounded, display-safe projection of a transcript tool block. */
 @Serializable
@@ -586,6 +626,44 @@ data class ChatHistory(
   val messages: List<ChatMessage>,
   val sessionInfo: ChatSessionEntry? = null,
   val inFlightRun: ChatInFlightRun? = null,
+)
+
+/**
+ * One agent activity item surfaced by chat.history / chat.event activity arrays.
+ */
+@Serializable
+data class ChatAgentActivityItem(
+  val itemId: String,
+  val toolCallId: String? = null,
+  val kind: String,
+  val phase: String,
+  val title: String,
+  val name: String? = null,
+  val status: String? = null,
+  val hideFromChannelProgress: Boolean? = null,
+  val suppressChannelProgress: Boolean? = null,
+) {
+  val isVisible: Boolean
+    get() = hideFromChannelProgress != true && suppressChannelProgress != true
+}
+
+/**
+ * Per-message activity envelope returned by chat.history.
+ */
+@Serializable
+data class ChatHistoryActivity(
+  val messageId: String,
+  val items: List<ChatAgentActivityItem>,
+)
+
+/**
+ * Stream fallback metadata carried on assistant messages for commentary / final-answer phases.
+ */
+@Serializable
+data class ChatStreamFallback(
+  val source: String? = null,
+  val itemId: String? = null,
+  val runId: String? = null,
 )
 
 /**

@@ -7730,6 +7730,7 @@ class ChatController internal constructor(
       entryId = metadata?.get("id").asJsonStringOrNull()?.takeIf { it.isNotBlank() },
       turnBoundary = metadata?.get("turnBoundary") == JsonPrimitive(true),
       phase = if (role == "assistant") parseChatAssistantPhase(obj) else null,
+      streamFallback = parseChatStreamFallback(obj),
       isError = isChatToolError(obj) || obj["stopReason"].asStringOrNull() in setOf("error", "aborted"),
       isSyntheticDisplay = obj["openclawMessageToolMirror"].asObjectOrNull() != null || obj["openclawStreamFallback"].asObjectOrNull() != null,
       truncated =
@@ -7751,6 +7752,33 @@ class ChatController internal constructor(
     val obj = element.asObjectOrNull() ?: return null
     val kind = obj["kind"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     return ChatDeliveryMirror(kind = kind)
+  }
+
+  private fun parseChatStreamFallback(obj: JsonObject): ChatStreamFallback? {
+    val fallback = obj["openclawStreamFallback"].asObjectOrNull() ?: return null
+    return ChatStreamFallback(
+      source = fallback["source"].asJsonStringOrNull(),
+      itemId = fallback["itemId"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() },
+      runId = normalizeChatRunId(fallback["runId"]),
+    )
+  }
+
+  private fun parseChatActivityArray(obj: JsonObject): List<ChatAgentActivityItem>? {
+    val arr = obj["activity"].asArrayOrNull() ?: return null
+    return arr.mapNotNull { el ->
+      val a = el.asObjectOrNull() ?: return@mapNotNull null
+      ChatAgentActivityItem(
+        itemId = a["itemId"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null,
+        toolCallId = a["toolCallId"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() },
+        kind = a["kind"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null,
+        phase = a["phase"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null,
+        title = a["title"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null,
+        name = a["name"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() },
+        status = a["status"].asJsonStringOrNull()?.trim()?.takeIf { it.isNotEmpty() },
+        hideFromChannelProgress = a["hideFromChannelProgress"].asBooleanOrNull(),
+        suppressChannelProgress = a["suppressChannelProgress"].asBooleanOrNull(),
+      )
+    }
   }
 
   private fun parseChatMessageProvenance(element: JsonElement?): ChatMessageProvenance? {
