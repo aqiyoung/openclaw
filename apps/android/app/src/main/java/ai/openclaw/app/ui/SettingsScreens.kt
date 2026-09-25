@@ -2308,44 +2308,37 @@ private fun AboutSettingsScreen(
       buildTimestamp = BuildConfig.BUILD_TIMESTAMP,
       locale = appLocale,
     )
-    ClawPanel {
-      ClawListItem(
-        title = nativeString("Check for Updates"),
-        subtitle = when {
-          checkingUpdate -> nativeString("Checking latest version…")
-          updateInfo?.hasUpdate == true -> nativeString("v\$it available", updateInfo!!.latestVersion)
-          // A dead transport is not "up to date": the checker reports it as `error` with
-          // hasUpdate = false, and this row used to fall through and quietly claim otherwise.
-          updateInfo?.error != null -> nativeString("Could not test connection")
-          updateInfo != null -> nativeString("Up to date")
-          else -> nativeString("Check if a new version is available")
-        },
-        onClick = onCheckForUpdateClick(
-          checkingUpdate = checkingUpdate,
-          scope = scope,
-          onStart = { checkingUpdate = true },
-          onResult = { info ->
-            updateInfo = info
-            checkingUpdate = false
+    if (updateInfo == null) {
+      ClawPanel {
+        ClawListItem(
+          title = nativeString("Check for Updates"),
+          subtitle = if (checkingUpdate) nativeString("Checking latest version…") else nativeString("Check if a new version is available"),
+          onClick = onCheckForUpdateClick(
+            checkingUpdate = checkingUpdate,
+            scope = scope,
+            onStart = { checkingUpdate = true },
+            onResult = { info ->
+              updateInfo = info
+              checkingUpdate = false
+            },
+          ),
+          trailing = {
+            if (checkingUpdate) {
+              CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+              )
+            } else {
+              Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = ClawTheme.colors.textSubtle,
+              )
+            }
           },
-        ),
-        trailing = {
-          if (checkingUpdate) {
-            CircularProgressIndicator(
-              modifier = Modifier.size(18.dp),
-              strokeWidth = 2.dp,
-            )
-          } else {
-            Icon(
-              imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-              contentDescription = null,
-              tint = ClawTheme.colors.textSubtle,
-            )
-          }
-        },
-      )
-    }
-    if (updateInfo != null && updateInfo.hasUpdate) {
+        )
+      }
+    } else {
       AppUpdateInlinePanel(
         info = updateInfo!!,
         currentVersion = BuildConfig.VERSION_NAME,
