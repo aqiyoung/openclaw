@@ -54,7 +54,7 @@ object CloudflareAccessJWT {
   )
 
   /** Decode a JWT's payload claims without verifying the signature. */
-  fun <T : Any> decode(type: Class<T>, token: *** T {
+  fun <T : Any> decode(type: Class<T>, token: String): T {
     val parts = parts(token)
     val payloadJson = String(base64URLDecode(parts[1]), StandardCharsets.UTF_8)
     val obj = JSONObject(payloadJson)

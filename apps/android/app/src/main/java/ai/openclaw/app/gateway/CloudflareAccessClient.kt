@@ -57,7 +57,7 @@ object CloudflareAccessClient {
       val metadata = CloudflareAccessJWT.decode(CloudflareAccessJWT.Metadata::class.java, token)
       val application = CloudflareAccessJWT.application(metadata, origin)
       // Verify the metadata signature.
-      val jwks = keys(application)
+      val jwks = keys(application, request)
       CloudflareAccessJWT.verify(token, jwks)
       application
     } catch (e: CloudflareAccessError) {
