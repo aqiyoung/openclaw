@@ -1,5 +1,6 @@
 package ai.openclaw.app.gateway
 
+import java.net.URI
 import java.net.URL
 
 /**
@@ -23,7 +24,7 @@ data class CloudflareAccessOrigin(
       if (scheme !in ALLOWED_SCHEMES) throw CloudflareAccessError.InvalidGateway
       val host = url.host?.lowercase()
       if (host.isNullOrBlank()) throw CloudflareAccessError.InvalidGateway
-      if (url.username != null || url.password != null) throw CloudflareAccessError.InvalidGateway
+      if (url.toURI().userInfo != null) throw CloudflareAccessError.InvalidGateway
       if (url.query != null) throw CloudflareAccessError.InvalidGateway
       if (url.ref != null) throw CloudflareAccessError.InvalidGateway
       val port = url.port.let { if (it < 0) -1 else it }
@@ -38,7 +39,7 @@ data class CloudflareAccessOrigin(
 
   fun contains(other: URL): Boolean {
     // Resource requests may have queries; credentials and fragments never identify an origin.
-    if (other.username != null || other.password != null) return false
+    if (other.toURI().userInfo != null) return false
     if (other.ref != null) return false
     val otherHost = other.host?.lowercase() ?: return false
     if (otherHost != url.host) return false

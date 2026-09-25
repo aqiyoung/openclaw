@@ -86,7 +86,7 @@ enum class GatewayMediaKind(
   Image("image", 12L * 1024L * 1024L),
   Audio("audio", 16L * 1024L * 1024L),
   Video("video", 0L),
-  File("file", 0L),
+  File("file", 0L);
 
   val acceptHeader: String
     get() = if (this == File) "*/*" else "${wireValue}/*"

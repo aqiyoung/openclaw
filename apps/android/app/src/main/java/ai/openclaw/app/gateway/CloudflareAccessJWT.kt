@@ -174,7 +174,7 @@ object CloudflareAccessJWT {
     val host = authDomain.lowercase()
     val suffix = ".cloudflareaccess.com"
     if (!host.endsWith(suffix)) return null
-    val team = host.dropLast(suffix.count)
+    val team = host.dropLast(suffix.length)
     if (team.isEmpty() || team.length > 63) return null
     if (team.startsWith("-") || team.endsWith("-")) return null
     if (!team.all { it.isDigit() || it.isLowerCase() || it == '-' }) return null
