@@ -2345,7 +2345,7 @@ private fun AboutSettingsScreen(
         },
       )
     }
-    if (updateInfo != null) {
+    if (updateInfo != null && updateInfo.hasUpdate) {
       AppUpdateInlinePanel(
         info = updateInfo!!,
         currentVersion = BuildConfig.VERSION_NAME,
