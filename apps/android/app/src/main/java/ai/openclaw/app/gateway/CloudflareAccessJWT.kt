@@ -54,6 +54,7 @@ object CloudflareAccessJWT {
   )
 
   /** Decode a JWT's payload claims without verifying the signature. */
+  @Suppress("UNCHECKED_CAST")
   fun <T : Any> decode(type: Class<T>, token: String): T {
     val parts = parts(token)
     val payloadJson = String(base64URLDecode(parts[1]), StandardCharsets.UTF_8)

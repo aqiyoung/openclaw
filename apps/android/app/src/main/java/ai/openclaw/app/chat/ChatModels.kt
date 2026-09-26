@@ -208,18 +208,18 @@ data class ChatMessageContent(
   val arguments: kotlinx.serialization.json.JsonObject? = null,
 ) {
   val isToolCall: Boolean
-    get() = type?.lowercase(Locale.US) in setOf("toolcall", "tool_call", "tooluse", "tool_use") ||
+    get() = type.lowercase(Locale.US) in setOf("toolcall", "tool_call", "tooluse", "tool_use") ||
       (name != null && arguments != null)
 
   val isToolResult: Boolean
-    get() = type?.lowercase(Locale.US) in setOf("toolresult", "tool_result")
+    get() = type.lowercase(Locale.US) in setOf("toolresult", "tool_result")
 
   val isInlineAttachment: Boolean
-    get() = type?.lowercase(Locale.US) in setOf("file", "attachment", "image", "audio", "video")
+    get() = type.lowercase(Locale.US) in setOf("file", "attachment", "image", "audio", "video")
 
   val mediaKind: GatewayMediaKind?
     get() {
-      val normalizedType = type?.trim()?.lowercase(Locale.US)
+      val normalizedType = type.trim().lowercase(Locale.US)
       when (normalizedType) {
         "image" -> return GatewayMediaKind.Image
         "audio" -> return GatewayMediaKind.Audio
