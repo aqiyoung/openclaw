@@ -3465,7 +3465,7 @@ private fun ChatComposer(
     }
   }
 
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 14.dp)) {
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
@@ -4470,10 +4470,11 @@ private fun ChatInputPill(
 
   ClawComposerSurface(
     modifier = modifier.testTag("chat-composer-surface"),
-    shape = ClawTheme.shapes.sheet,
+    shape = ClawTheme.shapes.row,
+    shadowElevation = 0.dp,
   ) {
     Column(
-      modifier = Modifier.heightIn(min = 104.dp),
+      modifier = Modifier.heightIn(min = 56.dp),
       verticalArrangement = Arrangement.Bottom,
     ) {
       ChatTextFieldValueAdapter(
@@ -4496,7 +4497,7 @@ private fun ChatInputPill(
               // Reserve the action row before measuring the draft in the IME viewport.
               .weight(1f, fill = false)
               .heightIn(min = ClawTheme.spacing.touchTarget)
-              .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 4.dp)
+              .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp)
               .onPreInterceptKeyBeforeSoftKeyboard { event ->
                 inputEnabled &&
                   hardwareEnterHandler.handle(
@@ -4521,7 +4522,7 @@ private fun ChatInputPill(
       Row(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+          .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {

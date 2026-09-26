@@ -687,6 +687,7 @@ internal fun ClawComposerSurface(
   modifier: Modifier = Modifier,
   shape: Shape = ClawTheme.shapes.panel,
   contentColor: Color = ClawTheme.colors.text,
+  shadowElevation: Dp = 2.dp,
   content: @Composable () -> Unit,
 ) {
   val colors = ClawTheme.colors
@@ -703,7 +704,7 @@ internal fun ClawComposerSurface(
     color = colors.surface,
     contentColor = contentColor,
     border = border,
-    shadowElevation = 2.dp,
+    shadowElevation = shadowElevation,
     tonalElevation = 0.dp,
   ) {
     content()
