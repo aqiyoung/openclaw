@@ -92,7 +92,7 @@ object CloudflareAccessTransfer {
     val agreement = X25519Agreement()
     agreement.init(X25519PrivateKeyParameters(secretKey))
     val sharedSecret = ByteArray(PUBLIC_KEY_BYTES)
-    agreement.generateSharedSecret(X25519PublicKeyParameters(peerBytes), sharedSecret)
+    agreement.calculateAgreement(X25519PublicKeyParameters(peerBytes), sharedSecret, 0)
 
     // Derive XSalsa20 key from shared secret (first 32 bytes).
     val key = sharedSecret.copyOfRange(0, 32)
