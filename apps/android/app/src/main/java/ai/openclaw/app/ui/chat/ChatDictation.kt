@@ -419,7 +419,7 @@ internal fun ChatComposerMicButton(
 
   Surface(
     modifier =
-      modifier
+      Modifier
         .size(ClawTheme.spacing.touchTarget)
         .combinedClickable(
           enabled = interactionEnabled,
@@ -430,7 +430,8 @@ internal fun ChatComposerMicButton(
           onClick = {
             if (dictationActive || dictationEnabled) onToggleDictation()
           },
-        ),
+        )
+        .then(modifier),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor =

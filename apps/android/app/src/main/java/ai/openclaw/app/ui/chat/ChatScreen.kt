@@ -4901,9 +4901,10 @@ private fun LiveTalkButton(
   Surface(
     onClick = onClick,
     modifier =
-      modifier
+      Modifier
         .size(ClawTheme.spacing.touchTarget)
-        .semantics { contentDescription = buttonDescription },
+        .semantics { contentDescription = buttonDescription }
+        .then(modifier),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor = if (active) ClawTheme.colors.accentForeground else ClawTheme.colors.primaryText,
@@ -4921,7 +4922,7 @@ private fun StopButton(
 ) {
   Surface(
     onClick = onClick,
-    modifier = modifier.size(ClawTheme.spacing.touchTarget),
+    modifier = modifier.size(ClawTheme.spacing.touchTarget).size(32.dp),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor = ClawTheme.colors.danger,
@@ -5085,7 +5086,7 @@ private fun SendButton(
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.size(ClawTheme.spacing.touchTarget),
+    modifier = modifier.size(ClawTheme.spacing.touchTarget).size(32.dp),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
