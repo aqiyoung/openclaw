@@ -4530,7 +4530,7 @@ private fun ChatInputPill(
           Surface(
             onClick = { attachmentMenuExpanded = true },
             enabled = inputEnabled,
-            modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+            modifier = Modifier.size(32.dp),
             shape = CircleShape,
             color = if (inputEnabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surfaceRaised.copy(alpha = 0.5f),
             contentColor = if (inputEnabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
@@ -4569,7 +4569,7 @@ private fun ChatInputPill(
           )
         }
         if (talkActive) {
-          LiveTalkButton(active = true, onClick = onToggleTalk)
+          LiveTalkButton(active = true, onClick = onToggleTalk, modifier = Modifier.size(32.dp))
         } else {
           ChatComposerMicButton(
             dictationActive = dictationActive,
@@ -4577,12 +4577,13 @@ private fun ChatInputPill(
             voiceNoteEnabled = recordVoiceNoteEnabled,
             onToggleDictation = onToggleDictation,
             onStartVoiceNote = onStartVoiceNote,
+            modifier = Modifier.size(32.dp),
           )
         }
         when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
-          ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend)
-          ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk)
-          ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort)
+          ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend, modifier = Modifier.size(32.dp))
+          ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk, modifier = Modifier.size(32.dp))
+          ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort, modifier = Modifier.size(32.dp))
           ChatComposerPrimaryAction.None -> Unit
         }
       }
@@ -4894,12 +4895,13 @@ private fun ChatComposerContextRing(
 private fun LiveTalkButton(
   active: Boolean,
   onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   val buttonDescription = if (active) nativeString("End Talk") else nativeString("Start Talk")
   Surface(
     onClick = onClick,
     modifier =
-      Modifier
+      modifier
         .size(ClawTheme.spacing.touchTarget)
         .semantics { contentDescription = buttonDescription },
     shape = CircleShape,
@@ -4913,10 +4915,13 @@ private fun LiveTalkButton(
 }
 
 @Composable
-private fun StopButton(onClick: () -> Unit) {
+private fun StopButton(
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
   Surface(
     onClick = onClick,
-    modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+    modifier = modifier.size(ClawTheme.spacing.touchTarget),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor = ClawTheme.colors.danger,
@@ -5075,11 +5080,12 @@ internal fun resolveChatContextUsage(
 private fun SendButton(
   enabled: Boolean,
   onClick: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = Modifier.size(ClawTheme.spacing.touchTarget),
+    modifier = modifier.size(ClawTheme.spacing.touchTarget),
     shape = CircleShape,
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
