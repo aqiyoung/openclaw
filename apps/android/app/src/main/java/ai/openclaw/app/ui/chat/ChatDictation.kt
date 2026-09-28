@@ -12,7 +12,7 @@ import android.speech.SpeechRecognizer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -420,7 +420,8 @@ internal fun ChatComposerMicButton(
   Surface(
     modifier =
       Modifier
-        .size(ClawTheme.spacing.touchTarget)
+        // Web .chat-send-btn--voice in the phone composer: a 32px target with a 20px glyph.
+        .size(32.dp)
         .combinedClickable(
           enabled = interactionEnabled,
           onClickLabel = dictationActionLabel,
@@ -437,12 +438,13 @@ internal fun ChatComposerMicButton(
     contentColor =
       when {
         dictationActive -> ClawTheme.colors.primaryText
-        dictationEnabled || voiceNoteEnabled -> ClawTheme.colors.textMuted
+        // Web phone mic paints --muted at --chat-mobile-row-mic-opacity (0.72).
+        dictationEnabled || voiceNoteEnabled -> ClawTheme.colors.textMuted.copy(alpha = 0.72f)
         else -> ClawTheme.colors.textSubtle
       },
   ) {
     Box(
-      modifier = Modifier.padding(8.dp).background(if (dictationActive) ClawTheme.colors.primary else Color.Transparent, CircleShape),
+      modifier = Modifier.fillMaxSize().background(if (dictationActive) ClawTheme.colors.primary else Color.Transparent, CircleShape),
       contentAlignment = Alignment.Center,
     ) {
       Icon(

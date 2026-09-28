@@ -3294,7 +3294,8 @@ private fun PlanStepMarker(status: ChatPlanStepStatus) {
 }
 
 @Composable
-private fun chatDraftStyle(): TextStyle = ClawTheme.type.body.copy(fontSize = 16.sp, lineHeight = 22.sp)
+// Web --chat-composer-editor-size/-line: 16px base, one line = 1.5em (24px).
+private fun chatDraftStyle(): TextStyle = ClawTheme.type.body.copy(fontSize = 16.sp, lineHeight = 24.sp)
 
 @Composable
 private fun chatProjectStyle(): TextStyle = ClawTheme.type.caption.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Normal)
@@ -3313,11 +3314,13 @@ private fun minimumChatLineHeight(style: TextStyle): Int {
 private fun minimumChatInputHeight(): Dp {
   val lineHeight = minimumChatLineHeight(chatDraftStyle())
   return with(LocalDensity.current) {
-    // Match each separately rounded editor/action padding and the text's full pixel line.
-    (
-      maxOf(ClawTheme.spacing.touchTarget.roundToPx(), lineHeight + 8.dp.roundToPx() + 4.dp.roundToPx()) +
-        ClawTheme.spacing.touchTarget.roundToPx() + 4.dp.roundToPx() * 2
-    ).toDp()
+    // Web floors the writing surface at --chat-composer-min-height (105px on phones);
+    // below that the editor line plus its insets and the action row set the floor.
+    // Each region rounds on its own, the way the browser lays out box edges. The
+    // composer shell's 6px bottom gap belongs to the region, not to the pill.
+    val editor = lineHeight + 16.dp.roundToPx() + 10.dp.roundToPx()
+    val actionRow = 4.dp.roundToPx() * 2 + 44.dp.roundToPx()
+    (maxOf(105.dp.roundToPx(), editor + actionRow) + 6.dp.roundToPx()).toDp()
   }
 }
 
@@ -3465,18 +3468,20 @@ private fun ChatComposer(
     }
   }
 
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
+  // Web .agent-chat__composer-shell on phones: --chat-mobile-edge-inset (4px) side insets
+  // and a 6px bottom gap (the safe-area inset is already carried by the shell's window insets).
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 6.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
-      verticalArrangement = Arrangement.spacedBy(if (attachedProgress && !compactHeight && !detailsExpanded) (-18).dp else 4.dp),
+      verticalArrangement = Arrangement.spacedBy(if (attachedProgress && !compactHeight && !detailsExpanded) (-18).dp else 6.dp),
     ) {
       if (!compactHeight && !detailsExpanded) {
         BoxWithConstraints(Modifier.weight(1f, fill = false)) {
           val auxiliaryHeight = maxHeight
           Column(
             modifier = Modifier.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
           ) {
             auxiliaryContent(auxiliaryHeight)
           }
@@ -3627,7 +3632,8 @@ private fun ChatThinkingLevelPicker(
     onClick = onOpen,
     enabled = enabled,
     modifier =
-      Modifier.size(ClawTheme.spacing.touchTarget).semantics {
+      // Web mobile effort/model triggers keep a 44px touch box around the 20px gauge.
+      Modifier.size(44.dp).semantics {
         contentDescription = description
         stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
       },
@@ -4474,8 +4480,10 @@ private fun ChatInputPill(
     shadowElevation = 2.dp,
   ) {
     Column(
-      modifier = Modifier.heightIn(min = 64.dp),
-      verticalArrangement = Arrangement.Bottom,
+      // Web .agent-chat__input: --chat-composer-min-height is 105px on phone widths, and
+      // the footer's margin-top:auto docks it to the bottom while the editor keeps the top.
+      modifier = Modifier.heightIn(min = 105.dp),
+      verticalArrangement = Arrangement.SpaceBetween,
     ) {
       ChatTextFieldValueAdapter(
         value = value,
@@ -4497,7 +4505,9 @@ private fun ChatInputPill(
               // Reserve the action row before measuring the draft in the IME viewport.
               .weight(1f, fill = false)
               .heightIn(min = ClawTheme.spacing.touchTarget)
-              .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp)
+              // Web: input-row padding-top 6px + textarea padding-top 10px, textarea
+              // padding-bottom 10px (the row's own bottom padding is 0).
+              .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 10.dp)
               .onPreInterceptKeyBeforeSoftKeyboard { event ->
                 inputEnabled &&
                   hardwareEnterHandler.handle(
@@ -4511,8 +4521,8 @@ private fun ChatInputPill(
           decorationBox = { innerTextField ->
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
               if (value.isEmpty()) {
-                // BasicTextField's line limit does not constrain its decoration.
-                Text(text = nativeString("Message OpenClaw"), style = draftStyle, color = ClawTheme.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Web --chat-composer-tertiary: text-strong mixed 48% into the surface.
+                Text(text = nativeString("Message OpenClaw"), style = draftStyle, color = ClawTheme.colors.textSubtle, maxLines = 1, overflow = TextOverflow.Ellipsis)
               }
               innerTextField()
             }
@@ -4520,23 +4530,27 @@ private fun ChatInputPill(
         )
       }
       Row(
+        // Web .agent-chat__composer-footer on phones: padding-inline 4px (--chat-box-inset),
+        // padding-block 4px, margin-bottom 0.
         modifier = Modifier
           .fillMaxWidth()
-          .padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+          .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        // Web mobile footer has no gap: the controls track carries all of the slack.
+        horizontalArrangement = Arrangement.Start,
       ) {
         Box {
           Surface(
             onClick = { attachmentMenuExpanded = true },
             enabled = inputEnabled,
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(36.dp),
             shape = CircleShape,
             color = if (inputEnabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surfaceRaised.copy(alpha = 0.5f),
             contentColor = if (inputEnabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
           ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(20.dp))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              // Web --chat-mobile-row-plus-icon-size: 24px inside a 36px target.
+              Icon(imageVector = Icons.Default.Add, contentDescription = nativeString("Add attachment"), modifier = Modifier.size(24.dp))
             }
           }
           FoldAwareDropdownMenu(
@@ -4580,11 +4594,16 @@ private fun ChatInputPill(
             modifier = Modifier.size(32.dp),
           )
         }
-        when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
-          ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend, modifier = Modifier.size(32.dp))
-          ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk, modifier = Modifier.size(32.dp))
-          ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort, modifier = Modifier.size(32.dp))
-          ChatComposerPrimaryAction.None -> Unit
+        // Web .composer-actions keeps one --chat-mobile-row-action-gap (4px) before the
+        // primary slot; lead and controls sit flush.
+        Box(Modifier.padding(start = 4.dp)) {
+          when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
+            // The primary slot carries the send size: --chat-mobile-row-plus-target-size (36px).
+            ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend, modifier = Modifier.size(36.dp))
+            ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk, modifier = Modifier.size(36.dp))
+            ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort, modifier = Modifier.size(36.dp))
+            ChatComposerPrimaryAction.None -> Unit
+          }
         }
       }
     }
@@ -4810,7 +4829,7 @@ private fun ChatComposerModelPicker(
     onClick = onClick,
     enabled = enabled,
     modifier =
-      modifier.heightIn(min = ClawTheme.spacing.touchTarget).semantics {
+      modifier.heightIn(min = 44.dp).semantics {
         contentDescription = description
         contextDescription?.let { stateDescription = it }
         role = Role.Button
@@ -4898,18 +4917,19 @@ private fun LiveTalkButton(
   modifier: Modifier = Modifier,
 ) {
   val buttonDescription = if (active) nativeString("End Talk") else nativeString("Start Talk")
+  // Start Talk occupies the primary (send) slot at 36dp; End Talk sits in the mic slot at 32dp.
   Surface(
     onClick = onClick,
     modifier =
       Modifier
-        .size(ClawTheme.spacing.touchTarget)
+        .size(36.dp)
         .semantics { contentDescription = buttonDescription }
         .then(modifier),
     shape = CircleShape,
-    color = Color.Transparent,
+    color = if (active) Color.Transparent else ClawTheme.colors.primary,
     contentColor = if (active) ClawTheme.colors.accentForeground else ClawTheme.colors.primaryText,
   ) {
-    Box(modifier = Modifier.padding(8.dp).background(if (active) Color.Transparent else ClawTheme.colors.primary, CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       LiveTalkWaveform(active = active, modifier = Modifier.size(20.dp))
     }
   }
@@ -4920,14 +4940,15 @@ private fun StopButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  // Web .chat-send-btn--stop: a quiet red ground and red glyph, never a white disc.
   Surface(
     onClick = onClick,
-    modifier = modifier.size(ClawTheme.spacing.touchTarget).size(32.dp),
+    modifier = Modifier.size(36.dp).then(modifier),
     shape = CircleShape,
-    color = Color.Transparent,
+    color = ClawTheme.colors.dangerSoft,
     contentColor = ClawTheme.colors.danger,
   ) {
-    Box(modifier = Modifier.padding(8.dp).background(ClawTheme.colors.dangerSoft, CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       Icon(imageVector = Icons.Default.Stop, contentDescription = nativeString("Stop"), modifier = Modifier.size(20.dp))
     }
   }
@@ -5083,15 +5104,18 @@ private fun SendButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  // Web .agent-chat__input .chat-send-btn: the one committed action carries the brand
+  // fill. Losing availability drops it back to a step of the surface — an 8% wash with
+  // tertiary ink — so an unavailable send never keeps shouting in brand red.
   Surface(
     onClick = onClick,
     enabled = enabled,
-    modifier = modifier.size(ClawTheme.spacing.touchTarget).size(32.dp),
+    modifier = Modifier.size(36.dp).then(modifier),
     shape = CircleShape,
-    color = Color.Transparent,
-    contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.textSubtle,
+    color = if (enabled) ClawTheme.colors.primary else ClawTheme.colors.text.copy(alpha = 0.08f),
+    contentColor = if (enabled) ClawTheme.colors.primaryText else ClawTheme.colors.text.copy(alpha = 0.48f),
   ) {
-    Box(modifier = Modifier.padding(8.dp).background(if (enabled) ClawTheme.colors.primary else ClawTheme.colors.surfacePressed, CircleShape), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = nativeString("Send"), modifier = Modifier.size(20.dp))
     }
   }

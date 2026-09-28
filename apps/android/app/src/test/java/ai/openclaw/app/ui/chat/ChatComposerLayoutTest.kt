@@ -305,8 +305,13 @@ class ChatComposerLayoutTest {
       val readerFloor = maxOf(touch, readerLine)
       val upperFloor = maxOf(touch, projectLine + titleLine) + readerFloor + touch + pad * 2 + gap * 2
       val lowerFloor =
-        maxOf(touch, with(density) { maxOf(fullLineHeight, ceil(22.sp.toPx()).toInt()) + 8.dp.roundToPx() + 4.dp.roundToPx() }) +
-          touch + with(density) { 4.dp.roundToPx() * 2 } + pad * 2
+        with(density) {
+          maxOf(
+            105.dp.roundToPx(),
+            maxOf(fullLineHeight, ceil(24.sp.toPx()).toInt()) +
+              16.dp.roundToPx() + 10.dp.roundToPx() + 4.dp.roundToPx() * 2 + 44.dp.roundToPx(),
+          ) + 6.dp.roundToPx()
+        } + pad * 2
       val widthFloor = with(density) { 320.dp.roundToPx() }
       for ((upper, lower, paneWidth) in listOf(
         Triple(upperFloor, lowerFloor, widthFloor),
@@ -341,7 +346,7 @@ class ChatComposerLayoutTest {
           val caret = line.getCursorRect(editor.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange].end)
           assertTrue("The complete caret fits at equality: $caret in $bounds", caret.top >= 0 && caret.bottom <= bounds.height && caret.left >= 0 && caret.right <= bounds.width)
           val send = chatWindowBounds(composeRule.onNodeWithContentDescription(nativeString("Send")))
-          assertTrue("The full target fits at equality", send.height >= touch && send.top >= hinge.bottom && send.bottom <= offset.value.y + with(density) { height.value.roundToPx() })
+          assertTrue("The full target fits at equality", send.height >= with(density) { 36.dp.roundToPx() } && send.top >= hinge.bottom && send.bottom <= offset.value.y + with(density) { height.value.roundToPx() })
         } else {
           assertTrue("One physical pixel below a floor must use the larger safe upper pane", bounds.bottom <= hinge.top)
         }
@@ -1093,7 +1098,9 @@ class ChatComposerLayoutTest {
       editor.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { action -> assertTrue(action(layouts)) }
       val layout = layouts.single()
       val lineHeight = with(composeRule.density) { (layout.getLineBottom(0) - layout.getLineTop(0)).toDp() }
-      val maximumBlankHeight = maxOf(48.dp, lineHeight * 2) + 1.dp
+      // The editor owns its own insets (16px above the line, 10px below on phones)
+      // and keeps a touch-target floor.
+      val maximumBlankHeight = maxOf(lineHeight * 2, lineHeight + 26.dp, 48.dp) + 1.dp
       measurements += "fontScale=$scale: blank=$blank, typed=$typed, greetingLines=${layout.lineCount}, blankHeightLimit=$maximumBlankHeight"
       if (blank.bottom - blank.top > maximumBlankHeight) {
         failures += "fontScale=$scale: an empty localized hint must not consume more than two text lines or a touch target"
@@ -3273,8 +3280,9 @@ class ChatComposerLayoutTest {
     controlBounds.forEach { bounds ->
       val retainsTouchTarget =
         with(composeRule.density) {
-          (bounds.right - bounds.left).roundToPx() >= 48.dp.roundToPx() &&
-            (bounds.bottom - bounds.top).roundToPx() >= 48.dp.roundToPx()
+          // The smallest composer control is the 32px secondary row target.
+          (bounds.right - bounds.left).roundToPx() >= 32.dp.roundToPx() &&
+            (bounds.bottom - bounds.top).roundToPx() >= 32.dp.roundToPx()
         }
       assertTrue("Composer controls must retain their touch targets: $bounds inside $viewport", retainsTouchTarget)
     }

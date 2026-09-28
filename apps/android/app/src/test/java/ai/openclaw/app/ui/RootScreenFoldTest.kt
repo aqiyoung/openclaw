@@ -212,7 +212,7 @@ class RootScreenFoldTest {
       assertTrue("The actual transcript stays above the fold", windowBounds(transcript).bottom <= hinge.top)
       for (label in listOf("Send", "Add attachment")) {
         val action = windowBounds(composeRule.onNodeWithContentDescription(label))
-        assertTrue("The complete $label action stays below the fold: $action", action.top >= hinge.bottom && action.height() >= 48 && action.bottom <= view.height)
+        assertTrue("The complete $label action stays below the fold: $action", action.top >= hinge.bottom && action.height() >= 36 && action.bottom <= view.height)
       }
       val voiceAction =
         windowBounds(
@@ -222,7 +222,7 @@ class RootScreenFoldTest {
             },
           ),
         )
-      assertTrue("The complete Voice input target stays below the fold", voiceAction.top >= hinge.bottom && voiceAction.height() >= 48)
+      assertTrue("The complete Voice input target stays below the fold", voiceAction.top >= hinge.bottom && voiceAction.height() >= 32)
       editor.assertIsFocused().assertTextEquals("Tabletop retained draft")
       assertEquals(editorId, editor.fetchSemanticsNode().id)
       assertEquals(TextRange(9, 17), editor.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
