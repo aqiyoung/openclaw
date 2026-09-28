@@ -310,7 +310,7 @@ class ChatComposerLayoutTest {
             105.dp.roundToPx(),
             maxOf(fullLineHeight, ceil(24.sp.toPx()).toInt()) +
               16.dp.roundToPx() + 10.dp.roundToPx() + 4.dp.roundToPx() * 2 + 44.dp.roundToPx(),
-          ) + 6.dp.roundToPx()
+          ) + 4.dp.roundToPx()
         } + pad * 2
       val widthFloor = with(density) { 320.dp.roundToPx() }
       for ((upper, lower, paneWidth) in listOf(

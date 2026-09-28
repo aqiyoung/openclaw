@@ -3317,10 +3317,11 @@ private fun minimumChatInputHeight(): Dp {
     // Web floors the writing surface at --chat-composer-min-height (105px on phones);
     // below that the editor line plus its insets and the action row set the floor.
     // Each region rounds on its own, the way the browser lays out box edges. The
-    // composer shell's 6px bottom gap belongs to the region, not to the pill.
+    // shell's bottom gap belongs to the region, not to the pill: the pane already
+    // insets 10px at rest, so this floor carries the 4px the shell still adds.
     val editor = lineHeight + 16.dp.roundToPx() + 10.dp.roundToPx()
     val actionRow = 4.dp.roundToPx() * 2 + 44.dp.roundToPx()
-    (maxOf(105.dp.roundToPx(), editor + actionRow) + 6.dp.roundToPx()).toDp()
+    (maxOf(105.dp.roundToPx(), editor + actionRow) + 4.dp.roundToPx()).toDp()
   }
 }
 
@@ -3468,9 +3469,11 @@ private fun ChatComposer(
     }
   }
 
-  // Web .agent-chat__composer-shell on phones: --chat-mobile-edge-inset (4px) side insets
-  // and a 6px bottom gap (the safe-area inset is already carried by the shell's window insets).
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 6.dp)) {
+  // Web .agent-chat__composer-shell on phones: --chat-mobile-edge-inset (4px) plus the
+  // .content frame inset (4px) = 8px sides, and margin-bottom calc(14px + safe-area) below.
+  // The pane already insets 10px when it is not compact, so the resting shell keeps 4px and
+  // the compact shell (pane inset 0) carries the whole 14px; window insets carry the safe area.
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (compactHeight) 14.dp else 4.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
@@ -4564,23 +4567,33 @@ private fun ChatInputPill(
               ),
           )
         }
-        ChatComposerModelPicker(
-          label = selectedModelLabel,
-          contextUsage = contextUsage,
-          enabled = modelPickerEnabled,
-          onClick = onOpenModelPicker,
+        // Web .composer-meta.composer-context: the usage dial is its own footer group,
+        // flush against the add button and ahead of the flexible controls track.
+        ChatComposerContextRing(summary = chatContextSummary(contextUsage), enabled = modelPickerEnabled)
+        // Web .composer-controls: a flexible track that swallows the slack and packs its
+        // chips (4px .chat-controls__model-settings gap) against the actions on the right.
+        Row(
           modifier = Modifier.weight(1f),
-        )
-        if (thinkingSupported || fastModeEnabled || fastMode) {
-          ChatThinkingLevelPicker(
-            options = thinkingOptions,
-            selectedId = thinkingLevel,
-            thinkingSupported = thinkingSupported,
-            thinkingLevelEnabled = thinkingLevelEnabled,
-            fastMode = fastMode,
-            fastModeEnabled = fastModeEnabled,
-            onOpen = onOpenEffortPicker,
+          horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+        ) {
+          ChatComposerModelPicker(
+            label = selectedModelLabel,
+            contextUsage = contextUsage,
+            enabled = modelPickerEnabled,
+            onClick = onOpenModelPicker,
+            modifier = Modifier.weight(1f, fill = false),
           )
+          if (thinkingSupported || fastModeEnabled || fastMode) {
+            ChatThinkingLevelPicker(
+              options = thinkingOptions,
+              selectedId = thinkingLevel,
+              thinkingSupported = thinkingSupported,
+              thinkingLevelEnabled = thinkingLevelEnabled,
+              fastMode = fastMode,
+              fastModeEnabled = fastModeEnabled,
+              onOpen = onOpenEffortPicker,
+            )
+          }
         }
         if (talkActive) {
           LiveTalkButton(active = true, onClick = onToggleTalk, modifier = Modifier.size(32.dp))
@@ -4594,14 +4607,17 @@ private fun ChatInputPill(
             modifier = Modifier.size(32.dp),
           )
         }
-        // Web .composer-actions keeps one --chat-mobile-row-action-gap (4px) before the
-        // primary slot; lead and controls sit flush.
-        Box(Modifier.padding(start = 4.dp)) {
-          when (resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)) {
-            // The primary slot carries the send size: --chat-mobile-row-plus-target-size (36px).
+        // Web .composer-actions keeps --chat-mobile-row-action-gap (4px) plus the primary
+        // action's own margin-inline-start (4px) = 8px before the primary slot; lead,
+        // context and controls sit flush, and a missing primary leaves no trailing gap.
+        val primaryAction = resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)
+        Box(Modifier.padding(start = if (primaryAction == ChatComposerPrimaryAction.None) 0.dp else 8.dp)) {
+          when (primaryAction) {
+            // Send and Start Talk own the --chat-mobile-row-target-size (36px) slot; Stop is
+            // the secondary destructive target at --chat-mobile-row-target-size (32px).
             ChatComposerPrimaryAction.Send -> SendButton(enabled = inputEnabled && sendEnabled, onClick = onSend, modifier = Modifier.size(36.dp))
             ChatComposerPrimaryAction.StartTalk -> LiveTalkButton(active = false, onClick = onToggleTalk, modifier = Modifier.size(36.dp))
-            ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort, modifier = Modifier.size(36.dp))
+            ChatComposerPrimaryAction.Stop -> StopButton(onClick = onAbort, modifier = Modifier.size(32.dp))
             ChatComposerPrimaryAction.None -> Unit
           }
         }
@@ -4829,7 +4845,7 @@ private fun ChatComposerModelPicker(
     onClick = onClick,
     enabled = enabled,
     modifier =
-      modifier.heightIn(min = 44.dp).semantics {
+      modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).semantics {
         contentDescription = description
         contextDescription?.let { stateDescription = it }
         role = Role.Button
@@ -4839,19 +4855,18 @@ private fun ChatComposerModelPicker(
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
   ) {
     Row(
-      // Web mobile: the trigger is a 2px-gap / 6px-inset chip; the usage ring lives in its own
-      // 32px box, which is why the dial reads ~10px clear of the model name.
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+      // Web mobile .chat-controls__model-trigger: padding-inline 0, a 3px gap between its
+      // slots and centered content, so the chip is only as wide as its name. The usage dial
+      // lives in the footer's context group; the trigger only announces it as its state.
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
     ) {
-      ChatComposerContextRing(summary = contextSummary, enabled = enabled)
       Text(
         text = label,
         style = ClawTheme.type.caption,
-        // weight(1f) inside the picker Row so the name shrinks/truncates within the
-        // Surface (which itself gets weight(1f) from the outer action row).
-        modifier = Modifier.weight(1f),
+        // fill=false keeps the Surface at content width while the name still truncates
+        // inside the share the flexible controls track hands it.
+        modifier = Modifier.weight(1f, fill = false),
         // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
         maxLines = 1,
         overflow = TextOverflow.MiddleEllipsis,
@@ -4940,16 +4955,17 @@ private fun StopButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  // Web .chat-send-btn--stop: a quiet red ground and red glyph, never a white disc.
+  // Web .chat-send-btn--stop on phones: a --chat-mobile-row-target-size (32px) disc of
+  // danger at 14% with an 18px glyph, never a white disc.
   Surface(
     onClick = onClick,
-    modifier = Modifier.size(36.dp).then(modifier),
+    modifier = Modifier.size(32.dp).then(modifier),
     shape = CircleShape,
-    color = ClawTheme.colors.dangerSoft,
+    color = ClawTheme.colors.danger.copy(alpha = 0.14f),
     contentColor = ClawTheme.colors.danger,
   ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-      Icon(imageVector = Icons.Default.Stop, contentDescription = nativeString("Stop"), modifier = Modifier.size(20.dp))
+      Icon(imageVector = Icons.Default.Stop, contentDescription = nativeString("Stop"), modifier = Modifier.size(18.dp))
     }
   }
 }
