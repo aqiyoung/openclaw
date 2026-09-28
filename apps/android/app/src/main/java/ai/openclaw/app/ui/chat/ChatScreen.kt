@@ -3469,11 +3469,14 @@ private fun ChatComposer(
     }
   }
 
-  // Web .agent-chat__composer-shell on phones: --chat-mobile-edge-inset (4px) plus the
-  // .content frame inset (4px) = 8px sides, and margin-bottom calc(14px + safe-area) below.
-  // The pane already insets 10px when it is not compact, so the resting shell keeps 4px and
-  // the compact shell (pane inset 0) carries the whole 14px; window insets carry the safe area.
-  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = if (compactHeight) 14.dp else 4.dp)) {
+  // Web .agent-chat__composer-shell sits 8px from the edge (4px .content + 4px frame
+  // inset) and its message column is only 4px further in. Android keeps the transcript at
+  // 16dp, so the shell matches that column instead of the web figure — otherwise the pill
+  // hangs 8dp past every message on both sides and reads as edge-to-edge.
+  // Bottom: margin-bottom calc(14px + safe-area); the pane already insets 10px when it is
+  // not compact, so the resting shell keeps 4px and the compact shell (pane inset 0) carries
+  // the whole 14px; window insets carry the safe area.
+  BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = if (compactHeight) 14.dp else 4.dp)) {
     val inputHeightLimit = if (compactHeight) maxHeight else maxOf(minimumChatInputHeight(), maxHeight - ClawTheme.spacing.touchTarget)
     Column(
       modifier = if (detailsExpanded) Modifier.clearAndSetSemantics {} else Modifier,
