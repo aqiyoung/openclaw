@@ -9,14 +9,20 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +33,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -37,8 +45,10 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -46,6 +56,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -54,6 +65,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.window.layout.WindowMetricsCalculator
+import ai.openclaw.app.ui.design.ClawTheme
 import kotlin.math.roundToInt
 
 internal data class FoldAwareMenuItem(
@@ -122,6 +134,45 @@ internal fun FoldAwareDropdownMenu(
   }
 }
 
+/** Web composer menu-row family (composer.css:136-141, 776-800): 40px box, 6/9 padding, 8px icon gap. */
+@Composable
+private fun MenuRow(
+  item: FoldAwareMenuItem,
+  onTextLayout: (TextLayoutResult) -> Unit,
+  onClick: () -> Unit,
+) {
+  val interactionSource = item.interactionSource ?: remember { MutableInteractionSource() }
+  val contentAlpha = if (item.enabled) 1f else 0.55f
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = 40.dp)
+        .clip(RoundedCornerShape(10.dp))
+        .clickable(
+          interactionSource = interactionSource,
+          indication = LocalIndication.current,
+          enabled = item.enabled,
+          role = Role.Button,
+          onClick = onClick,
+        )
+        .padding(horizontal = 9.dp, vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    item.icon?.let { icon ->
+      Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.textMuted.copy(alpha = contentAlpha))
+    }
+    Text(
+      item.label,
+      onTextLayout = onTextLayout,
+      // composer.css:910-915 — the label part wins over the row's own 12px font.
+      color = ClawTheme.colors.text.copy(alpha = contentAlpha),
+      style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
+    )
+  }
+}
+
 @Composable
 private fun MenuBody(
   owner: AnchoredMenuOwner,
@@ -132,40 +183,38 @@ private fun MenuBody(
   val scroll = rememberScrollState()
   val maxHeight = opening.bounds?.height ?: opening.geometry.available.height
   Surface(
-    shape = MenuDefaults.shape,
-    color = MenuDefaults.containerColor,
-    tonalElevation = MenuDefaults.TonalElevation,
-    shadowElevation = MenuDefaults.ShadowElevation,
+    // composer.css:1-12 popover chrome: 14px radius, hairline border, soft shadow.
+    shape = RoundedCornerShape(14.dp),
+    color = ClawTheme.colors.surfaceRaised,
+    contentColor = ClawTheme.colors.text,
+    border = BorderStroke(1.dp, ClawTheme.colors.border),
+    tonalElevation = 0.dp,
+    shadowElevation = 8.dp,
   ) {
     Layout(
       modifier =
         Modifier
           .heightIn(max = with(density) { maxHeight.toDp() })
-          .padding(vertical = 8.dp)
+          .padding(vertical = 4.dp)
           .verticalScroll(scroll),
       content = {
         items.forEach { item ->
-          DropdownMenuItem(
-            text = {
-              Text(item.label, onTextLayout = { opening.textLayouts[item.id] = it })
-            },
-            leadingIcon = item.icon?.let { icon -> { Icon(icon, contentDescription = null) } },
-            enabled = item.enabled,
-            interactionSource = item.interactionSource,
+          MenuRow(
+            item = item,
+            onTextLayout = { opening.textLayouts[item.id] = it },
             onClick = { owner.accept(opening, item.id) },
           )
         }
       },
     ) { measurables, constraints ->
-      val padding = 16.dp.roundToPx()
+      val padding = 8.dp.roundToPx()
       val limit = minOf(constraints.maxWidth, opening.geometry.available.width, 280.dp.roundToPx())
       if (opening.terminal || measurables.isEmpty() || limit < 112.dp.roundToPx()) {
         owner.cancel(opening)
         layout(0, 0) {}
       } else {
-        val width =
-          opening.bounds?.width
-            ?: measurables.maxOf { it.maxIntrinsicWidth(Constraints.Infinity) }.coerceIn(112.dp.roundToPx(), limit)
+        // composer.css:769-774 pins the menu box to 176px and caps it at the viewport gutter.
+        val width = opening.bounds?.width ?: min(176.dp.roundToPx(), limit)
         val rows = measurables.map { it.measure(Constraints.fixedWidth(width)) }
         val bodyHeight = rows.sumOf { it.height }
         val height = opening.bounds?.height ?: minOf(bodyHeight + padding, maxHeight)

@@ -1539,8 +1539,8 @@ class ChatComposerLayoutTest {
     model.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, nativeString("Context: \$detail", "24k / 200k · 12%")))
 
     thinking.performClick()
-    composeRule.onNode(isDialog()).assertIsDisplayed()
-    composeRule.onNode(isPopup()).assertDoesNotExist()
+    composeRule.onNode(isPopup()).assertIsDisplayed()
+    composeRule.onNode(isDialog()).assertDoesNotExist()
     composeRule.onNodeWithText(nativeString("Effort")).assertIsDisplayed()
     composeRule.onNodeWithText("Ultra").assertIsDisplayed().assert(hasClickAction().not())
     composeRule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
@@ -1554,7 +1554,7 @@ class ChatComposerLayoutTest {
     composeRule.onNodeWithText(nativeString("Faster responses, higher usage of limits.")).assertIsDisplayed()
     assertEquals("Opening effort must not move or shrink the draft", editorBounds, editor.getUnclippedBoundsInRoot())
     composeRule.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.Dismiss)).performSemanticsAction(SemanticsActions.Dismiss) { dismiss -> assertTrue(dismiss()) }
-    composeRule.onNode(isDialog()).assertDoesNotExist()
+    composeRule.onNode(isPopup()).assertDoesNotExist()
 
     model.performClick()
     composeRule.onNodeWithText(nativeString("Context window")).assertIsDisplayed()

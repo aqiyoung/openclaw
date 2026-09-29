@@ -462,7 +462,10 @@ class FoldAwareDropdownMenuTest {
     open()
     val popup = nativePopup()
     val bounds = screenBounds(popup)
-    assertEquals(Rect(271, 131, 407, 243), bounds)
+    // composer.css:769-774 pins the menu at 176px wide with 40px rows over 4px vertical padding,
+    // so the box tracks the web metrics instead of its content's intrinsic width.
+    assertEquals(176, bounds.width())
+    assertEquals(88, bounds.height())
     holdKey(popup, KeyEvent.KEYCODE_ENTER)
     composeRule.runOnIdle {
       // No pre-draw/recomposition: the action gate must read the attached host again.

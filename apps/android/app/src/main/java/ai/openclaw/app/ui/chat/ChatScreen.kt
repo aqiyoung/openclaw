@@ -127,6 +127,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -184,6 +185,7 @@ import androidx.compose.material.icons.filled.Terminal
 import ai.openclaw.app.chat.ChatToolActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -197,7 +199,6 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
-import ai.openclaw.app.ui.design.ClawToggle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -228,6 +229,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
@@ -235,6 +237,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -242,6 +245,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -254,10 +258,15 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.window.layout.DisplayFeature
@@ -581,6 +590,39 @@ internal fun ChatScreen(
       ChatModelPickerSessionOwner(pickerActivity, pickerView, lifecycleOwner.lifecycle) { expected ->
         viewModel.isCurrentChatComposerOwner(expected) && (canChangeThinking() || canChangeFastMode(expected))
       }
+    }
+  // Composed from inside the effort chip's anchor box (ChatThinkingLevelPicker) so the web-style
+  // popover can be placed relative to the chip rather than to the screen bottom.
+  val effortPanel: (@Composable () -> Unit)? =
+    effortPicker.visible?.let { opening ->
+      val panel: @Composable () -> Unit = {
+        key(opening) {
+          ChatEffortPopover(
+            options = thinkingLevelSelection.options,
+            selectedId = thinkingLevel,
+            thinkingSupported = thinkingSupported,
+            thinkingLevelEnabled = canAdminSessionSettings,
+            fastMode = fastMode,
+            fastModeEnabled = canChangeFastMode(opening.composerOwner),
+            onSelect = { level ->
+              if (effortPicker.admit(opening) && canChangeThinking()) {
+                viewModel.setChatThinkingLevel(level)
+              }
+            },
+            onFastModeChange = { enabled ->
+              if (effortPicker.admit(opening) && canChangeFastMode(opening.composerOwner)) {
+                viewModel.setChatSessionFastMode(
+                  sessionKey = opening.sessionKey,
+                  enabled = enabled,
+                  clearOverride = !currentFastModeRequestSupported(),
+                )
+              }
+            },
+            onDismiss = { if (effortPicker.admit(opening)) effortPicker.retire(opening) },
+          )
+        }
+      }
+      panel
     }
   val backgroundTasks =
     remember(viewModel, pickerActivity, pickerView, lifecycleOwner) {
@@ -1123,6 +1165,7 @@ internal fun ChatScreen(
       },
       commands = chatCommands,
       onOpenEffortPicker = { effortPicker.open(composerOwner, sessionKey) },
+      effortPopup = effortPanel,
       onOpenModelPicker = { modelPicker.open(composerOwner, sessionKey) },
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
@@ -1238,35 +1281,6 @@ internal fun ChatScreen(
         sendCheckpointFull = result == ChatComposerSendStartResult.CheckpointFull
       },
     )
-  }
-
-  effortPicker.visible?.let { opening ->
-    key(opening) {
-      ChatEffortSheet(
-        opening = opening,
-        options = thinkingLevelSelection.options,
-        selectedId = thinkingLevel,
-        thinkingSupported = thinkingSupported,
-        thinkingLevelEnabled = canAdminSessionSettings,
-        fastMode = fastMode,
-        fastModeEnabled = canChangeFastMode(opening.composerOwner),
-        onSelect = { level ->
-          if (effortPicker.admit(opening) && canChangeThinking()) {
-            viewModel.setChatThinkingLevel(level)
-          }
-        },
-        onFastModeChange = { enabled ->
-          if (effortPicker.admit(opening) && canChangeFastMode(opening.composerOwner)) {
-            viewModel.setChatSessionFastMode(
-              sessionKey = opening.sessionKey,
-              enabled = enabled,
-              clearOverride = !currentFastModeRequestSupported(),
-            )
-          }
-        },
-        onDismiss = { if (effortPicker.admit(opening)) effortPicker.retire(opening) },
-      )
-    }
   }
 
   modelPicker.visible?.let { opening ->
@@ -3357,6 +3371,7 @@ private fun ChatComposer(
   onDismissShareImportNotice: () -> Unit,
   commands: List<ChatCommandEntry>,
   onOpenEffortPicker: () -> Unit,
+  effortPopup: (@Composable () -> Unit)?,
   onOpenModelPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
@@ -3539,6 +3554,7 @@ private fun ChatComposer(
             fastMode = fastMode,
             fastModeEnabled = fastModeEnabled,
             onOpenEffortPicker = onOpenEffortPicker,
+            effortPopup = effortPopup,
             contextUsage = contextUsage,
             modifier = Modifier.weight(1f),
           )
@@ -3624,6 +3640,7 @@ private fun ChatThinkingLevelPicker(
   fastMode: Boolean,
   fastModeEnabled: Boolean,
   onOpen: () -> Unit,
+  effortPopup: (@Composable () -> Unit)?,
 ) {
   val enabled = (thinkingSupported && thinkingLevelEnabled) || fastModeEnabled
   val languageTag = currentAppLanguage().languageTag
@@ -3700,6 +3717,7 @@ private fun ChatThinkingLevelPicker(
           tint = ClawTheme.colors.textSubtle.copy(alpha = if (enabled) 0.55f else 0.30f),
         )
       }
+      effortPopup?.invoke()
     }
   }
 }
@@ -3745,14 +3763,29 @@ internal fun ChatEffortSliderControl(
         languageTag,
       )
 
-  Column {
+  // composer.css:3346-3478 — the reasoning panel insets 12/12/11, runs a 4px grid, keeps the
+  // head 10px off the slider, and insets the slider/scale pair a further 6px.
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, top = 12.dp, bottom = 11.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
     Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+      modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(nativeString("Effort"), style = ClawTheme.type.label.copy(fontWeight = FontWeight.SemiBold))
-      Text(selectedLabel, style = ClawTheme.type.label, color = ClawTheme.colors.primary)
+      Text(
+        nativeString("Effort"),
+        // composer.css:3455-3466 — 12px/650 heading, 12px/650 accent value.
+        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight(650), lineHeight = 16.sp),
+        color = ClawTheme.colors.text,
+      )
+      Text(
+        selectedLabel,
+        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight(650), lineHeight = 16.sp),
+        color = ClawTheme.colors.accent,
+        textAlign = TextAlign.End,
+      )
     }
     // Web shows the discrete slider for any profile with more than one stop
     // (including binary Faster/Smarter), so mirror sliderStops.length > 1.
@@ -3761,7 +3794,7 @@ internal fun ChatEffortSliderControl(
         state = sliderState,
         enabled = enabled,
         modifier =
-          Modifier.padding(horizontal = 20.dp).semantics {
+          Modifier.padding(horizontal = 6.dp).semantics {
             contentDescription = nativeString("Thinking")
             stateDescription = selectedLabel
           },
@@ -3769,7 +3802,7 @@ internal fun ChatEffortSliderControl(
           Box(
             Modifier
               .size(width = 28.dp, height = 20.dp)
-              .shadow(2.dp, RoundedCornerShape(10.dp))
+              .shadow(4.dp, RoundedCornerShape(10.dp))
               .background(
                 // Web thumb = var(--text-strong): near-black, not a light gray.
                 color = if (enabled) ClawTheme.colors.text else ClawTheme.colors.textSubtle,
@@ -3780,11 +3813,12 @@ internal fun ChatEffortSliderControl(
         track = { state -> ChatEffortSliderTrack(state, options.size, enabled) },
       )
       Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
-        Text(nativeString("Faster"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        Text(nativeString("Smarter"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+        val scaleStyle = TextStyle(fontSize = 10.sp, fontWeight = FontWeight(550), lineHeight = 13.sp)
+        Text(nativeString("Faster"), style = scaleStyle, color = ClawTheme.colors.textMuted)
+        Text(nativeString("Smarter"), style = scaleStyle, color = ClawTheme.colors.textMuted)
       }
     } else {
       options.forEachIndexed { index, option ->
@@ -3828,16 +3862,13 @@ private fun ChatEffortSliderTrack(
   val borderColor = ClawTheme.colors.border.copy(alpha = 0.7f)
   Canvas(modifier = Modifier.fillMaxWidth().height(26.dp)) {
     val cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
-    drawRoundRect(color = inactiveColor, cornerRadius = cornerRadius)
-    if (activeFraction > 0f) {
-      val activeWidth = size.width * activeFraction
-      drawRoundRect(
-        color = activeColor,
-        topLeft = Offset(x = if (layoutDirection == LayoutDirection.Rtl) size.width - activeWidth else 0f, y = 0f),
-        size = Size(width = activeWidth, height = size.height),
-        cornerRadius = cornerRadius,
-      )
-    }
+    // composer.css:3527-3536 is a two-stop gradient — 18% fill, 7% remainder. Each half is
+    // painted exactly once so the fill reads at 18% instead of compositing up to ~24%.
+    val activeWidth = size.width * activeFraction
+    val fillStart = if (layoutDirection == LayoutDirection.Rtl) size.width - activeWidth else 0f
+    val fillEnd = fillStart + activeWidth
+    clipRect(left = fillEnd) { drawRoundRect(color = inactiveColor, cornerRadius = cornerRadius) }
+    clipRect(right = fillEnd) { drawRoundRect(color = activeColor, cornerRadius = cornerRadius) }
     drawRoundRect(
       color = borderColor,
       style = Stroke(width = 1.dp.toPx()),
@@ -3852,10 +3883,13 @@ private fun ChatEffortSliderTrack(
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Web composer.css:2066-2071 opens the effort menu as an anchored popover — nearly the viewport
+ * wide, parked just above the trigger — so the panel is a Popup anchored to the chip rather than
+ * a sheet rising from the bottom.
+ */
 @Composable
-private fun ChatEffortSheet(
-  opening: ChatModelPickerSession,
+private fun ChatEffortPopover(
   options: List<ChatThinkingLevelOption>,
   selectedId: String,
   thinkingSupported: Boolean,
@@ -3866,62 +3900,152 @@ private fun ChatEffortSheet(
   onFastModeChange: (Boolean) -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val thinkingOptions = if (thinkingSupported) options else emptyList()
-  ModalBottomSheet(
-    modifier = Modifier.foldAwareSheet(opening.geometry),
-    onDismissRequest = onDismiss,
-    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = ClawTheme.shapes.sheet,
-    containerColor = ClawTheme.colors.surface,
-    contentColor = ClawTheme.colors.text,
-  ) {
-    Column(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .heightIn(max = 560.dp)
-          .verticalScroll(rememberScrollState())
-          .padding(bottom = 24.dp),
-    ) {
-      if (thinkingOptions.isNotEmpty()) {
-        Surface(
-          color = ClawTheme.colors.surfaceRaised,
-          shape = RoundedCornerShape(12.dp),
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        ) {
-          ChatEffortSliderControl(
-            options = thinkingOptions,
-            selectedId = selectedId,
-            enabled = thinkingLevelEnabled,
-            onSelect = onSelect,
-          )
+  val density = LocalDensity.current
+  val configuration = LocalConfiguration.current
+  val panelWidth = configuration.screenWidthDp.dp - 24.dp
+  val panelMaxHeight = minOf(440.dp, configuration.screenHeightDp.dp - 116.dp)
+  val positionProvider =
+    remember(density) {
+      object : PopupPositionProvider {
+        override fun calculatePosition(
+          anchorBounds: IntRect,
+          windowSize: IntSize,
+          layoutDirection: LayoutDirection,
+          popupContentSize: IntSize,
+        ): IntOffset {
+          val gap = with(density) { 8.dp.roundToPx() }
+          val x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
+          val y = (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0)
+          return IntOffset(x, y)
         }
-      }
-      if (thinkingOptions.isNotEmpty()) {
-        HorizontalDivider(color = ClawTheme.colors.border, modifier = Modifier.padding(top = 14.dp))
-      }
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-      ) {
-        Icon(Icons.Default.Bolt, contentDescription = null, tint = ClawTheme.colors.primary, modifier = Modifier.size(20.dp))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-          Text(nativeString("Fast mode"), style = ClawTheme.type.body.copy(fontWeight = FontWeight.Medium))
-          Text(
-            nativeString("Fast responses finish sooner and can use more of your usage limits."),
-            style = ClawTheme.type.caption,
-            color = ClawTheme.colors.textMuted,
-          )
-        }
-        ClawToggle(
-          checked = fastMode,
-          onCheckedChange = onFastModeChange,
-          enabled = fastModeEnabled,
-          modifier = Modifier.semantics { contentDescription = nativeString("Fast mode") },
-        )
       }
     }
+  Popup(
+    popupPositionProvider = positionProvider,
+    onDismissRequest = onDismiss,
+    properties = PopupProperties(focusable = true),
+  ) {
+    // The sheet exposed SemanticsActions.Dismiss; keep that contract on the popup surface.
+    Box(Modifier.semantics { dismiss { onDismiss(); true } }) {
+      ChatEffortPanel(
+        options = options,
+        selectedId = selectedId,
+        thinkingSupported = thinkingSupported,
+        thinkingLevelEnabled = thinkingLevelEnabled,
+        fastMode = fastMode,
+        fastModeEnabled = fastModeEnabled,
+        onSelect = onSelect,
+        onFastModeChange = onFastModeChange,
+        width = panelWidth,
+        maxHeight = panelMaxHeight,
+      )
+    }
+  }
+}
+
+@Composable
+private fun ChatEffortPanel(
+  options: List<ChatThinkingLevelOption>,
+  selectedId: String,
+  thinkingSupported: Boolean,
+  thinkingLevelEnabled: Boolean,
+  fastMode: Boolean,
+  fastModeEnabled: Boolean,
+  onSelect: (String) -> Unit,
+  onFastModeChange: (Boolean) -> Unit,
+  width: Dp,
+  maxHeight: Dp,
+) {
+  val colors = ClawTheme.colors
+  val thinkingOptions = if (thinkingSupported) options else emptyList()
+  // composer.css:1-12 popover chrome, and 3346-3358 reasoning panel wash over it.
+  val shape = RoundedCornerShape(14.dp)
+  Column(
+    modifier =
+      Modifier
+        .width(width)
+        .heightIn(max = maxHeight)
+        .shadow(8.dp, shape, clip = true, ambientColor = colors.text, spotColor = colors.text)
+        .clip(shape)
+        .background(colors.surfaceRaised)
+        .border(1.dp, colors.border, shape)
+        .verticalScroll(rememberScrollState()),
+  ) {
+    if (thinkingOptions.isNotEmpty()) {
+      Box(Modifier.fillMaxWidth().background(colors.surface.copy(alpha = 0.78f))) {
+        ChatEffortSliderControl(
+          options = thinkingOptions,
+          selectedId = selectedId,
+          enabled = thinkingLevelEnabled,
+          onSelect = onSelect,
+        )
+      }
+      HorizontalDivider(color = colors.border.copy(alpha = 0.7f), thickness = 1.dp)
+    }
+    Row(
+      // composer.css:3591-3596 — 11px/12px row with a hairline above it and an 8px icon gap.
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Icon(Icons.Default.Bolt, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
+      Column(modifier = Modifier.weight(1f).widthIn(min = 0.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        // composer.css:3656-3669 — 12px/650 title over a single-line 10px muted description.
+        Text(
+          nativeString("Fast mode"),
+          style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight(650), lineHeight = 16.sp),
+          color = colors.text,
+        )
+        Text(
+          nativeString("Fast responses finish sooner and can use more of your usage limits."),
+          style = TextStyle(fontSize = 10.sp, lineHeight = 13.sp),
+          color = colors.textMuted,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      ChatWebSpeedToggle(
+        checked = fastMode,
+        enabled = fastModeEnabled,
+        onCheckedChange = onFastModeChange,
+      )
+    }
+  }
+}
+
+/** composer.css:3675-3731 — a 36x22 capsule with a 14dp thumb, replacing the iOS-sized ClawToggle. */
+@Composable
+private fun ChatWebSpeedToggle(
+  checked: Boolean,
+  enabled: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+) {
+  val colors = ClawTheme.colors
+  val trackColor = if (checked) colors.accent.copy(alpha = 0.58f) else colors.text.copy(alpha = 0.12f)
+  val borderColor = if (checked) colors.accent.copy(alpha = 0.76f) else colors.border.copy(alpha = 0.92f)
+  Box(
+    modifier =
+      Modifier
+        .size(width = 36.dp, height = 22.dp)
+        .clip(RoundedCornerShape(50))
+        .background(trackColor)
+        .border(1.dp, borderColor, RoundedCornerShape(50))
+        .clickable(
+          enabled = enabled,
+          role = Role.Switch,
+          onClick = { onCheckedChange(!checked) },
+        )
+        .alpha(if (enabled) 1f else 0.55f)
+        .semantics { contentDescription = nativeString("Fast mode") },
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .offset(x = if (checked) 17.dp else 3.dp, y = 3.dp)
+          .size(14.dp)
+          .shadow(2.dp, CircleShape)
+          .background(colors.text, CircleShape),
+    )
   }
 }
 
@@ -4475,6 +4599,7 @@ private fun ChatInputPill(
   fastMode: Boolean,
   fastModeEnabled: Boolean,
   onOpenEffortPicker: () -> Unit,
+  effortPopup: (@Composable () -> Unit)?,
   contextUsage: ChatContextUsage,
   modifier: Modifier = Modifier,
 ) {
@@ -4599,6 +4724,7 @@ private fun ChatInputPill(
               fastMode = fastMode,
               fastModeEnabled = fastModeEnabled,
               onOpen = onOpenEffortPicker,
+              effortPopup = effortPopup,
             )
           }
         }
