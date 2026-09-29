@@ -3639,9 +3639,9 @@ private fun ChatThinkingLevelPicker(
     enabled = enabled,
     modifier =
       // Web composer.css:4010-4015 forces min-width/min-height 44px on both phone triggers
-      // (specificity 0,2,0 beats the shared 32px chip-height token), so the gauge sits in a
-      // 44px square rather than the 32px pill.
-      Modifier.sizeIn(minWidth = 44.dp, minHeight = 44.dp).semantics {
+      // (specificity 0,2,0 beats the shared 32px chip-height token), and the trigger keeps
+      // --chat-composer-chip-padding-inline (6px on phones) so the gauge lands at 48px.
+      Modifier.sizeIn(minWidth = 44.dp, minHeight = 44.dp).padding(horizontal = 6.dp).semantics {
         contentDescription = description
         stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
       },
@@ -4603,7 +4603,7 @@ private fun ChatInputPill(
           }
         }
         if (talkActive) {
-          LiveTalkButton(active = true, onClick = onToggleTalk, modifier = Modifier.size(32.dp))
+          LiveTalkButton(active = true, onClick = onToggleTalk)
         } else {
           ChatComposerMicButton(
             dictationActive = dictationActive,
@@ -4942,20 +4942,29 @@ private fun LiveTalkButton(
   modifier: Modifier = Modifier,
 ) {
   val buttonDescription = if (active) nativeString("End Talk") else nativeString("Start Talk")
-  // Start Talk occupies the primary (send) slot at 36dp; End Talk sits in the mic slot at 32dp.
+  // Web composer.css:1904-1911 .chat-send-btn--voice-live is an auto-width pill with a 64px
+  // floor, 14px side padding and a transparent accent fill: the 39px seven-bar meter plus the
+  // padding lands it at 67px, so pin that width rather than letting the filled content box
+  // grow into the footer's leftover space. Start Talk keeps the row-target disc.
+  val container =
+    if (active) {
+      Modifier.width(67.dp).height(36.dp)
+    } else {
+      Modifier.size(36.dp)
+    }
   Surface(
     onClick = onClick,
-    modifier =
-      Modifier
-        .size(36.dp)
-        .semantics { contentDescription = buttonDescription }
-        .then(modifier),
+    modifier = container.semantics { contentDescription = buttonDescription }.then(modifier),
     shape = CircleShape,
     color = if (active) Color.Transparent else ClawTheme.colors.primary,
-    contentColor = if (active) ClawTheme.colors.accentForeground else ClawTheme.colors.primaryText,
+    contentColor = if (active) ClawTheme.colors.accent else ClawTheme.colors.primaryText,
   ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-      LiveTalkWaveform(active = active, modifier = Modifier.size(20.dp))
+      if (active) {
+        LiveTalkWaveform(active = true, bars = 7, modifier = Modifier.width(39.dp).height(20.dp))
+      } else {
+        LiveTalkWaveform(active = false, modifier = Modifier.size(20.dp))
+      }
     }
   }
 }
@@ -4984,6 +4993,7 @@ private fun StopButton(
 private fun LiveTalkWaveform(
   active: Boolean,
   modifier: Modifier = Modifier,
+  bars: Int = 5,
 ) {
   val color = LocalContentColor.current
   val phase =
@@ -4997,14 +5007,23 @@ private fun LiveTalkWaveform(
     } else {
       0f
     }
+  // Web BAR_GAINS: the seven-bar meter mirrors the accent bar heights, the five-bar
+  // start-talk icon keeps its own mirrored envelope.
+  val gains =
+    if (bars == 7) {
+      floatArrayOf(0.38f, 0.62f, 0.84f, 1f, 0.84f, 0.62f, 0.38f)
+    } else {
+      FloatArray(bars) { 1f - abs(it - (bars - 1) / 2f) * 0.28f }
+    }
 
   Canvas(modifier = modifier) {
-    val strokeWidth = 1.5.dp.toPx()
-    repeat(5) { index ->
-      val envelope = 1f - abs(index - 2) * 0.28f
+    // Web bars are 3px wide inside a 20px meter; the five-bar icon keeps the hairline.
+    val strokeWidth = (if (bars == 7) 3.dp else 1.5.dp).toPx()
+    repeat(bars) { index ->
+      val envelope = gains[index]
       val pulse = if (active) 0.7f + 0.3f * ((sin(phase + index * 0.9f) + 1f) / 2f) else 1f
       val halfHeight = (size.height - strokeWidth * 2f) * envelope * pulse / 2f
-      val x = size.width * (index + 0.5f) / 5f
+      val x = size.width * (index + 0.5f) / bars
       drawLine(
         color = color,
         start = Offset(x, center.y - halfHeight),
