@@ -129,8 +129,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -3638,9 +3638,10 @@ private fun ChatThinkingLevelPicker(
     onClick = onOpen,
     enabled = enabled,
     modifier =
-      // Web .chat-controls__inline-select-trigger on phones: 44px minimum width with the
-      // shared 32px chip height, so the gauge keeps a short pill beside the model name.
-      Modifier.widthIn(min = 44.dp).heightIn(min = 32.dp).semantics {
+      // Web composer.css:4010-4015 forces min-width/min-height 44px on both phone triggers
+      // (specificity 0,2,0 beats the shared 32px chip-height token), so the gauge sits in a
+      // 44px square rather than the 32px pill.
+      Modifier.sizeIn(minWidth = 44.dp, minHeight = 44.dp).semantics {
         contentDescription = description
         stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
       },
@@ -4851,9 +4852,9 @@ private fun ChatComposerModelPicker(
     onClick = onClick,
     enabled = enabled,
     modifier =
-      // Web .chat-controls__inline-select-trigger: --chat-composer-chip-height (32px on
-      // phones) with a 44px minimum width, so the chip is a short pill, not a 44px square.
-      modifier.widthIn(min = 44.dp).heightIn(min = 32.dp).semantics {
+      // Web composer.css:4010-4015: the phone trigger keeps a 44px minimum box while
+      // padding-inline stays 0, so the chip is only as wide as its name.
+      modifier.sizeIn(minWidth = 44.dp, minHeight = 44.dp).semantics {
         contentDescription = description
         contextDescription?.let { stateDescription = it }
         role = Role.Button
