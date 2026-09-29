@@ -214,7 +214,7 @@ private fun MenuBody(
         layout(0, 0) {}
       } else {
         // composer.css:769-774 pins the menu box to 176px and caps it at the viewport gutter.
-        val width = opening.bounds?.width ?: min(176.dp.roundToPx(), limit)
+        val width = opening.bounds?.width ?: minOf(176.dp.roundToPx(), limit)
         val rows = measurables.map { it.measure(Constraints.fixedWidth(width)) }
         val bodyHeight = rows.sumOf { it.height }
         val height = opening.bounds?.height ?: minOf(bodyHeight + padding, maxHeight)

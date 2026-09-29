@@ -132,6 +132,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -3766,7 +3767,7 @@ internal fun ChatEffortSliderControl(
   // composer.css:3346-3478 — the reasoning panel insets 12/12/11, runs a 4px grid, keeps the
   // head 10px off the slider, and insets the slider/scale pair a further 6px.
   Column(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, top = 12.dp, bottom = 11.dp),
+    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 11.dp),
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Row(
