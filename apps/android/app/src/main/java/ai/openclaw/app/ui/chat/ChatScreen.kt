@@ -3840,9 +3840,11 @@ internal fun ChatEffortSliderControl(
       )
       Text(
         selectedLabel,
+        // composer.css:3461-3468 — nowrap keeps the value on a single line.
         style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight(650), lineHeight = 16.sp),
         color = ClawTheme.colors.accent,
         textAlign = TextAlign.End,
+        maxLines = 1,
       )
     }
     // Web shows the discrete slider for any profile with more than one stop
@@ -4099,7 +4101,9 @@ private fun ChatWebSpeedToggle(
     Box(
       modifier =
         Modifier
-          .offset(x = if (checked) 17.dp else 3.dp, y = 3.dp)
+          // composer.css:3713-3727 — top/left 3px inside the padding box, so 4px from the
+          // border box edge; the checked state translates a further 14px.
+          .offset(x = if (checked) 18.dp else 4.dp, y = 4.dp)
           .size(14.dp)
           .shadow(2.dp, CircleShape)
           .background(colors.text, CircleShape),
