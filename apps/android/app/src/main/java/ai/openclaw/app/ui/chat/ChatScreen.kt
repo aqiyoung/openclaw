@@ -9,8 +9,7 @@ import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.PendingAssistantAutoSend
 import ai.openclaw.app.ProviderAuthController
 import ai.openclaw.app.R
-import ai.openclaw.app.SHARED_AUDIO_DOCUMENT_MIME_TYPES
-import ai.openclaw.app.SHARED_VIDEO_MIME_TYPES
+import ai.openclaw.app.SHARED_ATTACHMENT_MIME_ALLOWLIST
 import ai.openclaw.app.SessionCatalog
 import ai.openclaw.app.chat.ChatCommandEntry
 import ai.openclaw.app.chat.ChatComposerOwner
@@ -95,6 +94,9 @@ import ai.openclaw.app.ui.rememberSystemAnimationsEnabled
 import ai.openclaw.app.ui.rememberWindowDisplayFeatureState
 import ai.openclaw.app.ui.sessionPresentationTitle
 import ai.openclaw.app.ui.sidebarCatalogHosts
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -168,6 +170,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -268,6 +271,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.window.layout.DisplayFeature
@@ -276,6 +281,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.DateFormat
 import java.time.Instant
 import java.util.Date
@@ -805,6 +811,59 @@ internal fun ChatScreen(
         )
       }
     }
+  val cameraCaptureUri = rememberSaveable { mutableStateOf<Uri?>(null) }
+  val takePhotoLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+      val uri = cameraCaptureUri.value
+      cameraCaptureUri.value = null
+      val lease = imagePickerOwnerCheckpoint.consume() ?: return@rememberLauncherForActivityResult
+      if (!success || uri == null) {
+        composerState.cancelMediaAcquisition(lease.authorizationId)
+        return@rememberLauncherForActivityResult
+      }
+      val importOwner =
+        if (shouldMigrateComposerDraft(lease.owner, currentPickerOwner, currentPickerMainSessionKey)) {
+          currentPickerOwner
+        } else {
+          lease.owner
+        }
+      viewModel.importChatComposerAttachments(
+        owner = importOwner,
+        mediaAuthorizationId = lease.authorizationId,
+        mainSessionKey = currentPickerMainSessionKey,
+        expectedCount = 1,
+      ) {
+        listOfNotNull(
+          try {
+            loadSizedImageAttachment(resolver, uri)
+          } catch (err: CancellationException) {
+            throw err
+          } catch (_: Throwable) {
+            null
+          },
+        )
+      }
+    }
+  fun beginCameraCapture() {
+    val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return
+    imagePickerOwnerCheckpoint.begin(composerOwner, authorizationId)
+    val captureDirectory = File(context.cacheDir, "camera-captures").apply { mkdirs() }
+    val captureFile = File(captureDirectory, "capture_${System.currentTimeMillis()}.jpg")
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", captureFile)
+    cameraCaptureUri.value = uri
+    takePhotoLauncher.launch(uri)
+  }
+  val cameraPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      if (granted) beginCameraCapture()
+    }
+  fun requestCameraCapture() {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+      beginCameraCapture()
+      return
+    }
+    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+  }
 
   LaunchedEffect(composerOwner) {
     dictationController.cancel()
@@ -1178,13 +1237,11 @@ internal fun ChatScreen(
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
         val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return@ChatComposer
         filePickerOwnerCheckpoint.begin(composerOwner, authorizationId)
-        pickMediaOrDocument.launch(SHARED_AUDIO_DOCUMENT_MIME_TYPES)
+        pickMediaOrDocument.launch(SHARED_ATTACHMENT_MIME_ALLOWLIST.toTypedArray())
       },
-      onPickVideo = {
+      onTakePhoto = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
-        val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return@ChatComposer
-        filePickerOwnerCheckpoint.begin(composerOwner, authorizationId)
-        pickMediaOrDocument.launch(SHARED_VIDEO_MIME_TYPES)
+        requestCameraCapture()
       },
       onRemoveAttachment = { id -> composerState.removeAttachments(composerOwner, setOf(id)) },
       voiceNoteState = voiceNoteState,
@@ -3376,7 +3433,7 @@ private fun ChatComposer(
   onOpenModelPicker: () -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
-  onPickVideo: () -> Unit,
+  onTakePhoto: () -> Unit,
   onRemoveAttachment: (String) -> Unit,
   voiceNoteState: VoiceNoteRecorderState,
   voiceNoteElapsedMs: Long,
@@ -3532,7 +3589,7 @@ private fun ChatComposer(
             onValueChange = onValueChange,
             onPickImages = onPickImages,
             onPickAudioOrDocument = onPickAudioOrDocument,
-            onPickVideo = onPickVideo,
+            onTakePhoto = onTakePhoto,
             onStartVoiceNote = onStartVoiceNote,
             recordVoiceNoteEnabled = ownerReady && recordVoiceNoteEnabled,
             dictationActive = dictationActive,
@@ -4577,7 +4634,7 @@ private fun ChatInputPill(
   onValueChange: (String) -> Unit,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
-  onPickVideo: () -> Unit,
+  onTakePhoto: () -> Unit,
   onStartVoiceNote: () -> Unit,
   recordVoiceNoteEnabled: Boolean,
   dictationActive: Boolean,
@@ -4694,9 +4751,9 @@ private fun ChatInputPill(
             onDismissRequest = { attachmentMenuExpanded = false },
             items =
               listOf(
-                FoldAwareMenuItem("photos", nativeString("Photos"), onPickImages, Icons.Default.Photo),
-                FoldAwareMenuItem("videos", nativeString("Videos"), onPickVideo, Icons.Default.Videocam),
-                FoldAwareMenuItem("files", nativeString("Files"), onPickAudioOrDocument, Icons.Default.AttachFile),
+                FoldAwareMenuItem("camera", nativeString("Take photo"), onTakePhoto, Icons.Default.PhotoCamera),
+                FoldAwareMenuItem("photo", nativeString("Photo"), onPickImages, Icons.Default.Photo),
+                FoldAwareMenuItem("file", nativeString("File"), onPickAudioOrDocument, Icons.Default.AttachFile),
               ),
           )
         }

@@ -72,10 +72,6 @@ internal val SHARED_ATTACHMENT_MIME_ALLOWLIST =
     "text/markdown",
   )
 
-internal val SHARED_AUDIO_DOCUMENT_MIME_TYPES =
-  SHARED_ATTACHMENT_MIME_ALLOWLIST.filterNot { it == "image/*" || it == "video/*" }.toTypedArray()
-internal val SHARED_VIDEO_MIME_TYPES = arrayOf("video/*")
-
 /**
  * Parses app-owned navigation actions that should open a specific home tab.
  */

@@ -2264,7 +2264,7 @@ class ChatComposerLayoutTest {
     showChat(viewportHeight = { 640.dp }, restorationTester = restoration)
     composeRule.onNode(hasSetTextAction()).performTextInput("retained menu draft")
     composeRule.onNodeWithContentDescription(nativeString("Add attachment")).performClick()
-    composeRule.onNodeWithText(nativeString("Photos")).assertIsDisplayed()
+    composeRule.onNodeWithText(nativeString("Take photo")).assertIsDisplayed()
     val old =
       WindowInspector.getGlobalWindowViews().single {
         it.isAttachedToWindow && (it.layoutParams as? WindowManager.LayoutParams)?.type == WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
@@ -2275,7 +2275,7 @@ class ChatComposerLayoutTest {
     composeRule.onNode(isPopup()).assertDoesNotExist()
     composeRule.onNode(hasSetTextAction()).assertTextEquals("retained menu draft")
     composeRule.onNodeWithContentDescription(nativeString("Add attachment")).performClick()
-    for (label in listOf("Photos", "Videos", "Files")) {
+    for (label in listOf("Take photo", "Photo", "File")) {
       composeRule.onNodeWithText(nativeString(label)).assertIsDisplayed()
     }
   }

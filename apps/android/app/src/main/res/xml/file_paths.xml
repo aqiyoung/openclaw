@@ -2,4 +2,5 @@
 <paths>
     <cache-path name="widget_exports" path="exports/" />
     <cache-path name="workspace_files" path="workspace-files/" />
+    <cache-path name="camera_captures" path="camera-captures/" />
 </paths>
