@@ -1,15 +1,15 @@
 {
-  "tag": "v2026.9.26.22",
-  "versionName": "2026.9.26.22",
-  "versionCode": 2026092622,
-  "releaseName": "v2026.9.26.22",
+  "tag": "v2026.9.26.23",
+  "versionName": "2026.9.26.23",
+  "versionCode": 2026092623,
+  "releaseName": "v2026.9.26.23",
   "apk": {
-    "arm64-v8a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.22/openclaw-2026.9.26.22.apk",
-    "armeabi-v7a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.22/openclaw-2026.9.26.22.apk",
-    "x86_64": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.22/openclaw-2026.9.26.22.apk"
+    "arm64-v8a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.23/openclaw-2026.9.26.23.apk",
+    "armeabi-v7a": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.23/openclaw-2026.9.26.23.apk",
+    "x86_64": "https://gh-proxy.com/https://github.com/aqiyoung/openclaw/releases/download/v2026.9.26.23/openclaw-2026.9.26.23.apk"
   },
-  "releaseUrl": "https://github.com/aqiyoung/openclaw/releases/tag/v2026.9.26.22",
+  "releaseUrl": "https://github.com/aqiyoung/openclaw/releases/tag/v2026.9.26.23",
   "critical": false,
-  "notes": "OpenClaw v2026.9.26.22 已发布, 详情见 GitHub Releases",
+  "notes": "OpenClaw v2026.9.26.23 已发布, 详情见 GitHub Releases",
   "updatedAt": "2026-09-29"
 }
