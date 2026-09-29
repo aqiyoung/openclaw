@@ -3638,8 +3638,9 @@ private fun ChatThinkingLevelPicker(
     onClick = onOpen,
     enabled = enabled,
     modifier =
-      // Web mobile effort/model triggers keep a 44px touch box around the 20px gauge.
-      Modifier.size(44.dp).semantics {
+      // Web .chat-controls__inline-select-trigger on phones: 44px minimum width with the
+      // shared 32px chip height, so the gauge keeps a short pill beside the model name.
+      Modifier.widthIn(min = 44.dp).heightIn(min = 32.dp).semantics {
         contentDescription = description
         stateDescription = chatThinkingChipStateDescription(fastMode, selectedId, options, languageTag)
       },
@@ -4551,7 +4552,9 @@ private fun ChatInputPill(
             enabled = inputEnabled,
             modifier = Modifier.size(36.dp),
             shape = CircleShape,
-            color = if (inputEnabled) ClawTheme.colors.surfaceRaised else ClawTheme.colors.surfaceRaised.copy(alpha = 0.5f),
+            // Web .agent-chat__input-btn keeps no fill at rest — the surface is the chrome
+            // and only hover opens a wash, which touch never reaches.
+            color = Color.Transparent,
             contentColor = if (inputEnabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
           ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -4848,7 +4851,9 @@ private fun ChatComposerModelPicker(
     onClick = onClick,
     enabled = enabled,
     modifier =
-      modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).semantics {
+      // Web .chat-controls__inline-select-trigger: --chat-composer-chip-height (32px on
+      // phones) with a 44px minimum width, so the chip is a short pill, not a 44px square.
+      modifier.widthIn(min = 44.dp).heightIn(min = 32.dp).semantics {
         contentDescription = description
         contextDescription?.let { stateDescription = it }
         role = Role.Button
@@ -4866,7 +4871,8 @@ private fun ChatComposerModelPicker(
     ) {
       Text(
         text = label,
-        style = ClawTheme.type.caption,
+        // Web --chat-composer-chip-text: 14px with 1.35 line-height, not the 12sp caption.
+        style = ClawTheme.type.body,
         // fill=false keeps the Surface at content width while the name still truncates
         // inside the share the flexible controls track hands it.
         modifier = Modifier.weight(1f, fill = false),
