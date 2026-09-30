@@ -55,7 +55,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextTransform
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -238,7 +237,7 @@ private fun MenuBody(
           // composer.css:36-46 + 2839-2845: an 11px/700 uppercase title, tracked 0.08em,
           // parked 1px right of the row rail (9px) so heading and options share one left edge.
           Text(
-            title,
+            title.uppercase(),
             color = ClawTheme.colors.textMuted,
             style =
               TextStyle(
@@ -246,7 +245,6 @@ private fun MenuBody(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.88.sp,
                 lineHeight = 13.sp,
-                textTransform = TextTransform.Uppercase,
               ),
             modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 9.dp),
           )
