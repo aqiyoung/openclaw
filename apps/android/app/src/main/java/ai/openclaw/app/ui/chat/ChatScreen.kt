@@ -4418,33 +4418,37 @@ private fun ChatModelProviderGroup(
   Column(modifier = Modifier.fillMaxWidth()) {
     // composer.css:3045-3053 — an 11px/700 tracked uppercase provider label over 8px 10px 3px,
     // carrying the row count and the disclosure chevron.
-    Surface(onClick = onToggle, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        ProviderBrandIcon(provider = provider, size = 16.dp)
-        Text(
-          text = providerDisplayName(provider),
-          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp, lineHeight = 13.sp),
-          color = ClawTheme.colors.textMuted,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.weight(1f, fill = false),
-        )
-        Text(
-          text = models.size.toString(),
-          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, lineHeight = 13.sp),
-          color = ClawTheme.colors.textMuted,
-        )
-        Icon(
-          imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-          contentDescription = null,
-          modifier = Modifier.size(16.dp),
-          tint = ClawTheme.colors.textMuted,
-        )
-      }
+    // A clickable Surface pins itself to a 48dp touch target, so the disclosure is a plain
+    // clickable Row and the heading keeps web's 8px 10px 3px box around an 11px line.
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clickable(role = Role.Button, onClick = onToggle)
+          .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 3.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      if (provider.isNotBlank()) ProviderBrandIcon(provider = provider, size = 16.dp)
+      Text(
+        text = providerDisplayName(provider).ifBlank { nativeString("Models") },
+        style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp, lineHeight = 13.sp),
+        color = ClawTheme.colors.textMuted,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f, fill = false),
+      )
+      Text(
+        text = models.size.toString(),
+        style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, lineHeight = 13.sp),
+        color = ClawTheme.colors.textMuted,
+      )
+      Icon(
+        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+        contentDescription = null,
+        modifier = Modifier.size(16.dp),
+        tint = ClawTheme.colors.textMuted,
+      )
     }
     if (expanded) {
       // composer.css:3126-3140 — a 2px gap separates rows inside one provider list.
@@ -4483,6 +4487,7 @@ private fun ChatModelOptionRow(
   onOpenProviders: () -> Unit,
   onToggleFavorite: (() -> Unit)?,
 ) {
+  val provider = model?.provider.orEmpty()
   val reason = model?.unavailableReason
   val unavailable = model?.available == false
   // composer.css:3303-3326 — an auth-gated row keeps its slot and routes to provider sign-in
@@ -4497,96 +4502,104 @@ private fun ChatModelOptionRow(
         summary.runtimeName,
       ).joinToString(" · ").takeIf { text -> text.isNotEmpty() }
     }
-  Surface(
-    onClick = { if (needsAuth) onOpenProviders() else onSelect() },
-    enabled = model?.let(::chatModelPickerAction) != ChatModelPickerAction.Disabled,
-    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-    shape = RoundedCornerShape(10.dp),
-    // composer.css:2807-2810 — the active option wears the shared 8% text wash.
-    color = if (selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent,
-    contentColor = ClawTheme.colors.text,
+  val selectable = model?.let(::chatModelPickerAction) != ChatModelPickerAction.Disabled
+  // A clickable Material3 Surface enforces a 48dp minimum touch target and then top-aligns its
+  // content, which would stretch web's 40px row and lift the text off centre. MenuRow's plain
+  // clickable Row is the pattern this file already proves at 40px.
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = 40.dp)
+        .clip(RoundedCornerShape(10.dp))
+        // composer.css:2807-2810 — the active option wears the shared 8% text wash.
+        .background(if (selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent)
+        .clickable(
+          enabled = selectable,
+          role = Role.Button,
+          onClick = { if (needsAuth) onOpenProviders() else onSelect() },
+        )
+        .padding(horizontal = 9.dp, vertical = 6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      // composer.css:3187-3199 — an 18px stem holds the 16px brand mark so grouped rows stay
-      // aligned with the provider heading above them.
-      Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
-        ProviderBrandIcon(provider = model?.provider.orEmpty(), size = 16.dp)
-      }
+    // composer.css:3187-3199 — an 18px stem holds the 16px brand mark so grouped rows stay
+    // aligned with the provider heading above them.
+    Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+      // The Default row has no provider of its own, and a blank slug paints an empty fallback
+      // disc; the stem stays so the name keeps web's left edge either way.
+      if (provider.isNotBlank()) ProviderBrandIcon(provider = provider, size = 16.dp)
+    }
+    Text(
+      text = label,
+      style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
+      color = ClawTheme.colors.text,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.weight(1f, fill = false),
+    )
+    if (isDefault) {
+      // composer.css:3271-3286 — a 9px/700 tracked uppercase badge, 6px off the name.
       Text(
-        text = label,
-        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
-        color = ClawTheme.colors.text,
+        text = nativeString("Default").uppercase(),
+        style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.72.sp, lineHeight = 9.sp),
+        color = ClawTheme.colors.textMuted,
+        modifier = Modifier.padding(start = 6.dp),
+      )
+    }
+    if (meta != null) {
+      // composer.css:3288-3301 — a 10px muted meta led by a middot with 6px of air.
+      Text(
+        text = "·",
+        style = TextStyle(fontSize = 10.sp, lineHeight = 14.sp),
+        color = ClawTheme.colors.textMuted,
+        modifier = Modifier.padding(horizontal = 6.dp),
+      )
+      Text(
+        text = meta,
+        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Normal, lineHeight = 14.sp),
+        color = ClawTheme.colors.textMuted,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f, fill = false),
+        modifier = Modifier.widthIn(max = 150.dp),
       )
-      if (isDefault) {
-        // composer.css:3271-3286 — a 9px/700 tracked uppercase badge, 6px off the name.
-        Text(
-          text = nativeString("Default").uppercase(),
-          style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.72.sp, lineHeight = 9.sp),
-          color = ClawTheme.colors.textMuted,
-          modifier = Modifier.padding(start = 6.dp),
-        )
-      }
-      if (meta != null) {
-        // composer.css:3288-3301 — a 10px muted meta led by a middot with 6px of air.
-        Text(
-          text = "·",
-          style = TextStyle(fontSize = 10.sp, lineHeight = 14.sp),
-          color = ClawTheme.colors.textMuted,
-          modifier = Modifier.padding(horizontal = 6.dp),
-        )
-        Text(
-          text = meta,
-          style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Normal, lineHeight = 14.sp),
-          color = ClawTheme.colors.textMuted,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.widthIn(max = 150.dp),
-        )
-      }
-      if (needsAuth) {
-        Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(12.dp), tint = ClawTheme.colors.warning)
-        Text(
-          text = nativeString("Authentication needed"),
-          style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Medium, lineHeight = 14.sp),
-          color = ClawTheme.colors.warning,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.widthIn(max = 150.dp),
-        )
-      }
-      if (model?.supportsTools == false) {
-        // composer.css:3327-3335 — a 16px mark 6px off the title, carrying the chat-only reason.
+    }
+    if (needsAuth) {
+      Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(12.dp), tint = ClawTheme.colors.warning)
+      Text(
+        text = nativeString("Authentication needed"),
+        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Medium, lineHeight = 14.sp),
+        color = ClawTheme.colors.warning,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.widthIn(max = 150.dp),
+      )
+    }
+    if (model?.supportsTools == false) {
+      // composer.css:3327-3335 — a 16px mark 6px off the title, carrying the chat-only reason.
+      Icon(
+        Icons.Default.Info,
+        contentDescription = nativeString("Chat only. This model cannot use tools."),
+        modifier = Modifier.padding(start = 6.dp).size(16.dp),
+        tint = ClawTheme.colors.warning,
+      )
+    }
+    onToggleFavorite?.let { toggle ->
+      Box(
+        modifier = Modifier.size(22.dp).clickable(enabled = !unavailable, role = Role.Button, onClick = toggle),
+        contentAlignment = Alignment.Center,
+      ) {
         Icon(
-          Icons.Default.Info,
-          contentDescription = nativeString("Chat only. This model cannot use tools."),
-          modifier = Modifier.padding(start = 6.dp).size(16.dp),
-          tint = ClawTheme.colors.warning,
+          imageVector = if (pinned) Icons.Default.Star else Icons.Default.StarBorder,
+          contentDescription = if (pinned) nativeString("Unpin model") else nativeString("Pin model"),
+          modifier = Modifier.size(18.dp),
+          tint = if (pinned) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
         )
       }
-      onToggleFavorite?.let { toggle ->
-        Box(
-          modifier = Modifier.size(22.dp).clickable(enabled = !unavailable, role = Role.Button, onClick = toggle),
-          contentAlignment = Alignment.Center,
-        ) {
-          Icon(
-            imageVector = if (pinned) Icons.Default.Star else Icons.Default.StarBorder,
-            contentDescription = if (pinned) nativeString("Unpin model") else nativeString("Pin model"),
-            modifier = Modifier.size(18.dp),
-            tint = if (pinned) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
-          )
-        }
-      }
-      if (selected) {
-        // composer.css:3201-3226 — the trailing 22px slot, which web fills with this check.
-        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
-      }
+    }
+    if (selected) {
+      // composer.css:3201-3226 — the trailing 22px slot, which web fills with this check.
+      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
     }
   }
 }
@@ -4673,26 +4686,24 @@ private fun ChatModelMenuFooter(
       }
     }
     HorizontalDivider(color = ClawTheme.colors.border)
-    Surface(
-      onClick = onOpenPermissionPicker,
-      enabled = permissionPickerEnabled,
-      modifier = Modifier.fillMaxWidth(),
-      color = Color.Transparent,
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(10.dp))
+          .clickable(enabled = permissionPickerEnabled, role = Role.Button, onClick = onOpenPermissionPicker)
+          .padding(vertical = 6.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Row(
-        modifier = Modifier.padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        ChatPermissionIcon(mode = permissionMode, contentDescription = null, modifier = Modifier.size(18.dp))
-        Text(nativeString("Permissions"), style = ClawTheme.type.body, modifier = Modifier.weight(1f))
-        Text(
-          text = if (permissionModePending) nativeString("Applying permissions…") else chatPermissionModeLabel(permissionMode),
-          style = ClawTheme.type.caption,
-          color = ClawTheme.colors.textMuted,
-        )
-        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp), tint = ClawTheme.colors.textMuted)
-      }
+      ChatPermissionIcon(mode = permissionMode, contentDescription = null, modifier = Modifier.size(18.dp))
+      Text(nativeString("Permissions"), style = ClawTheme.type.body, modifier = Modifier.weight(1f))
+      Text(
+        text = if (permissionModePending) nativeString("Applying permissions…") else chatPermissionModeLabel(permissionMode),
+        style = ClawTheme.type.caption,
+        color = ClawTheme.colors.textMuted,
+      )
+      Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp), tint = ClawTheme.colors.textMuted)
     }
     permissionUnavailableReason?.let { reason ->
       Text(reason, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
