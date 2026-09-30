@@ -71,6 +71,13 @@ internal class ChatModelPickerSessionOwner(
     active?.let(::retire)
   }
 
+  /**
+   * A popover host runs its own anchor admission, so its callbacks only need the session to
+   * still be the live one. [admit] additionally re-samples a native sheet's geometry, which
+   * only a sheet that bound its view can answer.
+   */
+  fun live(session: ChatModelPickerSession): Boolean = active === session && !session.geometry.revoked
+
   fun admit(session: ChatModelPickerSession): Boolean {
     if (active !== session || session.geometry.revoked) return false
     // A declined late dismiss may already have hidden its native sheet. Never leave it active.

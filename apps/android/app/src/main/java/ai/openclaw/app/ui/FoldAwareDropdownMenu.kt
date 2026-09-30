@@ -15,17 +15,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,6 +86,10 @@ internal data class FoldAwareMenuItem(
   val enabled: Boolean = true,
   val description: String? = null,
   val selected: Boolean = false,
+  // composer.css:2988-3002 prints a 1-5 shortcut digit on a selectable option and swaps it
+  // for a lock glyph when the option is gated.
+  val shortcut: Int? = null,
+  val locked: Boolean = false,
   val interactionSource: MutableInteractionSource? = null,
 )
 
@@ -98,6 +105,18 @@ internal fun FoldAwareDropdownMenu(
   // composer.css:36-46 sets one quiet uppercase title above an option rail; only the
   // permission picker owns one (composer.css:2839-2845).
   header: String? = null,
+  // composer.css:769-771 gives the attach menu --menu-padding (4px); the permission picker
+  // takes 8px (composer.css:2833-2837).
+  menuPadding: Dp = 4.dp,
+  // composer.css:2826-2827 caps the model menu at min(400px, available height).
+  maxHeight: Dp = Dp.Unspecified,
+  // A menu that hosts a text field must own window focus so the IME reaches it; plain
+  // option lists stay focus-free and out of the IME's way.
+  focusable: Boolean = false,
+  // Content hosts size and filter themselves, so the popup latches its origin only and
+  // tolerates the height changes a live search produces. Option lists keep the stricter
+  // contract: one admitted size, or the menu closes.
+  content: (@Composable () -> Unit)? = null,
 ) {
   val activity = LocalActivity.current
   val host = LocalView.current
@@ -121,7 +140,7 @@ internal fun FoldAwareDropdownMenu(
       owner.detach()
     }
   }
-  SideEffect { owner.update(expanded, items, onDismissRequest, density, direction) }
+  SideEffect { owner.update(expanded, items, onDismissRequest, density, direction, content != null) }
   Layout(
     content = {},
     modifier = Modifier.onGloballyPositioned { owner.publishAnchor(it.parentLayoutCoordinates) },
@@ -137,13 +156,14 @@ internal fun FoldAwareDropdownMenu(
         PopupProperties(
           flags = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
           inheritSecurePolicy = true,
+          focusable = focusable,
         ),
     ) {
       val popupView = LocalView.current
       SideEffect { opening.popupRoot = popupView.rootView }
       // Popup's native layout direction is updated after its first composition.
       CompositionLocalProvider(LocalDensity provides density, LocalLayoutDirection provides direction) {
-        MenuBody(owner, opening, items, width, header)
+        MenuBody(owner, opening, items, width, header, menuPadding, maxHeight, content)
       }
     }
   }
@@ -199,11 +219,44 @@ private fun MenuRow(
         )
       }
     }
-    if (item.selected) {
-      // composer.css:2777-2782 marks the active option with the shared check glyph.
-      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
+    // composer.css:2918-2927 keeps one 16px state slot on the row's trailing edge: a shortcut
+    // digit on a free option, a lock on a gated one, and the shared check on the active row.
+    if (item.locked || item.selected || item.shortcut != null) {
+      Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
+        when {
+          item.locked -> Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.textMuted.copy(alpha = contentAlpha))
+          // composer.css:2777-2782 marks the active option with the shared check glyph.
+          item.selected -> Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
+          // composer.css:2993-3000 — a 9px mono digit, muted, centered in the same 16px slot.
+          item.shortcut != null ->
+            Text(
+              item.shortcut.toString(),
+              color = ClawTheme.colors.textMuted.copy(alpha = contentAlpha),
+              style = ClawTheme.type.mono.copy(fontSize = 9.sp, lineHeight = 16.sp),
+            )
+        }
+      }
     }
   }
+}
+
+/** Web composer menu heading (composer.css:36-46, 2839-2845). */
+@Composable
+private fun MenuHeader(title: String) {
+  // composer.css:36-46 + 2839-2845: an 11px/700 uppercase title, tracked 0.08em,
+  // parked 1px right of the row rail (9px) so heading and options share one left edge.
+  Text(
+    title.uppercase(),
+    color = ClawTheme.colors.textMuted,
+    style =
+      TextStyle(
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.88.sp,
+        lineHeight = 13.sp,
+      ),
+    modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 9.dp),
+  )
 }
 
 @Composable
@@ -213,6 +266,9 @@ private fun MenuBody(
   items: List<FoldAwareMenuItem>,
   width: Dp,
   header: String?,
+  menuPadding: Dp,
+  heightCap: Dp,
+  content: (@Composable () -> Unit)?,
 ) {
   val density = LocalDensity.current
   val scroll = rememberScrollState()
@@ -226,64 +282,77 @@ private fun MenuBody(
     tonalElevation = 0.dp,
     shadowElevation = 8.dp,
   ) {
-    Layout(
-      modifier =
-        Modifier
-          .heightIn(max = with(density) { maxHeight.toDp() })
-          .padding(vertical = 4.dp)
-          .verticalScroll(scroll),
-      content = {
-        header?.let { title ->
-          // composer.css:36-46 + 2839-2845: an 11px/700 uppercase title, tracked 0.08em,
-          // parked 1px right of the row rail (9px) so heading and options share one left edge.
-          Text(
-            title.uppercase(),
-            color = ClawTheme.colors.textMuted,
-            style =
-              TextStyle(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.88.sp,
-                lineHeight = 13.sp,
-              ),
-            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 9.dp),
-          )
+    val contentHost = content
+    if (contentHost != null) {
+      // A content host owns its own scrolling and filtering, so the popover supplies only the
+      // anchored chrome: web's width and height cap, then whatever the host needs. The origin
+      // latches on the first measured frame, and later re-measures only resize a box whose top
+      // edge already sits where web puts it.
+      Layout(
+        modifier = Modifier.width(width).heightIn(max = heightCap),
+        content = {
+          Column(modifier = Modifier.fillMaxWidth()) {
+            header?.let { title -> MenuHeader(title = title) }
+            contentHost()
+          }
+        },
+      ) { measurables, constraints ->
+        val child = measurables.single().measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val size = IntSize(child.width, child.height)
+        if (!owner.report(opening, size)) {
+          layout(0, 0) {}
+        } else {
+          layout(size.width, size.height) { child.place(0, 0) }
         }
-        items.forEach { item ->
-          MenuRow(
-            item = item,
-            onTextLayout = { opening.textLayouts[item.id] = it },
-            onClick = { owner.accept(opening, item.id) },
-          )
-        }
-      },
-    ) { measurables, constraints ->
-      val padding = 8.dp.roundToPx()
-      val requested = width.roundToPx()
-      val limit = minOf(constraints.maxWidth, opening.geometry.available.width, maxOf(requested, 280.dp.roundToPx()))
-      if (opening.terminal || measurables.isEmpty() || limit < 112.dp.roundToPx()) {
-        owner.cancel(opening)
-        layout(0, 0) {}
-      } else {
-        // composer.css:769-774 pins the attach menu to 176px and caps it at the viewport gutter.
-        val menuWidth = opening.bounds?.width ?: minOf(requested, limit)
-        val rows = measurables.map { it.measure(Constraints.fixedWidth(menuWidth)) }
-        val bodyHeight = rows.sumOf { it.height }
-        val height = opening.bounds?.height ?: minOf(bodyHeight + padding, maxHeight)
-        val textLayouts = items.mapNotNull { opening.textLayouts[it.id] }
-        val fits =
-          menuWidth <= limit && height >= rows.maxOf { it.height } + padding &&
-            textLayouts.size == items.size && textLayouts.none { it.hasVisualOverflow }
-        val rowLayout = MenuRows(rows.map { it.height }, textLayouts.map(::menuTextLayout))
-        if (!fits || !owner.admit(opening, IntSize(menuWidth, height), rowLayout)) {
+      }
+    } else {
+      Layout(
+        modifier =
+          Modifier
+            .heightIn(max = with(density) { maxHeight.toDp() })
+            .padding(menuPadding)
+            .verticalScroll(scroll),
+        content = {
+          header?.let { title -> MenuHeader(title = title) }
+          items.forEach { item ->
+            MenuRow(
+              item = item,
+              onTextLayout = { opening.textLayouts[item.id] = it },
+              onClick = { owner.accept(opening, item.id) },
+            )
+          }
+        },
+      ) { measurables, constraints ->
+        // Padding lives outside the Layout, so both axes lose the same inset: the popup keeps
+        // the requested box while the option rail inside it measures width minus 2x the padding.
+        val padding = menuPadding.roundToPx() * 2
+        val requested = width.roundToPx()
+        val limit = minOf(constraints.maxWidth, opening.geometry.available.width, maxOf(requested, 280.dp.roundToPx()))
+        if (opening.terminal || measurables.isEmpty() || limit < 112.dp.roundToPx()) {
           owner.cancel(opening)
           layout(0, 0) {}
         } else {
-          layout(menuWidth, bodyHeight) {
-            var y = 0
-            rows.forEach {
-              it.place(0, y)
-              y += it.height
+          // composer.css:769-774 pins the attach menu to 176px and caps it at the viewport gutter.
+          val menuWidth = opening.bounds?.width ?: minOf(requested, limit)
+          val railWidth = menuWidth - padding
+          val rows = measurables.map { it.measure(Constraints.fixedWidth(railWidth)) }
+          val bodyHeight = rows.sumOf { it.height }
+          val height = opening.bounds?.height ?: minOf(bodyHeight + padding, maxHeight)
+          val textLayouts = items.mapNotNull { opening.textLayouts[it.id] }
+          val fits =
+            menuWidth <= limit && height >= rows.maxOf { it.height } + padding &&
+              textLayouts.size == items.size && textLayouts.none { it.hasVisualOverflow }
+          val rowLayout = MenuRows(rows.map { it.height }, textLayouts.map(::menuTextLayout))
+          if (!fits || !owner.admit(opening, IntSize(menuWidth, height), rowLayout)) {
+            owner.cancel(opening)
+            layout(0, 0) {}
+          } else {
+            layout(railWidth, bodyHeight) {
+              var y = 0
+              rows.forEach {
+                it.place(0, y)
+                y += it.height
+              }
             }
           }
         }
@@ -339,6 +408,8 @@ private class MenuOpening(
   val owner: AnchoredMenuOwner,
   val geometry: MenuGeometry,
   val items: List<Triple<String, String, ImageVector?>>,
+  // Content hosts re-measure as their own list filters, so only the anchor may retire them.
+  val relocates: Boolean = true,
 ) : PopupPositionProvider {
   var terminal = false
   var notified = false
@@ -356,7 +427,7 @@ private class MenuOpening(
   ): IntOffset {
     owner.refresh()
     val admitted = bounds
-    if (anchorBounds != geometry.anchor || admitted?.size != popupContentSize) owner.cancel(this)
+    if (anchorBounds != geometry.anchor || (relocates && admitted?.size != popupContentSize)) owner.cancel(this)
     return admitted?.topLeft ?: geometry.available.topLeft
   }
 }
@@ -410,6 +481,7 @@ private class AnchoredMenuOwner {
     dismiss: () -> Unit,
     density: Density,
     direction: LayoutDirection,
+    hostsContent: Boolean,
   ) {
     val rising = expanded && !this.expanded
     this.dismiss = dismiss
@@ -422,11 +494,11 @@ private class AnchoredMenuOwner {
     if (rising && opening == null) {
       val geometry = geometry()
       if (geometry == null || geometry.available.width < with(density) { 112.dp.roundToPx() } ||
-        geometry.available.height < with(density) { 64.dp.roundToPx() } || items.isEmpty()
+        geometry.available.height < with(density) { 64.dp.roundToPx() } || (!hostsContent && items.isEmpty())
       ) {
         handler.post { if (this.expanded && opening == null) this.dismiss() }
       } else {
-        opening = MenuOpening(this, geometry, itemLayout())
+        opening = MenuOpening(this, geometry, itemLayout(), relocates = !hostsContent)
       }
     }
   }
@@ -447,6 +519,42 @@ private class AnchoredMenuOwner {
       next.token == current.geometry.token && next.display == current.geometry.display &&
       next.available.contains(current.bounds ?: current.geometry.available) && itemLayout() == current.items
 
+  /** Places a popup box the way web anchors its menus: flush to the anchor's leading edge, dropping below when it fits. */
+  private fun place(opening: MenuOpening, size: IntSize): IntRect {
+    val available = opening.geometry.available
+    val anchor = opening.geometry.anchor
+    val start = if (direction == LayoutDirection.Ltr) anchor.left else anchor.right - size.width
+    val end = if (direction == LayoutDirection.Ltr) anchor.right - size.width else anchor.left
+    val x =
+      listOf(start, end).firstOrNull { it >= available.left && it + size.width <= available.right }
+        ?: start.coerceIn(available.left, available.right - size.width)
+    val y =
+      listOf(anchor.bottom, anchor.top - size.height).firstOrNull { it >= available.top && it + size.height <= available.bottom }
+        ?: anchor.bottom.coerceIn(available.top, available.bottom - size.height)
+    return IntRect(IntOffset(x, y), size)
+  }
+
+  /**
+   * A content host reports the size it needs. The origin latches on the first frame that fits
+   * and later frames only resize it, so a search that filters the list cannot retire the popup
+   * that owns the field being typed into.
+   */
+  fun report(
+    current: MenuOpening,
+    size: IntSize,
+  ): Boolean {
+    if (current.terminal) return false
+    if (current.bounds != null) return true
+    if (!valid(current, geometry()) || size.width <= 0 || size.height <= 0 ||
+      !current.geometry.available.contains(IntRect(IntOffset.Zero, size))
+    ) {
+      cancel(current)
+      return false
+    }
+    current.bounds = place(current, size)
+    return true
+  }
+
   fun admit(
     current: MenuOpening,
     size: IntSize,
@@ -454,17 +562,7 @@ private class AnchoredMenuOwner {
   ): Boolean {
     if (!valid(current, geometry())) return false
     if (current.bounds == null) {
-      val available = current.geometry.available
-      val anchor = current.geometry.anchor
-      val start = if (direction == LayoutDirection.Ltr) anchor.left else anchor.right - size.width
-      val end = if (direction == LayoutDirection.Ltr) anchor.right - size.width else anchor.left
-      val x =
-        listOf(start, end).firstOrNull { it >= available.left && it + size.width <= available.right }
-          ?: start.coerceIn(available.left, available.right - size.width)
-      val y =
-        listOf(anchor.bottom, anchor.top - size.height).firstOrNull { it >= available.top && it + size.height <= available.bottom }
-          ?: anchor.bottom.coerceIn(available.top, available.bottom - size.height)
-      current.bounds = IntRect(IntOffset(x, y), size)
+      current.bounds = place(current, size)
       current.rowLayout = rows
     }
     return current.bounds?.size == size && current.rowLayout?.hasSameLayout(rows) == true

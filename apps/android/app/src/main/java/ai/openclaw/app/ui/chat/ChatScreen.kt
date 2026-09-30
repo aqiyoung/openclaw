@@ -164,6 +164,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
@@ -732,6 +733,110 @@ internal fun ChatScreen(
       catalog = modelCatalog,
     )
   val modelUnavailableMessage = chatModelUnavailableText(modelUnavailableReason)
+  val modelPanel: (@Composable () -> Unit)? =
+    modelPicker.visible?.let { opening ->
+      // The original callback target never becomes the newest opening after a coalesced close/open.
+      fun currentSession() =
+        viewModel.chatSessions.value.firstOrNull {
+          isActiveSessionChoice(it.key, opening.sessionKey, viewModel.mainSessionKey.value)
+        }
+
+      fun admitPermissions(): Boolean =
+        modelPicker.live(opening) &&
+          viewModel.chatPermissionSettingsAvailable.value &&
+          currentSession()?.let { !it.sessionId.isNullOrBlank() && it.permissionModePending != true } == true &&
+          opening.sessionKey !in viewModel.chatPendingSessionSettingsKeys.value
+
+      val panel: @Composable () -> Unit = {
+        key(opening) {
+          FoldAwareDropdownMenu(
+            expanded = true,
+            onDismissRequest = { if (modelPicker.live(opening)) modelPicker.retire(opening) },
+            items = emptyList(),
+            // composer.css:2823-2830 — a 340px menu capped at 400px tall. The menu itself is
+            // padding-free (composer.css:2817-2821); the insets belong to the search wrap's 8px
+            // margin and the options rail's own 7px, which the content host already carries.
+            width = 340.dp,
+            menuPadding = 0.dp,
+            maxHeight = 400.dp,
+            // The search field owns the IME, so this popup has to take window focus.
+            focusable = true,
+          ) {
+            ChatModelPickerMenu(
+              admit = { modelPicker.live(opening) },
+              admitPermissions = ::admitPermissions,
+              sections = modelSections,
+              favorites = modelFavorites.toSet(),
+              selectedModelRef = selectedModelRef,
+              selectedModelLabel = selectedModelLabel,
+              modelSelectionLocked = modelSelectionLocked,
+              contextUsage = contextUsage,
+              messages = messages,
+              permissionMode = activeSession?.permissionMode,
+              permissionModePending = permissionModePending,
+              permissionPickerEnabled =
+                permissionSettingsAvailable &&
+                  !activeSession?.sessionId.isNullOrBlank() &&
+                  gatewayConnectionDisplay.isConnected &&
+                  canWriteSessionSettings &&
+                  !permissionModePending &&
+                  !sessionSettingsPending,
+              permissionUnavailableReason =
+                when {
+                  !permissionSettingsAvailable -> nativeString("Update the Gateway to change session permissions.")
+                  activeSession?.sessionId.isNullOrBlank() -> nativeString("Refresh this chat before changing permissions.")
+                  else -> null
+                },
+              canSelectFullPermission = canAdminSessionSettings,
+              onPermissionModeChange = { mode ->
+                if (admitPermissions() && canSelectChatPermissionMode(mode, operatorScopesAllowAdmin(viewModel.operatorScopes.value))) {
+                  viewModel.setChatSessionPermissionMode(opening.sessionKey, mode)
+                  true
+                } else {
+                  false
+                }
+              },
+              onSelect = { modelRef ->
+                val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == modelRef }
+                if (modelPicker.live(opening) && currentSession()?.modelSelectionLocked != true &&
+                  (modelRef == null || model?.let(::chatModelPickerAction) == ChatModelPickerAction.Select)
+                ) {
+                  modelPicker.retire(opening)
+                  viewModel.setChatSessionModel(sessionKey = opening.sessionKey, modelRef = modelRef)
+                }
+              },
+              onOpenProviders = { ref ->
+                val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == ref }
+                if (modelPicker.live(opening) &&
+                  model?.let(::chatModelPickerAction) == ChatModelPickerAction.OpenProviders
+                ) {
+                  modelPicker.retire(opening)
+                  openProviderSignIn()
+                }
+              },
+              onSignIn =
+                if (canAdminSessionSettings) {
+                  {
+                    modelPicker.retire(opening)
+                    openProviderSignIn()
+                  }
+                } else {
+                  null
+                },
+              onToggleFavorite = { ref ->
+                val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == ref }
+                if (modelPicker.live(opening) && currentSession()?.modelSelectionLocked != true &&
+                  model != null && model.available != false
+                ) {
+                  viewModel.toggleModelFavorite(ref)
+                }
+              },
+            )
+          }
+        }
+      }
+      panel
+    }
   val micCaptureActive = micEnabled || micIsListening || micCooldown || talkModeEnabled || talkModeListening
   val voiceNoteRecorder =
     rememberVoiceNoteRecorderController(
@@ -1250,6 +1355,7 @@ internal fun ChatScreen(
       onOpenEffortPicker = { effortPicker.open(composerOwner, sessionKey) },
       effortPopup = effortPanel,
       onOpenModelPicker = { modelPicker.open(composerOwner, sessionKey) },
+      modelPanel = modelPanel,
       onPickImages = {
         if (!viewModel.isCurrentChatComposerOwner(composerOwner)) return@ChatComposer
         val authorizationId = composerState.beginMediaAcquisition(composerOwner) ?: return@ChatComposer
@@ -1364,93 +1470,6 @@ internal fun ChatScreen(
     )
   }
 
-  modelPicker.visible?.let { opening ->
-    // The original callback target never becomes the newest opening after a coalesced close/open.
-    fun currentSession() =
-      viewModel.chatSessions.value.firstOrNull {
-        isActiveSessionChoice(it.key, opening.sessionKey, viewModel.mainSessionKey.value)
-      }
-
-    fun admitPermissions(): Boolean =
-      modelPicker.admit(opening) &&
-        viewModel.chatPermissionSettingsAvailable.value &&
-        currentSession()?.let { !it.sessionId.isNullOrBlank() && it.permissionModePending != true } == true &&
-        opening.sessionKey !in viewModel.chatPendingSessionSettingsKeys.value
-
-    key(opening) {
-      ChatModelPickerSheet(
-        opening = opening,
-        admit = { modelPicker.admit(opening) },
-        admitPermissions = ::admitPermissions,
-        sections = modelSections,
-        favorites = modelFavorites.toSet(),
-        selectedModelLabel = selectedModelLabel,
-        modelSelectionLocked = modelSelectionLocked,
-        contextUsage = contextUsage,
-        messages = messages,
-        permissionMode = activeSession?.permissionMode,
-        permissionModePending = permissionModePending,
-        permissionPickerEnabled =
-          permissionSettingsAvailable &&
-            !activeSession?.sessionId.isNullOrBlank() &&
-            gatewayConnectionDisplay.isConnected &&
-            canWriteSessionSettings &&
-            !permissionModePending &&
-            !sessionSettingsPending,
-        permissionUnavailableReason =
-          when {
-            !permissionSettingsAvailable -> nativeString("Update the Gateway to change session permissions.")
-            activeSession?.sessionId.isNullOrBlank() -> nativeString("Refresh this chat before changing permissions.")
-            else -> null
-          },
-        canSelectFullPermission = canAdminSessionSettings,
-        onPermissionModeChange = { mode ->
-          if (admitPermissions() && canSelectChatPermissionMode(mode, operatorScopesAllowAdmin(viewModel.operatorScopes.value))) {
-            viewModel.setChatSessionPermissionMode(opening.sessionKey, mode)
-            true
-          } else {
-            false
-          }
-        },
-        onDismiss = { if (modelPicker.admit(opening)) modelPicker.retire(opening) },
-        onSelect = { modelRef ->
-          val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == modelRef }
-          if (modelPicker.admit(opening) && currentSession()?.modelSelectionLocked != true &&
-            (modelRef == null || model?.let(::chatModelPickerAction) == ChatModelPickerAction.Select)
-          ) {
-            modelPicker.retire(opening)
-            viewModel.setChatSessionModel(sessionKey = opening.sessionKey, modelRef = modelRef)
-          }
-        },
-        onOpenProviders = { ref ->
-          val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == ref }
-          if (modelPicker.admit(opening) &&
-            model?.let(::chatModelPickerAction) == ChatModelPickerAction.OpenProviders
-          ) {
-            modelPicker.retire(opening)
-            openProviderSignIn()
-          }
-        },
-        onSignIn =
-          if (canAdminSessionSettings) {
-            {
-              modelPicker.retire(opening)
-              openProviderSignIn()
-            }
-          } else {
-            null
-          },
-        onToggleFavorite = { ref ->
-          val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == ref }
-          if (modelPicker.admit(opening) && currentSession()?.modelSelectionLocked != true &&
-            model != null && model.available != false
-          ) {
-            viewModel.toggleModelFavorite(ref)
-          }
-        },
-      )
-    }
-  }
 
   branchOpening?.takeIf { branchPicker.visible === it.session }?.let { opening ->
     key(opening) {
@@ -3458,6 +3477,7 @@ private fun ChatComposer(
   onOpenEffortPicker: () -> Unit,
   effortPopup: (@Composable () -> Unit)?,
   onOpenModelPicker: () -> Unit,
+  modelPanel: (@Composable () -> Unit)?,
   onPickImages: () -> Unit,
   onPickAudioOrDocument: () -> Unit,
   onTakePhoto: () -> Unit,
@@ -3644,6 +3664,7 @@ private fun ChatComposer(
             fastModeEnabled = fastModeEnabled,
             onOpenEffortPicker = onOpenEffortPicker,
             effortPopup = effortPopup,
+            modelPanel = modelPanel,
             contextUsage = contextUsage,
             modifier = Modifier.weight(1f),
           )
@@ -4223,14 +4244,18 @@ internal fun branchMetadataText(branch: SessionBranch): String {
   return if (updated == null) count else nativeString("\$count · \$updated", count, updated)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Web model menu (composer.css:2823-2830 chrome, 2971-3006 search, 3045-3120 provider
+ * headings, 3119-3335 option rows). Android folds its context/cost readout and its permission
+ * sub-page into the same popover, since neither has a home in web's 400px menu.
+ */
 @Composable
-private fun ChatModelPickerSheet(
-  opening: ChatModelPickerSession,
+private fun ChatModelPickerMenu(
   admit: () -> Boolean,
   admitPermissions: () -> Boolean,
   sections: ChatModelPickerSections,
   favorites: Set<String>,
+  selectedModelRef: String?,
   selectedModelLabel: String,
   modelSelectionLocked: Boolean,
   contextUsage: ChatContextUsage,
@@ -4241,296 +4266,439 @@ private fun ChatModelPickerSheet(
   permissionUnavailableReason: String?,
   canSelectFullPermission: Boolean,
   onPermissionModeChange: (ChatPermissionMode?) -> Boolean,
-  onDismiss: () -> Unit,
   onSelect: (String?) -> Unit,
   onOpenProviders: (String) -> Unit,
   onSignIn: (() -> Unit)?,
   onToggleFavorite: (String) -> Unit,
 ) {
-  var showPermissionPicker by rememberSaveable { mutableStateOf(false) }
-  var showUsageDetails by rememberSaveable { mutableStateOf(false) }
-  LaunchedEffect(permissionPickerEnabled) {
-    if (showPermissionPicker && !permissionPickerEnabled && admit()) showPermissionPicker = false
-  }
-  ModalBottomSheet(
-    modifier = Modifier.foldAwareSheet(opening.geometry),
-    onDismissRequest = onDismiss,
-    // IME dismissal can remove a partial-height anchor while the selector opens.
-    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    shape = ClawTheme.shapes.sheet,
-    containerColor = ClawTheme.colors.surface,
-    contentColor = ClawTheme.colors.text,
-    properties =
-      ModalBottomSheetProperties(
-        shouldDismissOnBackPress = false,
-        shouldDismissOnClickOutside = true,
-      ),
-  ) {
-    // Material captures its Back callback's enabled state when the dialog is created.
-    // Own both pages here so recreation cannot leave the model page without Back.
-    BackHandler {
-      if (admit()) {
-        if (showPermissionPicker) showPermissionPicker = false else onDismiss()
+  var query by remember { mutableStateOf("") }
+  var toggled by remember { mutableStateOf<List<String>?>(null) }
+  var showUsageDetails by remember { mutableStateOf(false) }
+  var showPermissionPicker by remember { mutableStateOf(false) }
+  // composer.css:3168-3170 — web ranks the flat option list and then groups it by provider, so a
+  // pinned or recent model leads its own group instead of earning a section of its own.
+  val ranked = sections.pinned + sections.recent + sections.remaining
+  val needle = query.trim()
+  val matches =
+    if (needle.isEmpty()) {
+      ranked
+    } else {
+      ranked.filter { model ->
+        listOf(model.name, providerDisplayName(model.provider), model.runtimeName.orEmpty())
+          .any { field -> field.contains(needle, ignoreCase = true) }
       }
     }
-    // Keep the outer sheet unconstrained: Material anchors use the full window height.
-    // Cap only its scrollable content against the actual inset-adjusted available bounds.
-    BoxWithConstraints {
-      Box(Modifier.heightIn(max = maxHeight * 0.5f)) {
-        if (showPermissionPicker) {
-          ChatPermissionPicker(
-            selectedMode = permissionMode,
-            canSelectFull = canSelectFullPermission,
-            onBack = { if (admit()) showPermissionPicker = false },
-            onSelect = { mode ->
-              if (onPermissionModeChange(mode)) showPermissionPicker = false
-            },
+  val groups = matches.groupBy { model -> model.provider.trim() }
+  val selectedProvider = matches.firstOrNull { it.providerQualifiedRef() == selectedModelRef }?.provider?.trim()
+  val open = toggled ?: listOfNotNull(selectedProvider, groups.keys.firstOrNull()).distinct()
+  Column(modifier = Modifier.fillMaxWidth()) {
+    if (modelSelectionLocked) {
+      // composer.css:3005-3018 — a locked session replaces the picker with label, value, reason.
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Text(
+          text = nativeString("Model"),
+          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp, lineHeight = 13.sp),
+          color = ClawTheme.colors.textMuted,
+        )
+        Text(text = selectedModelLabel, style = ClawTheme.type.label, color = ClawTheme.colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(
+          text = nativeString("Model selection is locked for this session."),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+      }
+    } else if (showPermissionPicker) {
+      ChatPermissionPicker(
+        selectedMode = permissionMode,
+        canSelectFull = canSelectFullPermission,
+        onBack = { if (admit()) showPermissionPicker = false },
+        onSelect = { mode ->
+          if (onPermissionModeChange(mode)) showPermissionPicker = false
+        },
+      )
+    } else {
+      ChatModelSearchField(query = query, onQueryChange = { query = it })
+      Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+        // composer.css:3119-3125 — the options rail carries 7px of side padding over its own scroll.
+        Column(modifier = Modifier.fillMaxWidth().padding(start = 7.dp, end = 7.dp, bottom = 7.dp)) {
+          ChatModelOptionRow(
+            model = null,
+            label = nativeString("Default model"),
+            isDefault = true,
+            selected = selectedModelRef == null,
+            pinned = false,
+            onSelect = { onSelect(null) },
+            onOpenProviders = {},
+            onToggleFavorite = null,
           )
-        } else {
-          LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 24.dp),
-          ) {
-            item {
-              Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = selectedModelLabel, style = ClawTheme.type.label, color = ClawTheme.colors.text)
-                if (modelSelectionLocked) {
-                  Text(text = nativeString("Model selection is locked for this session."), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-                }
-                chatContextSummary(contextUsage)?.let { summary ->
-                  val (pressureLabel, contextColor) =
-                    when {
-                      summary.percent >= 90 -> nativeString("Critical") to ClawTheme.colors.danger
-                      summary.percent >= 75 -> nativeString("Warning") to ClawTheme.colors.warning
-                      else -> null to ClawTheme.colors.primary
-                    }
-                  FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                  ) {
-                    Text(text = nativeString("Context window"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-                    Text(text = summary.detail, style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold), color = ClawTheme.colors.text)
-                    pressureLabel?.let { Text(text = it, style = ClawTheme.type.caption, color = contextColor) }
-                  }
-                  LinearProgressIndicator(
-                    progress = { summary.fraction },
-                    modifier = Modifier.fillMaxWidth().height(4.dp),
-                    color = contextColor,
-                    trackColor = ClawTheme.colors.surfacePressed,
-                  )
-                }
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                  Text(text = nativeString("Latest run"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-                  TextButton(
-                    onClick = { if (admit()) showUsageDetails = !showUsageDetails },
-                    modifier = Modifier.semantics { stateDescription = if (showUsageDetails) nativeString("Expanded") else nativeString("Collapsed") },
-                  ) {
-                    Text(nativeString("Details"))
-                    Icon(if (showUsageDetails) Icons.Default.KeyboardArrowUp else Icons.Default.ArrowDropDown, contentDescription = null)
-                  }
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                  ChatContextStat(label = nativeString("Non-cached input"), value = formatContextUsageTokens(contextUsage.inputTokens), modifier = Modifier.weight(1f))
-                  ChatContextStat(label = nativeString("Output"), value = formatContextUsageTokens(contextUsage.outputTokens), modifier = Modifier.weight(1f))
-                  ChatContextStat(label = nativeString("Est. cost"), value = formatContextEstimatedCost(contextUsage.estimatedCostUsd), modifier = Modifier.weight(1f))
-                }
-                if (showUsageDetails) {
-                  Text(text = nativeString("Non-cached input excludes cache reads."), style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
-                }
-                val latestCallUsage = latestChatMessageUsage(messages)
-                val latestCallCostStats = latestChatMessageCost(messages)?.let(::availableChatCostStats).orEmpty()
-                if (showUsageDetails && (latestCallUsage != null || latestCallCostStats.isNotEmpty())) {
-                  Text(text = nativeString("Latest model call"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-                  latestCallUsage?.let { usage ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                      ChatContextStat(label = nativeString("Non-cached input"), value = formatContextUsageTokens(usage.input), modifier = Modifier.weight(1f))
-                      ChatContextStat(label = nativeString("Output"), value = formatContextUsageTokens(usage.output), modifier = Modifier.weight(1f))
-                      ChatContextStat(label = nativeString("Cache read"), value = formatContextUsageTokens(usage.cacheRead), modifier = Modifier.weight(1f))
-                    }
-                  }
-                  latestCallCostStats.chunked(2).forEach { row ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                      row.forEach { (label, value) ->
-                        ChatContextStat(label = label, value = formatContextEstimatedCost(value), modifier = Modifier.weight(1f))
-                      }
-                      if (row.size == 1) Box(modifier = Modifier.weight(1f))
-                    }
-                  }
-                }
-              }
-            }
-            item {
-              Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Surface(
-                  onClick = { if (admitPermissions()) showPermissionPicker = true },
-                  enabled = permissionPickerEnabled,
-                  modifier = Modifier.weight(1f).heightIn(min = ClawTheme.spacing.touchTarget),
-                  color = Color.Transparent,
-                ) {
-                  Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ChatPermissionIcon(mode = permissionMode, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Text(nativeString("Permissions"), style = ClawTheme.type.body, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                  }
-                }
-                Text(
-                  text = if (permissionModePending) nativeString("Applying permissions…") else chatPermissionModeLabel(permissionMode),
-                  style = ClawTheme.type.caption,
-                  color = ClawTheme.colors.textMuted,
-                  modifier = Modifier.padding(end = 20.dp),
-                )
-              }
-              permissionUnavailableReason?.let { reason ->
-                Text(reason, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
-              }
-            }
-            if (onSignIn != null) {
-              item {
-                TextButton(modifier = Modifier.padding(horizontal = 12.dp), onClick = { if (admit()) onSignIn() }) {
-                  Text(nativeString("Sign in"))
-                }
-              }
-            }
-            if (modelSelectionLocked) return@LazyColumn
-            item {
-              HorizontalDivider(color = ClawTheme.colors.border)
-            }
-            item {
-              Surface(
-                onClick = { onSelect(null) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = ClawTheme.spacing.touchTarget),
-                color = Color.Transparent,
-                contentColor = ClawTheme.colors.text,
-              ) {
-                Text(
-                  text = nativeString("Default model"),
-                  modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-                  style = ClawTheme.type.body,
-                )
-              }
-            }
-            item {
-              HorizontalDivider(color = ClawTheme.colors.border, thickness = 1.dp)
-            }
-            listOf(
-              nativeString("Pinned") to sections.pinned,
-              nativeString("Recent") to sections.recent,
-              nativeString("Models") to sections.remaining,
-            ).forEach { (title, models) ->
-              if (models.isNotEmpty()) {
-                item(key = "section-$title") {
-                  Text(
-                    text = title,
-                    modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 6.dp),
-                    style = ClawTheme.type.caption,
-                    color = ClawTheme.colors.textMuted,
-                  )
-                }
-                itemsIndexed(
-                  items = models,
-                  key = { _, model -> model.providerQualifiedRef() },
-                ) { _, model ->
-                  val ref = model.providerQualifiedRef()
-                  ChatModelPickerRow(
-                    model = model,
-                    pinned = ref in favorites,
-                    onSelect = { onSelect(ref) },
-                    onOpenProviders = { onOpenProviders(ref) },
-                    onToggleFavorite = { onToggleFavorite(ref) },
-                  )
-                }
-              }
-            }
+          groups.forEach { (provider, models) ->
+            ChatModelProviderGroup(
+              provider = provider,
+              models = models,
+              expanded = provider in open,
+              favorites = favorites,
+              selectedModelRef = selectedModelRef,
+              onToggle = { toggled = if (provider in open) open - provider else open + provider },
+              onSelect = onSelect,
+              onOpenProviders = onOpenProviders,
+              onToggleFavorite = onToggleFavorite,
+            )
           }
+        }
+        ChatModelMenuFooter(
+          admit = admit,
+          contextUsage = contextUsage,
+          messages = messages,
+          permissionMode = permissionMode,
+          permissionModePending = permissionModePending,
+          permissionPickerEnabled = permissionPickerEnabled,
+          permissionUnavailableReason = permissionUnavailableReason,
+          showUsageDetails = showUsageDetails,
+          onToggleUsageDetails = { if (admit()) showUsageDetails = !showUsageDetails },
+          onOpenPermissionPicker = { if (admitPermissions()) showPermissionPicker = true },
+          onSignIn = onSignIn,
+        )
+      }
+    }
+  }
+}
+
+/** composer.css:2971-3006 — an 8px inset bordered field: 14px glyph, 7px gap, 34px tall, 12px text. */
+@Composable
+private fun ChatModelSearchField(
+  query: String,
+  onQueryChange: (String) -> Unit,
+) {
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(8.dp)
+        .height(34.dp)
+        .clip(RoundedCornerShape(8.dp))
+        .background(ClawTheme.colors.surface)
+        .border(BorderStroke(1.dp, ClawTheme.colors.border), RoundedCornerShape(8.dp))
+        .padding(horizontal = 10.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(7.dp),
+  ) {
+    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(14.dp), tint = ClawTheme.colors.textMuted)
+    BasicTextField(
+      value = query,
+      onValueChange = onQueryChange,
+      singleLine = true,
+      textStyle =
+        ClawTheme.type.body.copy(
+          fontSize = 12.sp,
+          lineHeight = 16.sp,
+          fontWeight = FontWeight.Normal,
+          color = ClawTheme.colors.text,
+        ),
+      cursorBrush = SolidColor(ClawTheme.colors.primary),
+      modifier = Modifier.weight(1f),
+    )
+  }
+}
+
+@Composable
+private fun ChatModelProviderGroup(
+  provider: String,
+  models: List<GatewayModelSummary>,
+  expanded: Boolean,
+  favorites: Set<String>,
+  selectedModelRef: String?,
+  onToggle: () -> Unit,
+  onSelect: (String) -> Unit,
+  onOpenProviders: (String) -> Unit,
+  onToggleFavorite: (String) -> Unit,
+) {
+  Column(modifier = Modifier.fillMaxWidth()) {
+    // composer.css:3045-3053 — an 11px/700 tracked uppercase provider label over 8px 10px 3px,
+    // carrying the row count and the disclosure chevron.
+    Surface(onClick = onToggle, modifier = Modifier.fillMaxWidth(), color = Color.Transparent) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        ProviderBrandIcon(provider = provider, size = 16.dp)
+        Text(
+          text = providerDisplayName(provider),
+          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.88.sp, lineHeight = 13.sp),
+          color = ClawTheme.colors.textMuted,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f, fill = false),
+        )
+        Text(
+          text = models.size.toString(),
+          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, lineHeight = 13.sp),
+          color = ClawTheme.colors.textMuted,
+        )
+        Icon(
+          imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+          contentDescription = null,
+          modifier = Modifier.size(16.dp),
+          tint = ClawTheme.colors.textMuted,
+        )
+      }
+    }
+    if (expanded) {
+      // composer.css:3126-3140 — a 2px gap separates rows inside one provider list.
+      Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        models.forEach { model ->
+          val ref = model.providerQualifiedRef()
+          ChatModelOptionRow(
+            model = model,
+            label = model.name,
+            isDefault = false,
+            selected = ref == selectedModelRef,
+            pinned = ref in favorites,
+            onSelect = { onSelect(ref) },
+            onOpenProviders = { onOpenProviders(ref) },
+            onToggleFavorite = { onToggleFavorite(ref) },
+          )
         }
       }
     }
   }
 }
 
+/**
+ * composer.css:3239-3335 — one 40px line: provider stem, name, DEFAULT badge, meta, auth warning,
+ * chat-only mark, then the trailing slot. Android keeps its pin star beside web's check rather
+ * than in it, so the selected row still shows both.
+ */
 @Composable
-private fun ChatModelPickerRow(
-  model: GatewayModelSummary,
+private fun ChatModelOptionRow(
+  model: GatewayModelSummary?,
+  label: String,
+  isDefault: Boolean,
+  selected: Boolean,
   pinned: Boolean,
   onSelect: () -> Unit,
   onOpenProviders: () -> Unit,
-  onToggleFavorite: () -> Unit,
+  onToggleFavorite: (() -> Unit)?,
 ) {
-  val action = chatModelPickerAction(model)
-  val unavailable = model.available == false
-  val availabilityLabel =
-    if (!unavailable) {
-      null
-    } else {
-      when (model.unavailableReason) {
-        GatewayModelUnavailableReason.MissingAuth,
-        GatewayModelUnavailableReason.AuthFailed,
-        -> nativeString("Authentication needed")
-
-        GatewayModelUnavailableReason.Cooldown -> nativeString("Unavailable")
-
-        null -> nativeString("Unavailable")
-      }
+  val reason = model?.unavailableReason
+  val unavailable = model?.available == false
+  // composer.css:3303-3326 — an auth-gated row keeps its slot and routes to provider sign-in
+  // instead of dead-ending on a disabled button.
+  val needsAuth =
+    unavailable &&
+      (reason == GatewayModelUnavailableReason.MissingAuth || reason == GatewayModelUnavailableReason.AuthFailed)
+  val meta =
+    model?.let { summary ->
+      listOfNotNull(
+        summary.contextTokens?.takeIf { tokens -> tokens > 0L }?.let { tokens -> formatContextUsageTokens(tokens) },
+        summary.runtimeName,
+      ).joinToString(" · ").takeIf { text -> text.isNotEmpty() }
     }
   Surface(
-    onClick = {
-      when (action) {
-        ChatModelPickerAction.Select -> onSelect()
-        ChatModelPickerAction.OpenProviders -> onOpenProviders()
-        ChatModelPickerAction.Disabled -> Unit
-      }
-    },
-    enabled = action != ChatModelPickerAction.Disabled,
-    modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
-    color = Color.Transparent,
-    contentColor = if (unavailable) ClawTheme.colors.textMuted else ClawTheme.colors.text,
+    onClick = { if (needsAuth) onOpenProviders() else onSelect() },
+    enabled = model?.let(::chatModelPickerAction) != ChatModelPickerAction.Disabled,
+    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+    shape = RoundedCornerShape(10.dp),
+    // composer.css:2807-2810 — the active option wears the shared 8% text wash.
+    color = if (selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent,
+    contentColor = ClawTheme.colors.text,
   ) {
     Row(
-      modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+      modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      ProviderBrandIcon(provider = model.provider, size = 24.dp)
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-          text = model.name,
-          style = ClawTheme.type.body.copy(fontWeight = FontWeight.Medium),
-          color = if (unavailable) ClawTheme.colors.textMuted else ClawTheme.colors.text,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-          text = listOfNotNull(providerDisplayName(model.provider), model.runtimeName, availabilityLabel).joinToString(" · "),
-          style = ClawTheme.type.caption.copy(fontWeight = FontWeight.Normal),
-          color = if (unavailable) ClawTheme.colors.warning else ClawTheme.colors.textMuted,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        if (model.supportsTools == false) {
-          Text(nativeString("Chat only. This model cannot use tools."), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        }
-        val capabilities =
-          listOfNotNull(
-            nativeString("Images").takeIf { model.supportsVision },
-            nativeString("Audio").takeIf { model.supportsAudio },
-            nativeString("Video").takeIf { model.supportsVideo },
-            nativeString("Documents").takeIf { model.supportsDocuments },
-          )
-        if (capabilities.isNotEmpty()) {
-          Text(capabilities.joinToString(" · "), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
-        }
+      // composer.css:3187-3199 — an 18px stem holds the 16px brand mark so grouped rows stay
+      // aligned with the provider heading above them.
+      Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+        ProviderBrandIcon(provider = model?.provider.orEmpty(), size = 16.dp)
       }
-      IconButton(onClick = onToggleFavorite, enabled = !unavailable) {
+      Text(
+        text = label,
+        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
+        color = ClawTheme.colors.text,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f, fill = false),
+      )
+      if (isDefault) {
+        // composer.css:3271-3286 — a 9px/700 tracked uppercase badge, 6px off the name.
+        Text(
+          text = nativeString("Default").uppercase(),
+          style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.72.sp, lineHeight = 9.sp),
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.padding(start = 6.dp),
+        )
+      }
+      if (meta != null) {
+        // composer.css:3288-3301 — a 10px muted meta led by a middot with 6px of air.
+        Text(
+          text = "·",
+          style = TextStyle(fontSize = 10.sp, lineHeight = 14.sp),
+          color = ClawTheme.colors.textMuted,
+          modifier = Modifier.padding(horizontal = 6.dp),
+        )
+        Text(
+          text = meta,
+          style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Normal, lineHeight = 14.sp),
+          color = ClawTheme.colors.textMuted,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.widthIn(max = 150.dp),
+        )
+      }
+      if (needsAuth) {
+        Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(12.dp), tint = ClawTheme.colors.warning)
+        Text(
+          text = nativeString("Authentication needed"),
+          style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Medium, lineHeight = 14.sp),
+          color = ClawTheme.colors.warning,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.widthIn(max = 150.dp),
+        )
+      }
+      if (model?.supportsTools == false) {
+        // composer.css:3327-3335 — a 16px mark 6px off the title, carrying the chat-only reason.
         Icon(
-          imageVector = if (pinned) Icons.Default.Star else Icons.Default.StarBorder,
-          contentDescription = if (pinned) nativeString("Unpin model") else nativeString("Pin model"),
-          tint = if (pinned) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+          Icons.Default.Info,
+          contentDescription = nativeString("Chat only. This model cannot use tools."),
+          modifier = Modifier.padding(start = 6.dp).size(16.dp),
+          tint = ClawTheme.colors.warning,
         )
       }
+      onToggleFavorite?.let { toggle ->
+        Box(
+          modifier = Modifier.size(22.dp).clickable(enabled = !unavailable, role = Role.Button, onClick = toggle),
+          contentAlignment = Alignment.Center,
+        ) {
+          Icon(
+            imageVector = if (pinned) Icons.Default.Star else Icons.Default.StarBorder,
+            contentDescription = if (pinned) nativeString("Unpin model") else nativeString("Pin model"),
+            modifier = Modifier.size(18.dp),
+            tint = if (pinned) ClawTheme.colors.primary else ClawTheme.colors.textMuted,
+          )
+        }
+      }
+      if (selected) {
+        // composer.css:3201-3226 — the trailing 22px slot, which web fills with this check.
+        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
+      }
+    }
+  }
+}
+
+/** Android's context/cost readout and permission entry, folded in under web's option list. */
+@Composable
+private fun ChatModelMenuFooter(
+  admit: () -> Boolean,
+  contextUsage: ChatContextUsage,
+  messages: List<ChatMessage>,
+  permissionMode: ChatPermissionMode?,
+  permissionModePending: Boolean,
+  permissionPickerEnabled: Boolean,
+  permissionUnavailableReason: String?,
+  showUsageDetails: Boolean,
+  onToggleUsageDetails: () -> Unit,
+  onOpenPermissionPicker: () -> Unit,
+  onSignIn: (() -> Unit)?,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp),
+    verticalArrangement = Arrangement.spacedBy(6.dp),
+  ) {
+    HorizontalDivider(color = ClawTheme.colors.border)
+    chatContextSummary(contextUsage)?.let { summary ->
+      val (pressureLabel, contextColor) =
+        when {
+          summary.percent >= 90 -> nativeString("Critical") to ClawTheme.colors.danger
+          summary.percent >= 75 -> nativeString("Warning") to ClawTheme.colors.warning
+          else -> null to ClawTheme.colors.primary
+        }
+      FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        Text(text = nativeString("Context window"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+        Text(text = summary.detail, style = ClawTheme.type.caption.copy(fontWeight = FontWeight.SemiBold), color = ClawTheme.colors.text)
+        pressureLabel?.let { Text(text = it, style = ClawTheme.type.caption, color = contextColor) }
+      }
+      LinearProgressIndicator(
+        progress = { summary.fraction },
+        modifier = Modifier.fillMaxWidth().height(4.dp),
+        color = contextColor,
+        trackColor = ClawTheme.colors.surfacePressed,
+      )
+    }
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+      Text(text = nativeString("Latest run"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+      TextButton(
+        onClick = onToggleUsageDetails,
+        modifier = Modifier.semantics { stateDescription = if (showUsageDetails) nativeString("Expanded") else nativeString("Collapsed") },
+      ) {
+        Text(nativeString("Details"))
+        Icon(if (showUsageDetails) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null)
+      }
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+      ChatContextStat(label = nativeString("Non-cached input"), value = formatContextUsageTokens(contextUsage.inputTokens), modifier = Modifier.weight(1f))
+      ChatContextStat(label = nativeString("Output"), value = formatContextUsageTokens(contextUsage.outputTokens), modifier = Modifier.weight(1f))
+      ChatContextStat(label = nativeString("Est. cost"), value = formatContextEstimatedCost(contextUsage.estimatedCostUsd), modifier = Modifier.weight(1f))
+    }
+    if (showUsageDetails) {
+      Text(text = nativeString("Non-cached input excludes cache reads."), style = ClawTheme.type.caption, color = ClawTheme.colors.textSubtle)
+      val latestCallUsage = latestChatMessageUsage(messages)
+      val latestCallCostStats = latestChatMessageCost(messages)?.let(::availableChatCostStats).orEmpty()
+      if (latestCallUsage != null || latestCallCostStats.isNotEmpty()) {
+        Text(text = nativeString("Latest model call"), style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+        latestCallUsage?.let { usage ->
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ChatContextStat(label = nativeString("Non-cached input"), value = formatContextUsageTokens(usage.input), modifier = Modifier.weight(1f))
+            ChatContextStat(label = nativeString("Output"), value = formatContextUsageTokens(usage.output), modifier = Modifier.weight(1f))
+            ChatContextStat(label = nativeString("Cache read"), value = formatContextUsageTokens(usage.cacheRead), modifier = Modifier.weight(1f))
+          }
+        }
+        latestCallCostStats.chunked(2).forEach { row ->
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            row.forEach { (label, value) ->
+              ChatContextStat(label = label, value = formatContextEstimatedCost(value), modifier = Modifier.weight(1f))
+            }
+            if (row.size == 1) Box(modifier = Modifier.weight(1f))
+          }
+        }
+      }
+    }
+    HorizontalDivider(color = ClawTheme.colors.border)
+    Surface(
+      onClick = onOpenPermissionPicker,
+      enabled = permissionPickerEnabled,
+      modifier = Modifier.fillMaxWidth(),
+      color = Color.Transparent,
+    ) {
+      Row(
+        modifier = Modifier.padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        ChatPermissionIcon(mode = permissionMode, contentDescription = null, modifier = Modifier.size(18.dp))
+        Text(nativeString("Permissions"), style = ClawTheme.type.body, modifier = Modifier.weight(1f))
+        Text(
+          text = if (permissionModePending) nativeString("Applying permissions…") else chatPermissionModeLabel(permissionMode),
+          style = ClawTheme.type.caption,
+          color = ClawTheme.colors.textMuted,
+        )
+        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp), tint = ClawTheme.colors.textMuted)
+      }
+    }
+    permissionUnavailableReason?.let { reason ->
+      Text(reason, style = ClawTheme.type.caption, color = ClawTheme.colors.textMuted)
+    }
+    onSignIn?.let { signIn ->
+      TextButton(onClick = { if (admit()) signIn() }, modifier = Modifier.fillMaxWidth()) { Text(nativeString("Sign in")) }
     }
   }
 }
@@ -4685,6 +4853,7 @@ private fun ChatInputPill(
   selectedModelLabel: String,
   modelPickerEnabled: Boolean,
   onOpenModelPicker: () -> Unit,
+  modelPanel: (@Composable () -> Unit)?,
   thinkingLevel: String,
   thinkingOptions: List<ChatThinkingLevelOption>,
   thinkingSupported: Boolean,
@@ -4827,15 +4996,20 @@ private fun ChatInputPill(
             // composer.css:2836-2839 — the permission menu widens past the attach menu's 176px.
             width = 340.dp,
             header = nativeString("Permissions"),
+            // composer.css:2833-2837 — twice the attach menu's --menu-padding.
+            menuPadding = 8.dp,
             items =
-              chatPermissionOptions().map { option ->
+              chatPermissionOptions().mapIndexed { index, option ->
+                val selectable = canSelectChatPermissionMode(option.mode, canSelectFullPermission)
                 FoldAwareMenuItem(
                   id = option.mode?.wireValue ?: "policy-default",
                   label = option.label,
                   description = option.description,
                   icon = chatPermissionIcon(option.mode),
                   selected = option.mode == permissionMode,
-                  enabled = canSelectChatPermissionMode(option.mode, canSelectFullPermission),
+                  enabled = selectable,
+                  shortcut = index + 1,
+                  locked = !selectable,
                   onClick = { onSelectPermission(option.mode) },
                 )
               },
@@ -4855,6 +5029,7 @@ private fun ChatInputPill(
             contextUsage = contextUsage,
             enabled = modelPickerEnabled,
             onClick = onOpenModelPicker,
+            modelPanel = modelPanel,
             modifier = Modifier.weight(1f, fill = false),
           )
           if (thinkingSupported || fastModeEnabled || fastMode) {
@@ -5112,6 +5287,7 @@ private fun ChatComposerModelPicker(
   contextUsage: ChatContextUsage,
   enabled: Boolean,
   onClick: () -> Unit,
+  modelPanel: (@Composable () -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
   val description = nativeString("Model")
@@ -5132,32 +5308,37 @@ private fun ChatComposerModelPicker(
     color = Color.Transparent,
     contentColor = if (enabled) ClawTheme.colors.textMuted else ClawTheme.colors.textSubtle,
   ) {
-    Row(
-      // Web mobile .chat-controls__model-trigger: padding-inline 0, a 3px gap between its
-      // slots and centered content, so the chip is only as wide as its name. The usage dial
-      // lives in the footer's context group; the trigger only announces it as its state.
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
-    ) {
-      Text(
-        text = label,
-        // Web --chat-composer-chip-text: 14px with 1.35 line-height, not the 12sp caption.
-        style = ClawTheme.type.body,
-        // fill=false keeps the Surface at content width while the name still truncates
-        // inside the share the flexible controls track hands it.
-        modifier = Modifier.weight(1f, fill = false),
-        // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
-        maxLines = 1,
-        overflow = TextOverflow.MiddleEllipsis,
-      )
-      Icon(
-        imageVector = Icons.Default.KeyboardArrowDown,
-        contentDescription = null,
-        modifier = Modifier.size(14.dp),
-        // Web .chat-controls__inline-select-chevron: var(--muted) at 0.55, rotated 180deg while
-        // collapsed so it points down and flips up once the picker opens.
-        tint = ClawTheme.colors.textSubtle.copy(alpha = if (enabled) 0.55f else 0.30f),
-      )
+    // The popover anchors to this Box, so the trigger stays its stationary anchor exactly as
+    // the web <summary> does; a Box keeps the popup out of the trigger's spacedBy arrangement.
+    Box {
+      Row(
+        // Web mobile .chat-controls__model-trigger: padding-inline 0, a 3px gap between its
+        // slots and centered content, so the chip is only as wide as its name. The usage dial
+        // lives in the footer's context group; the trigger only announces it as its state.
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
+      ) {
+        Text(
+          text = label,
+          // Web --chat-composer-chip-text: 14px with 1.35 line-height, not the 12sp caption.
+          style = ClawTheme.type.body,
+          // fill=false keeps the Surface at content width while the name still truncates
+          // inside the share the flexible controls track hands it.
+          modifier = Modifier.weight(1f, fill = false),
+          // Android supports middle ellipsis only on one line; keep both ends of the model name visible.
+          maxLines = 1,
+          overflow = TextOverflow.MiddleEllipsis,
+        )
+        Icon(
+          imageVector = Icons.Default.KeyboardArrowDown,
+          contentDescription = null,
+          modifier = Modifier.size(14.dp),
+          // Web .chat-controls__inline-select-chevron: var(--muted) at 0.55, rotated 180deg while
+          // collapsed so it points down and flips up once the picker opens.
+          tint = ClawTheme.colors.textSubtle.copy(alpha = if (enabled) 0.55f else 0.30f),
+        )
+      }
+      modelPanel?.invoke()
     }
   }
 }
