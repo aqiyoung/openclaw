@@ -1175,6 +1175,7 @@ internal fun ChatScreen(
   ) { onJumpToLatest, compactHeight, tabletop ->
     // Web chat-pane-session-controls.ts:1370-1376 gates the composer permission control on the
     // same availability facts the model sheet already checks.
+    val composerPermissionMode = activeSession?.permissionMode
     val composerPermissionEnabled =
       permissionSettingsAvailable &&
         !activeSession?.sessionId.isNullOrBlank() &&
@@ -1220,13 +1221,13 @@ internal fun ChatScreen(
       contextUsage = contextUsage,
       selectedModelLabel = selectedModelLabel,
       modelPickerEnabled = gatewayConnectionDisplay.isConnected && canWriteSessionSettings,
-      permissionMode = activeSession?.permissionMode,
+      permissionMode = composerPermissionMode,
       permissionEnabled = composerPermissionEnabled,
       canSelectFullPermission = canAdminSessionSettings,
       onSelectPermission = { mode ->
         if (
           composerPermissionEnabled &&
-            mode != activeSession?.permissionMode &&
+            mode != composerPermissionMode &&
             canSelectChatPermissionMode(mode, canAdminSessionSettings)
         ) {
           viewModel.setChatSessionPermissionMode(sessionKey, mode)
