@@ -151,13 +151,19 @@ internal fun FoldAwareDropdownMenu(
     Popup(
       popupPositionProvider = opening,
       onDismissRequest = opening.dismiss,
-      // Non-editing menus own native focus without becoming IME targets.
       properties =
-        PopupProperties(
-          flags = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
-          inheritSecurePolicy = true,
-          focusable = focusable,
-        ),
+        if (focusable) {
+          // A host with a text field has to own window focus and become the IME target. That
+          // lives on PopupProperties' newer constructor, which cannot also take raw flags; its
+          // defaults already watch outside taps, inherit the secure policy and dismiss on Back.
+          PopupProperties(focusable = true)
+        } else {
+          // Non-editing menus own native focus without becoming IME targets.
+          PopupProperties(
+            flags = WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+            inheritSecurePolicy = true,
+          )
+        },
     ) {
       val popupView = LocalView.current
       SideEffect { opening.popupRoot = popupView.rootView }
