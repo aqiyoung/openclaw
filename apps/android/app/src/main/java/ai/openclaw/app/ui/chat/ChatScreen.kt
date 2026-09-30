@@ -240,6 +240,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -798,6 +799,16 @@ internal fun ChatScreen(
               },
               onSelect = { modelRef ->
                 val model = viewModel.chatModelCatalog.value.firstOrNull { it.providerQualifiedRef() == modelRef }
+                val diagGate =
+                  when {
+                    !modelPicker.live(opening) -> "live=false"
+                    currentSession()?.modelSelectionLocked == true -> "locked"
+                    modelRef != null && model == null -> "no-such-model"
+                    modelRef != null && model?.let(::chatModelPickerAction) != ChatModelPickerAction.Select ->
+                      "action=" + model?.let(::chatModelPickerAction)
+                    else -> "pass"
+                  }
+                Toast.makeText(context, "select $diagGate", Toast.LENGTH_SHORT).show()
                 if (modelPicker.live(opening) && currentSession()?.modelSelectionLocked != true &&
                   (modelRef == null || model?.let(::chatModelPickerAction) == ChatModelPickerAction.Select)
                 ) {
@@ -4503,6 +4514,8 @@ private fun ChatModelOptionRow(
       ).joinToString(" · ").takeIf { text -> text.isNotEmpty() }
     }
   val selectable = model?.let(::chatModelPickerAction) != ChatModelPickerAction.Disabled
+  // TEMP DIAGNOSTIC (click report) — remove as soon as the tap path is confirmed.
+  val diagContext = LocalContext.current
   // A clickable Material3 Surface enforces a 48dp minimum touch target and then top-aligns its
   // content, which would stretch web's 40px row and lift the text off centre. MenuRow's plain
   // clickable Row is the pattern this file already proves at 40px.
@@ -4514,6 +4527,19 @@ private fun ChatModelOptionRow(
         .clip(RoundedCornerShape(10.dp))
         // composer.css:2807-2810 — the active option wears the shared 8% text wash.
         .background(if (selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent)
+        // TEMP DIAGNOSTIC — placed ahead of clickable so it still sees the down when the row is disabled.
+        .pointerInput(selectable) {
+          awaitPointerEventScope {
+            var held = false
+            while (true) {
+              val pressed = awaitPointerEvent().changes.any { it.pressed }
+              if (pressed && !held) {
+                Toast.makeText(diagContext, "down sel=$selectable", Toast.LENGTH_SHORT).show()
+              }
+              held = pressed
+            }
+          }
+        }
         .clickable(
           enabled = selectable,
           role = Role.Button,
