@@ -4530,13 +4530,16 @@ private fun ChatModelOptionRow(
       // disc; the stem stays so the name keeps web's left edge either way.
       if (provider.isNotBlank()) ProviderBrandIcon(provider = provider, size = 16.dp)
     }
+    // Row measures unweighted children first, so the name claims the leftover with weight
+    // rather than fill=false: it stretches to the edge (web's margin-left: auto pushes the
+    // action slot right) and still ellipsizes when the meta and the badges crowd it out.
     Text(
       text = label,
       style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
       color = ClawTheme.colors.text,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.weight(1f, fill = false),
+      modifier = Modifier.weight(1f),
     )
     if (isDefault) {
       // composer.css:3271-3286 — a 9px/700 tracked uppercase badge, 6px off the name.
@@ -4561,7 +4564,7 @@ private fun ChatModelOptionRow(
         color = ClawTheme.colors.textMuted,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.widthIn(max = 150.dp),
+        modifier = Modifier.widthIn(max = 110.dp),
       )
     }
     if (needsAuth) {
@@ -4572,7 +4575,7 @@ private fun ChatModelOptionRow(
         color = ClawTheme.colors.warning,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.widthIn(max = 150.dp),
+        modifier = Modifier.widthIn(max = 110.dp),
       )
     }
     if (model?.supportsTools == false) {
