@@ -236,6 +236,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -1172,6 +1173,15 @@ internal fun ChatScreen(
       if ((!compactHeight || tabletop) && !detailsExpanded) headerContent(onJumpToLatest) { detailsExpanded = false }
     },
   ) { onJumpToLatest, compactHeight, tabletop ->
+    // Web chat-pane-session-controls.ts:1370-1376 gates the composer permission control on the
+    // same availability facts the model sheet already checks.
+    val composerPermissionEnabled =
+      permissionSettingsAvailable &&
+        !activeSession?.sessionId.isNullOrBlank() &&
+        gatewayConnectionDisplay.isConnected &&
+        canWriteSessionSettings &&
+        !permissionModePending &&
+        !sessionSettingsPending
     ChatComposer(
       ownerReady = composerOwnerReady,
       compactHeight = compactHeight,
@@ -1210,6 +1220,18 @@ internal fun ChatScreen(
       contextUsage = contextUsage,
       selectedModelLabel = selectedModelLabel,
       modelPickerEnabled = gatewayConnectionDisplay.isConnected && canWriteSessionSettings,
+      permissionMode = activeSession?.permissionMode,
+      permissionEnabled = composerPermissionEnabled,
+      canSelectFullPermission = canAdminSessionSettings,
+      onSelectPermission = { mode ->
+        if (
+          composerPermissionEnabled &&
+            mode != activeSession?.permissionMode &&
+            canSelectChatPermissionMode(mode, canAdminSessionSettings)
+        ) {
+          viewModel.setChatSessionPermissionMode(sessionKey, mode)
+        }
+      },
       healthOk = healthOk,
       gatewayOffline = gatewayOffline,
       offlineStatus = offlineStatus,
@@ -3418,6 +3440,10 @@ private fun ChatComposer(
   contextUsage: ChatContextUsage,
   selectedModelLabel: String,
   modelPickerEnabled: Boolean,
+  permissionMode: ChatPermissionMode?,
+  permissionEnabled: Boolean,
+  canSelectFullPermission: Boolean,
+  onSelectPermission: (ChatPermissionMode?) -> Unit,
   healthOk: Boolean,
   gatewayOffline: Boolean,
   offlineStatus: String,
@@ -3604,6 +3630,10 @@ private fun ChatComposer(
             onSend = onSend,
             selectedModelLabel = selectedModelLabel,
             modelPickerEnabled = ownerReady && modelPickerEnabled,
+            permissionMode = permissionMode,
+            permissionEnabled = ownerReady && permissionEnabled,
+            canSelectFullPermission = canSelectFullPermission,
+            onSelectPermission = onSelectPermission,
             onOpenModelPicker = onOpenModelPicker,
             thinkingLevel = thinkingLevel,
             thinkingOptions = thinkingOptions,
@@ -4663,10 +4693,15 @@ private fun ChatInputPill(
   onOpenEffortPicker: () -> Unit,
   effortPopup: (@Composable () -> Unit)?,
   contextUsage: ChatContextUsage,
+  permissionMode: ChatPermissionMode?,
+  permissionEnabled: Boolean,
+  canSelectFullPermission: Boolean,
+  onSelectPermission: (ChatPermissionMode?) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val hardwareEnterHandler = remember { PhysicalChatSendKeyHandler() }
   var attachmentMenuExpanded by remember { mutableStateOf(false) }
+  var permissionMenuExpanded by remember { mutableStateOf(false) }
   val draftStyle = chatDraftStyle()
 
   ClawComposerSurface(
@@ -4761,8 +4796,52 @@ private fun ChatInputPill(
               ),
           )
         }
+        // Web .composer-lead carries the permission trigger beside the add button: a 44x32 pill
+        // on phones (composer.css:4227-4231) with its label dropped (composer.css:4234-4238) and
+        // an 18px shield painted at --chat-mobile-row-muted-opacity (0.55), flush to the add
+        // button because the phone lead collapses its gap to 0 (composer.css:3972-3975).
+        Box {
+          val permissionColor =
+            (if (permissionMode == ChatPermissionMode.Full) ClawTheme.colors.primary else ClawTheme.colors.textMuted)
+              .copy(alpha = if (permissionEnabled) 0.55f else 0.30f)
+          Surface(
+            onClick = { permissionMenuExpanded = true },
+            enabled = permissionEnabled,
+            modifier = Modifier.size(width = 44.dp, height = 32.dp),
+            shape = ClawTheme.shapes.pill,
+            color = Color.Transparent,
+            contentColor = permissionColor,
+          ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              ChatPermissionIcon(
+                mode = permissionMode,
+                contentDescription = nativeString("Permissions"),
+                modifier = Modifier.size(18.dp),
+              )
+            }
+          }
+          FoldAwareDropdownMenu(
+            expanded = permissionMenuExpanded && permissionEnabled,
+            onDismissRequest = { permissionMenuExpanded = false },
+            // composer.css:2836-2839 — the permission menu widens past the attach menu's 176px.
+            width = 340.dp,
+            header = nativeString("Permissions"),
+            items =
+              chatPermissionOptions().map { option ->
+                FoldAwareMenuItem(
+                  id = option.mode?.wireValue ?: "policy-default",
+                  label = option.label,
+                  description = option.description,
+                  icon = chatPermissionIcon(option.mode),
+                  selected = option.mode == permissionMode,
+                  enabled = canSelectChatPermissionMode(option.mode, canSelectFullPermission),
+                  onClick = { onSelectPermission(option.mode) },
+                )
+              },
+          )
+        }
         // Web .composer-meta.composer-context: the usage dial is its own footer group,
-        // flush against the add button and ahead of the flexible controls track.
+        // flush against the permission trigger and ahead of the flexible controls track.
         ChatComposerContextRing(summary = chatContextSummary(contextUsage), enabled = modelPickerEnabled)
         // Web .composer-controls: a flexible track that swallows the slack and packs its
         // chips (4px .chat-controls__model-settings gap) against the actions on the right.
@@ -4802,11 +4881,11 @@ private fun ChatInputPill(
             modifier = Modifier.size(32.dp),
           )
         }
-        // Web .composer-actions keeps --chat-mobile-row-action-gap (4px) plus the primary
-        // action's own margin-inline-start (4px) = 8px before the primary slot; lead,
-        // context and controls sit flush, and a missing primary leaves no trailing gap.
+        // Web .composer-actions keeps --chat-mobile-row-action-gap (4px) before the primary
+        // slot; lead, context and controls sit flush, and a missing primary leaves no trailing
+        // gap (composer.css:4205-4210).
         val primaryAction = resolveChatComposerPrimaryAction(talkActive = talkActive, runActive = runActive, hasContent = hasContent)
-        Box(Modifier.padding(start = if (primaryAction == ChatComposerPrimaryAction.None) 0.dp else 8.dp)) {
+        Box(Modifier.padding(start = if (primaryAction == ChatComposerPrimaryAction.None) 0.dp else 4.dp)) {
           when (primaryAction) {
             // Send and Start Talk own the --chat-mobile-row-target-size (36px) slot; Stop is
             // the secondary destructive target at --chat-mobile-row-target-size (32px).
@@ -4821,21 +4900,22 @@ private fun ChatInputPill(
   }
 }
 
+private fun chatPermissionIcon(mode: ChatPermissionMode?): ImageVector =
+  when (mode) {
+    null -> Icons.Default.Security
+    ChatPermissionMode.ReadOnly -> Icons.Default.GppMaybe
+    ChatPermissionMode.Guarded -> Icons.Default.Policy
+    ChatPermissionMode.Workspace -> Icons.Default.AdminPanelSettings
+    ChatPermissionMode.Full -> Icons.Default.Shield
+  }
+
 @Composable
 private fun ChatPermissionIcon(
   mode: ChatPermissionMode?,
   contentDescription: String?,
   modifier: Modifier = Modifier,
 ) {
-  val icon =
-    when (mode) {
-      null -> Icons.Default.Security
-      ChatPermissionMode.ReadOnly -> Icons.Default.GppMaybe
-      ChatPermissionMode.Guarded -> Icons.Default.Policy
-      ChatPermissionMode.Workspace -> Icons.Default.AdminPanelSettings
-      ChatPermissionMode.Full -> Icons.Default.Shield
-    }
-  Icon(icon, contentDescription = contentDescription, modifier = modifier)
+  Icon(chatPermissionIcon(mode), contentDescription = contentDescription, modifier = modifier)
 }
 
 @Composable

@@ -11,9 +11,11 @@ import android.view.WindowManager
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -49,8 +54,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextTransform
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -74,6 +82,8 @@ internal data class FoldAwareMenuItem(
   val onClick: () -> Unit,
   val icon: ImageVector? = null,
   val enabled: Boolean = true,
+  val description: String? = null,
+  val selected: Boolean = false,
   val interactionSource: MutableInteractionSource? = null,
 )
 
@@ -83,6 +93,12 @@ internal fun FoldAwareDropdownMenu(
   expanded: Boolean,
   onDismissRequest: () -> Unit,
   items: List<FoldAwareMenuItem>,
+  // composer.css:769-774 pins the attach menu to 176px; the permission picker widens to
+  // min(340px, 100vw - 24px) (composer.css:2836-2839).
+  width: Dp = 176.dp,
+  // composer.css:36-46 sets one quiet uppercase title above an option rail; only the
+  // permission picker owns one (composer.css:2839-2845).
+  header: String? = null,
 ) {
   val activity = LocalActivity.current
   val host = LocalView.current
@@ -128,7 +144,7 @@ internal fun FoldAwareDropdownMenu(
       SideEffect { opening.popupRoot = popupView.rootView }
       // Popup's native layout direction is updated after its first composition.
       CompositionLocalProvider(LocalDensity provides density, LocalLayoutDirection provides direction) {
-        MenuBody(owner, opening, items)
+        MenuBody(owner, opening, items, width, header)
       }
     }
   }
@@ -149,6 +165,8 @@ private fun MenuRow(
         .fillMaxWidth()
         .heightIn(min = 40.dp)
         .clip(RoundedCornerShape(10.dp))
+        // composer.css:2914-2916 — the selected option wears an 8% text wash (--menu-selected).
+        .background(if (item.selected) ClawTheme.colors.text.copy(alpha = 0.08f) else Color.Transparent)
         .clickable(
           interactionSource = interactionSource,
           indication = LocalIndication.current,
@@ -163,13 +181,29 @@ private fun MenuRow(
     item.icon?.let { icon ->
       Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.textMuted.copy(alpha = contentAlpha))
     }
-    Text(
-      item.label,
-      onTextLayout = onTextLayout,
-      // composer.css:910-915 — the label part wins over the row's own 12px font.
-      color = ClawTheme.colors.text.copy(alpha = contentAlpha),
-      style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
-    )
+    Column(modifier = Modifier.weight(1f, fill = false)) {
+      Text(
+        item.label,
+        onTextLayout = onTextLayout,
+        // composer.css:910-915 — the label part wins over the row's own 12px font.
+        color = ClawTheme.colors.text.copy(alpha = contentAlpha),
+        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 17.sp),
+      )
+      item.description?.let { description ->
+        // composer.css:2965-2969 stacks an 11px muted description under the option title.
+        Text(
+          description,
+          color = ClawTheme.colors.textMuted.copy(alpha = contentAlpha),
+          style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Normal, lineHeight = 14.sp),
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+    }
+    if (item.selected) {
+      // composer.css:2777-2782 marks the active option with the shared check glyph.
+      Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = ClawTheme.colors.primary)
+    }
   }
 }
 
@@ -178,6 +212,8 @@ private fun MenuBody(
   owner: AnchoredMenuOwner,
   opening: MenuOpening,
   items: List<FoldAwareMenuItem>,
+  width: Dp,
+  header: String?,
 ) {
   val density = LocalDensity.current
   val scroll = rememberScrollState()
@@ -198,6 +234,23 @@ private fun MenuBody(
           .padding(vertical = 4.dp)
           .verticalScroll(scroll),
       content = {
+        header?.let { title ->
+          // composer.css:36-46 + 2839-2845: an 11px/700 uppercase title, tracked 0.08em,
+          // parked 1px right of the row rail (9px) so heading and options share one left edge.
+          Text(
+            title,
+            color = ClawTheme.colors.textMuted,
+            style =
+              TextStyle(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.88.sp,
+                lineHeight = 13.sp,
+                textTransform = TextTransform.Uppercase,
+              ),
+            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 9.dp),
+          )
+        }
         items.forEach { item ->
           MenuRow(
             item = item,
@@ -208,26 +261,27 @@ private fun MenuBody(
       },
     ) { measurables, constraints ->
       val padding = 8.dp.roundToPx()
-      val limit = minOf(constraints.maxWidth, opening.geometry.available.width, 280.dp.roundToPx())
+      val requested = width.roundToPx()
+      val limit = minOf(constraints.maxWidth, opening.geometry.available.width, maxOf(requested, 280.dp.roundToPx()))
       if (opening.terminal || measurables.isEmpty() || limit < 112.dp.roundToPx()) {
         owner.cancel(opening)
         layout(0, 0) {}
       } else {
-        // composer.css:769-774 pins the menu box to 176px and caps it at the viewport gutter.
-        val width = opening.bounds?.width ?: minOf(176.dp.roundToPx(), limit)
-        val rows = measurables.map { it.measure(Constraints.fixedWidth(width)) }
+        // composer.css:769-774 pins the attach menu to 176px and caps it at the viewport gutter.
+        val menuWidth = opening.bounds?.width ?: minOf(requested, limit)
+        val rows = measurables.map { it.measure(Constraints.fixedWidth(menuWidth)) }
         val bodyHeight = rows.sumOf { it.height }
         val height = opening.bounds?.height ?: minOf(bodyHeight + padding, maxHeight)
         val textLayouts = items.mapNotNull { opening.textLayouts[it.id] }
         val fits =
-          width <= limit && height >= rows.maxOf { it.height } + padding &&
+          menuWidth <= limit && height >= rows.maxOf { it.height } + padding &&
             textLayouts.size == items.size && textLayouts.none { it.hasVisualOverflow }
         val rowLayout = MenuRows(rows.map { it.height }, textLayouts.map(::menuTextLayout))
-        if (!fits || !owner.admit(opening, IntSize(width, height), rowLayout)) {
+        if (!fits || !owner.admit(opening, IntSize(menuWidth, height), rowLayout)) {
           owner.cancel(opening)
           layout(0, 0) {}
         } else {
-          layout(width, bodyHeight) {
+          layout(menuWidth, bodyHeight) {
             var y = 0
             rows.forEach {
               it.place(0, y)
